@@ -1,0 +1,3 @@
+pyyaml
+ifaddr
+passlib  # needed on MacOS or Windows

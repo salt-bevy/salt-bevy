@@ -1,0 +1,21 @@
+# This file (in YAML format) lists all machines to be connected in the bevy network.
+# 
+# Each named entry is a proflie as defined in /etc/salt/cloud_profiles.d/
+# .. Each entry in its list is the node name of a machine
+# ..   which will be created using that profile.
+#
+# Reminder: Vagrant and saltify profiles
+#   can only be used for one single node.
+q1:  # from Vagrant profile
+  - x1  # makes node x1
+
+q16:  # from Vagrant profile
+  - x16  # makes node x16
+
+hw_demo:  # from saltify profile
+  - hw  # makes node hw
+
+#someCloudProfile:
+#  - q3
+#  - q4
+#  - q5

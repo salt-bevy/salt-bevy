@@ -66,6 +66,7 @@ let_the_file_clearing_daemon_get_started:
     - request_interval: 5.0
     - wait_for: 300
 
+{# loop over all machines in pillar, create a boot config for each #}
 {% for config in salt['pillar.get']('pxe_netboot_configs') %}
   {% if config['tag'] == 'install' %}
 /srv/tftpboot/preseed.files/{{ config['mac'] }}:

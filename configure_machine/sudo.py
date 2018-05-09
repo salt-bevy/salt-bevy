@@ -9,8 +9,16 @@
 
 import sys, os, traceback, time
 
+ELEVATION_FLAG = "--sudo-already-elevated"
+
+
+def already_elevated():  # we-were-here flag has been set
+    return ELEVATION_FLAG in sys.argv
+
 
 def isUserAdmin():
+    if already_elevated():
+        return True
     if os.name == 'nt':
         import ctypes
         # WARNING: requires Windows XP SP2 or higher!
@@ -27,13 +35,16 @@ def isUserAdmin():
         raise RuntimeError("Unsupported operating system for this module: {}".format(os.name))
 
 
-def runAsAdmin(cmdLine=None, wait=True):
+def runAsAdmin(cmdLine=None, wait=True, add_flag=True):
     if cmdLine is None:
         python_exe = sys.executable
         cmdLine = [python_exe] + sys.argv  # run the present Python command with elevation.
     else:
         if not isinstance(cmdLine, (tuple, list)):
             raise ValueError("cmdLine is not a sequence.")
+
+    if add_flag:  # let our later invocation know that we were already here
+        cmdLine.append(ELEVATION_FLAG)
 
     cmd = '"{}"'.format(cmdLine[0])
 

@@ -12,7 +12,7 @@ Maintenance command-line switches:
   --no-sudo = Do not attempt to run with elevated privileges, use the present level
   --no-read-settings = Do not read an existing BEVY_SETTINGS_FILE
 """
-import subprocess, os, getpass, json, socket, platform, ipaddress, sys, shutil
+import subprocess, os, getpass, json, socket, platform, ipaddress, sys
 from pathlib import Path, PurePosixPath
 from urllib.request import urlopen
 
@@ -61,6 +61,7 @@ DEFAULT_VAGRANT_NETWORK = '172.17.0.0/16'  #  Vagrant private network
 DEFAULT_FQDN_PATTERN = '{}.{}.test' # .test is ICANN reserved for test networks.
 
 minimum_salt_version = MINIMUM_SALT_VERSION.split('.')
+# noinspection PyTypeChecker
 minimum_salt_version[1] = int(minimum_salt_version[1])  # use numeric compare of month field
 this_file = Path(__file__).resolve()  # the absolute path name of this program's source
 
@@ -198,7 +199,6 @@ def write_config_file(config_file_name, is_master: bool, virtual=True, windows=F
     writes a copy of the template, below, into a file in this /srv/salt directory
     substituting the actual path to the ../bevy_srv salt and pillar subdirectories,
     -- which will be used as the Salt minion configuration during the "salt_state_apply" function below.
-    :param conf_file_name:
     '''
     template = """
 # initial configuration file for a bevy member.
@@ -605,11 +605,10 @@ if __name__ == '__main__':
         user_name = os.environ['SUDO_USER']
 
     settings = read_bevy_settings_file()
-    get_additional_roots(settings)
 
     try:
         import pwd  # works on Posix only
-        pwd_entry = pwd.getpwnam(user_name)  # look it up the hard way -- we are running SUDO
+        pwd_entry = pwd.getpwnam(user_name)  # look it up the hard way -- we may be running SUDO
         if pwd_entry[2] > 2000:  # skip uid numbers too close to automatically assigned values
             settings.setdefault('my_linux_uid', pwd_entry[2])  # useful for network shared files
         if pwd_entry[3] > 2000:
@@ -626,6 +625,22 @@ if __name__ == '__main__':
     except AttributeError:
         on_a_workstation = False  # blatant assumption: Python version is less than 3.5, therefore not a Workstation
 
+    if sudo.already_elevated():
+        try:
+            settings['my_linux_user']
+            settings['bevy']
+        except KeyError:
+            raise AssertionError('Required settings[] entry was not found')
+    else:
+        settings['bevy'], settings['my_linux_user'] = request_bevy_username_and_password(user_name)
+    print('Setting up user "{}" for bevy "{}"'.format(settings['my_linux_user'], settings['bevy']))
+
+    if '--no-sudo' in argv:  # "sudo off" switch for testing
+        print('\nRunning in "--no-sudo" mode. Expect permissions violations...\n')
+    else:
+        print('Okay. Now checking for and requesting elevated (sudo) privileges...')
+        sudo.run_elevated()  # Run this script using Administrator privileges
+
     master_host = False  # assume this machine is NOT the VM host for the Master
     print('\n\nThis program can make this machine a simple workstation to join the bevy')
     if platform.system() != 'Windows':
@@ -637,36 +652,27 @@ if __name__ == '__main__':
     if not master and on_a_workstation:
         master_host = affirmative(input(
             'Will the Bevy Master be a VM guest of this machine? [y/N]:'))
+    get_additional_roots(settings)
 
-    node_name = 'bevymaster' if master else platform.node().split('.')[0]  # default to workstation ID
-    if not master:
-        while Ellipsis:
-            default = settings.get('id', node_name)  # your workstation's hostname
-            name = input("What will be the Salt Node Id for this machine? [{}]:".format(default)) or default
-            if name == default or affirmative(input('Use node name "{}"? [Y/n]:'.format(name)), True):
-                settings['id'] = name
-                node_name = name
-                break
+    while Ellipsis:
+        default = settings.get('id', # determine machine ID
+                    'bevymaster' if master else platform.node().split('.')[0])
+        name = input("What will be the Salt Node Id for this machine? [{}]:".format(default)) or default
+        if name == default or affirmative(input('Use node name "{}"? [Y/n]:'.format(name)), True):
+            settings['id'] = name
+            node_name = name
+            break
+
     my_directory = Path(os.path.dirname(os.path.abspath(__file__)))
     bevy_root_node = (my_directory / '../bevy_srv').resolve()  # this dir is part of the Salt file_roots dir
     if not bevy_root_node.is_dir():
         raise SystemError('Unexpected situation: Expected directory not present -->{}'.format(bevy_root_node))
 
-    bevy, settings['my_linux_user'] = request_bevy_username_and_password(user_name)
-    settings['bevy'] = bevy
-    print('Setting up user "{}" on bevy "{}" node "{}"'.format(settings['my_linux_user'], bevy, node_name))
-
-    if '--no-sudo' in argv:  # "sudo off" switch for testing
-        print('\nRunning in "--no-sudo" mode. Expect permissions violations...\n')
-    else:
-        print('Okay. Now checking for and requesting elevated (sudo) privileges...')
-        sudo.run_elevated()  # Run this script using Administrator privileges
-
     if master or master_host:
         write_ssh_key_file(settings['my_linux_user'])
 
     # check for use of virtualbox and Vagrant
-    isvagranthost = False
+    isvagranthost = vagrant_present = False
     while on_a_workstation:  # if on a workstation, repeat until user says okay
         vbox_install = False
         vhost = settings.setdefault('vagranthost', 'none')  # node ID of Vagrant host machine
@@ -802,11 +808,10 @@ if __name__ == '__main__':
     if master:
         print('\n\n. . . . . . . . . .\n')
         salt_state_apply('',  # blank name means: apply highstate
-                         id='bevymaster',
+                         id=node_name,
                          config_dir=str(Path(SALTCALL_CONFIG_FILE).resolve().parent),
                          bevy_root=str(bevy_root_node),
-                         bevy=bevy,
-                         node_name='bevymaster',
+                         bevy=settings['bevy'],
                          bevymaster_url=master_address,
                          run_second_minion=run_second_minion,
                          vbox_install=settings.get('vbox_install', False),
@@ -841,10 +846,9 @@ if __name__ == '__main__':
                          id=node_name,
                          config_dir=str(Path(SALTCALL_CONFIG_FILE).resolve().parent), # for local
                          bevy_root=str(bevy_root_node),
-                         bevy=bevy,
+                         bevy=settings['bevy'],
                          bevymaster_url=settings['bevymaster_url'],
                          my_master_url=my_master_url,
-                         node_name=node_name,
                          run_second_minion=run_second_minion,
                          vbox_install=settings.get('vbox_install', False),
                          my_linux_user=settings['my_linux_user'],

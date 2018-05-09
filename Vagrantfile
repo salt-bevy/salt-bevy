@@ -234,7 +234,6 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
          "my_linux_gid" => gid,
          "bevy_root" => "/vagrant/bevy_srv",
          "bevy" => BEVY,
-         "node_name" => "bevymaster",
          "bevymaster_url" => NETWORK + '.2.2',
          "run_second_minion" => false,
          "linux_password_hash" => password_hash,

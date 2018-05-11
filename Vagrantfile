@@ -323,8 +323,8 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
         v.customize ["modifyvm", :id, "--natdnshostresolver1", "on"]  # use host's DNS resolver
     end
     quail_config.vm.guest = :windows
-    quail_config.vm.boot_timeout = 600
-    quail_config.vm.graceful_halt_timeout = 60
+    quail_config.vm.boot_timeout = 900
+    quail_config.vm.graceful_halt_timeout = 90
     #quail_config.winrm.password = "Passw0rd!"
     #quail_config.winrm.username = "IEUser"
     script = "new-item C:\\salt\\conf\\minion.d -itemtype directory\r\n"

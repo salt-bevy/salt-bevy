@@ -8,7 +8,11 @@
   {% set make_uid = -3 %}
   {% set make_gid = -3 %}
 {% endif %}
-{% set my_user = pillar['my_linux_user'] %}
+{% if grains['os'] == 'Windows' %}
+  {% set my_user = pillar['my_windows_user'] %}
+{% else %}
+  {% set my_user = pillar['my_linux_user'] %}
+{% endif %}
 {% set home = 'C:/Users/' if grains['os'] == "Windows" else '/Users/' if grains['os'] == 'MacOS' else '/home/' %}
 {% set users_group = 'Users' if grains['os'] == "Windows" else 'users' %}
 
@@ -31,7 +35,9 @@ staff:
       - dialout
       - wireshark
     - home: {{ home }}{{ my_user }}'
-    {% if grains['os'] != 'Windows' %}
+    {% if grains['os'] == 'Windows' %}
+    - password: {{ salt['pillar.get']('my_windows_password') }}
+    {% else %}
     - shell: /bin/bash
     - password: "{{ salt['pillar.get']('linux_password_hash') }}"
     - enforce_password: {{ salt['config.get']('force_linux_user_password', false) }}

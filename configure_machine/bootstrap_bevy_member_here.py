@@ -245,8 +245,9 @@ grains:
     try:
         with config_file_name.open('w', newline=newline) as config_file:
             config_file.write(template.format(config_file_name, this_file, master, file_roots, pillar_roots))
+            print('file {} written'.format(str(config_file_name)))
     except PermissionError:
-        print('Sorry. Permission error when trying to write {}'.format(config_file_name))
+        print('Sorry. Permission error when trying to write {}'.format(str(config_file_name)))
 
 
 def salt_state_apply(salt_state, **kwargs):

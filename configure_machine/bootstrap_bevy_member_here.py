@@ -125,13 +125,15 @@ def get_additional_roots(settings):
     if the command line calls for them using --add-roots
     DIRTY! -- MODIFIES the contents of argument "settings"
     '''
+    add_roots = '--add-roots='
+    len_ar = len(add_roots)
     more_parents = []  # list of additional file_roots directories
     try:  # pick out the substring after "=" if --add-roots= exists as a CLI argument
-        more = next((arg[12:] for arg in argv if arg.startswith('--add-roots=')), '')
+        more = next((arg[len_ar:] for arg in argv if arg.startswith(add_roots)), '')
         if more:  # divide up any comma-separated strings, strip [] & posixify
             more_parents = more.replace('\\', '/').strip('[').rstrip(']').split(',')
     except Exception:
-        raise ValueError('Error in "--add-roots=" processing.')
+        raise ValueError('Error in "{}" processing.'.format(add_roots))
 
     if len(settings.setdefault('application_roots', [])) + len(more_parents) == 0:
         return  # quick silent return in default case

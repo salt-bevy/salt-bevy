@@ -13,7 +13,6 @@ ELEVATION_FLAG = "--context"
 
 
 def already_elevated():  # we-were-here flag has been set
-    print('sys.argv={!r}'.format(sys.argv)) ###
     return any(arg.startswith(ELEVATION_FLAG) for arg in sys.argv)
 
 

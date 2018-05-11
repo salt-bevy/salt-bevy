@@ -104,7 +104,9 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
         v.cpus = 1
         v.linked_clone = true # make a soft copy of the base Vagrant box
         v.customize ["modifyvm", :id, "--natnet1", NETWORK + ".17.0/27"]  # do not use 10.0 network for NAT
-	end  #                                                     ^  ^/27 is the smallest network allowed.
+	    #                                                     ^  ^/27 is the smallest network allowed.
+        v.customize ["modifyvm", :id, "--natdnshostresolver1", "on"]  # use host's DNS resolver
+    end
     quail_config.vm.provider vmware do |v|  # only for VMware boxes
         v.vmx["memsize"] = "1024"
         v.vmx["numvcpus"] = "1"
@@ -129,6 +131,7 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
         v.cpus = 2
         v.linked_clone = true # make a soft copy of the base Vagrant box
         v.customize ["modifyvm", :id, "--natnet1", NETWORK + ".17.160/27"]  # do not use 10.0 network for NAT
+        v.customize ["modifyvm", :id, "--natdnshostresolver1", "on"]  # use host's DNS resolver
     end
     quail_config.vm.provider vmware do |v|
         v.vmx["memsize"] = "5000"
@@ -166,7 +169,7 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
     master_config.vm.synced_folder ".", "/vagrant", :owner => "vagrant", :group => "staff", :mount_options => ["umask=0002"]
     if settings.has_key?('application_roots')  # additional shares for optional applications directories
       settings['application_roots'].each do |share|  # formatted real-path:share-path
-        s = share.split(';')
+        s = share.split('=')
         master_config.vm.synced_folder s[0], "/#{s[1]}", :owner => "vagrant", :group => "staff", :mount_options => ["umask=0002"]
       end
     end
@@ -182,6 +185,7 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
         v.cpus = 1
         v.linked_clone = true # make a soft copy of the base Vagrant box
         v.customize ["modifyvm", :id, "--natnet1", NETWORK + ".17.32/27"]  # do not use 10.0 network for NAT
+        v.customize ["modifyvm", :id, "--natdnshostresolver1", "on"]  # use host's DNS resolver
     end
 
     master_config.vm.provider vmware do |v|
@@ -265,6 +269,7 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
         v.cpus = 1
         v.linked_clone = true # make a soft copy of the base Vagrant box
         v.customize ["modifyvm", :id, "--natnet1", NETWORK + ".17.64/27"]  # do not use 10.0 network for NAT
+        v.customize ["modifyvm", :id, "--natdnshostresolver1", "on"]  # use host's DNS resolver
 	end
     quail_config.vm.provider vmware do |v|
         v.vmx["memsize"] = "1024"
@@ -290,6 +295,7 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
         v.cpus = 1
         v.linked_clone = true # make a soft copy of the base Vagrant box
         v.customize ["modifyvm", :id, "--natnet1", NETWORK + ".17.96/27"]  # do not use 10.0 network for NAT
+        v.customize ["modifyvm", :id, "--natdnshostresolver1", "on"]  # use host's DNS resolver
 	end
     quail_config.vm.provider vmware do |v|
         v.vmx["memsize"] = "1024"
@@ -300,7 +306,7 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
  # . . . . . . . . . . . . Define machine win10 . . . . . . . . . . . . . .
  # . this Windows 10 machine bootstraps Salt and connects to bevy master.
   config.vm.define "win10", autostart: false do |quail_config|
-    quail_config.vm.box = "Microsoft/EdgeOnWindows10"
+    quail_config.vm.box = "gusztavvargadr/w10e"  #"Microsoft/EdgeOnWindows10"
     quail_config.vm.network "public_network", bridge: interface_guesses
     quail_config.vm.network "private_network", ip: NETWORK + ".2.10"
     if ARGV.length > 1 and ARGV[0] == "up" and ARGV[1] == "win10"
@@ -314,16 +320,19 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
         v.memory = 4096
         v.cpus = 2
         v.customize ["modifyvm", :id, "--natnet1", NETWORK + ".17.192/27"]  # do not use 10.0 network for NAT
+        v.customize ["modifyvm", :id, "--natdnshostresolver1", "on"]  # use host's DNS resolver
     end
     quail_config.vm.guest = :windows
     quail_config.vm.boot_timeout = 600
     quail_config.vm.graceful_halt_timeout = 60
+    #quail_config.winrm.password = "Passw0rd!"
+    #quail_config.winrm.username = "IEUser"
     script = "new-item C:\\salt\\conf\\minion.d -itemtype directory\r\n"
     script += "'master: #{settings['bevymaster_url']}' > C:\\salt\\conf\\minion.d\\00_vagrant_master_address.conf\r\n"
     quail_config.vm.provision "shell", inline: script
     quail_config.vm.provision "file", source: settings['WINDOWS_GUEST_CONFIG_FILE'], destination: "/etc/salt/minion.d/00_vagrant_boot.conf"
     quail_config.vm.provision :salt do |salt|  # salt_cloud cannot push Windows salt
-        salt.minion_id = "win12"
+        salt.minion_id = "win10"
         #salt.log_level = "info"
         salt.verbose = false
         salt.colorize = true
@@ -352,6 +361,7 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
         v.memory = 4096
         v.cpus = 2
         v.customize ["modifyvm", :id, "--natnet1", NETWORK + ".17.224/27"]  # do not use 10.0 network for NAT
+        v.customize ["modifyvm", :id, "--natdnshostresolver1", "on"]  # use host's DNS resolver
     end
     quail_config.vm.guest = :windows
     quail_config.vm.boot_timeout = 300
@@ -388,6 +398,7 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
         v.memory = 4096
         v.cpus = 2
         v.customize ["modifyvm", :id, "--natnet1", NETWORK + ".17.128/27"]  # do not use 10.0 network for NAT
+        v.customize ["modifyvm", :id, "--natdnshostresolver1", "on"]  # use host's DNS resolver
     end
     quail_config.vm.guest = :windows
     quail_config.vm.boot_timeout = 600

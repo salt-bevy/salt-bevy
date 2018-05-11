@@ -7,13 +7,14 @@
 #
 # Python3 update by: Vernon Cole 2018
 
-import sys, os, traceback, time
+import sys, os, traceback, time, json
 
-ELEVATION_FLAG = "--sudo-already-elevated"
+ELEVATION_FLAG = "--context"
 
 
 def already_elevated():  # we-were-here flag has been set
-    return ELEVATION_FLAG in sys.argv
+    print('sys.argv={!r}'.format(sys.argv)) ###
+    return any(arg.startswith(ELEVATION_FLAG) for arg in sys.argv)
 
 
 def isUserAdmin():
@@ -35,24 +36,24 @@ def isUserAdmin():
         raise RuntimeError("Unsupported operating system for this module: {}".format(os.name))
 
 
-def runAsAdmin(cmdLine=None, wait=True, add_flag=True):
-    if cmdLine is None:
+def runAsAdmin(commandLine=None, context=None, wait=True):
+    if commandLine is None:
         python_exe = sys.executable
         cmdLine = [python_exe] + sys.argv  # run the present Python command with elevation.
     else:
-        if not isinstance(cmdLine, (tuple, list)):
-            raise ValueError("cmdLine is not a sequence.")
+        if not isinstance(commandLine, (tuple, list)):
+            raise ValueError("commandLine is not a sequence.")
+        cmdLine = list(commandLine)  # make a local copy
 
-    if add_flag:  # let our later invocation know that we were already here
+    if isinstance(context, dict):
+        ctx = json.dumps(context)
+        cmdLine.append("{}='{}'".format(ELEVATION_FLAG, ctx))
+    elif context:
         cmdLine.append(ELEVATION_FLAG)
-
-    cmd = '"{}"'.format(cmdLine[0])
-
-    params = " ".join(['"{}"'.format(x) for x in cmdLine[1:]])
 
     if os.name == 'posix':
         import subprocess
-        cmd = 'sudo {} {}'.format(cmd, params)
+        cmd = "sudo " + ' '.join(cmdLine)
         print('Running command-->', cmd)
         rc = subprocess.call(cmd, shell=True)
 
@@ -67,11 +68,12 @@ def runAsAdmin(cmdLine=None, wait=True, add_flag=True):
         from win32com.shell import shellcon
 
         showCmd = win32con.SW_SHOWNORMAL
-
+        cmd = '"{}"'.format(cmdLine[0])
+        params = " ".join(['"{}"'.format(x) for x in cmdLine[1:]])
         lpVerb = 'runas'  # causes UAC elevation prompt.
         print()
         print("This window is waiting while a child window is run as an Administrator...")
-        print("Running command-->{} {}...".format(cmd, params))
+        print("Running command-->{} {}".format(cmd, params))
         procInfo = ShellExecuteEx(nShow=showCmd,
                                   fMask=shellcon.SEE_MASK_NOCLOSEPROCESS,
                                   lpVerb=lpVerb,
@@ -94,11 +96,21 @@ def runAsAdmin(cmdLine=None, wait=True, add_flag=True):
     return rc
 
 
-def run_elevated(command=None):
+def run_elevated(command=None, context=None):
     if not isUserAdmin():
-        rc = runAsAdmin(command)
+        rc = runAsAdmin(command, context)
         time.sleep(3)
         sys.exit(rc)
+
+
+def get_context():
+    for arg in sys.argv:
+        if arg.startswith(ELEVATION_FLAG):
+            try:
+                return json.loads(arg.split('=')[1])
+            except (IndexError, json.JSONDecodeError):
+                return {}
+    return {}
 
 
 def test(command=None):

@@ -147,9 +147,9 @@ def get_additional_roots(settings):
         resp = input('your choice? [{}]:'.format(prompt)) or default
         resp = resp.lower()
     for i, parent in enumerate(more_parents):  # make relative paths absolute
-        paths = parent.split(';')
+        paths = parent.split('=')
         paths[0] = Path(paths[0]).resolve().as_posix()
-        more_parents[i] = ';'.join(paths)
+        more_parents[i] = '='.join(paths)
     if resp == 'n':
         settings['application_roots'] = more_parents
     elif resp == 'a':
@@ -169,11 +169,11 @@ def format_additional_roots(settings, virtual):
         some_roots = []
         for parent in more_parents:
             try:
-                phys, virt = parent.split(';')
+                phys, virt = parent.split('=')
             except (ValueError, AttributeError):
                 if virtual:
                     raise ValueError(
-                        'application root parameter "{}" should have real-path;virtual-name'.format(parent))
+                        'application root parameter "{}" should have real-path=virtual-name'.format(parent))
                 else:
                     phys = parent
                     virt = NotImplemented
@@ -418,7 +418,7 @@ def request_bevy_username_and_password(user_name: str):
         print()
 
         default_user = settings.get('my_linux_user') or user_name
-        print('Please supply your desired user name to be used on all minions.')
+        print('Please supply your desired user name to be used on non-Windows minions.')
         print('(Hit <enter> to use "{}")'.format(default_user))
         my_linux_user = input('User Name:') or default_user
         print()
@@ -433,6 +433,31 @@ def request_bevy_username_and_password(user_name: str):
                   '? [Y/n]:'.format(my_linux_user, bevy)),
             default=True)  # stop looping if done
     return bevy, my_linux_user
+
+
+def request_windows_username_and_password(user_name: str):
+    """
+    get user's information so that we can build a user for her on each minion
+
+    :param user_name: system default user name
+    """
+    my_windows_user = my_windows_password = ''
+    loop = Ellipsis  # Python trivia: Ellipsis evaluates as True
+    while loop:
+        print()
+        default_user = settings.get('my_windows_user', '') or user_name
+        print('Please supply your desired user name to be used on any Windows minions.')
+        print('(Hit <enter> to use "{}")'.format(default_user))
+        my_windows_user = input('Windows User Name:') or default_user
+        print()
+        print('CAUTION: Windows passwords are stored in plain text. Do not use a valuable password here...')
+        default_wpwd = settings.get('my_windows_password', '')
+        my_windows_password = input('Windows insecure password: [{}]:'.format(default_wpwd)) or default_wpwd
+        loop = not affirmative(
+            input('Use Windows user name "{}" with password "{}"'
+                  '? [Y/n]:'.format(my_windows_user, my_windows_password)),
+            default=True)  # stop looping if done
+    return my_windows_user, my_windows_password
 
 
 def write_ssh_key_file(my_linux_user):
@@ -605,6 +630,7 @@ if __name__ == '__main__':
         user_name = os.environ['SUDO_USER']
 
     settings = read_bevy_settings_file()
+    settings.update(sudo.get_context())
 
     try:
         import pwd  # works on Posix only
@@ -626,20 +652,19 @@ if __name__ == '__main__':
         on_a_workstation = False  # blatant assumption: Python version is less than 3.5, therefore not a Workstation
 
     if sudo.already_elevated():
-        try:
-            settings['my_linux_user']
-            settings['bevy']
-        except KeyError:
+        if 'my_linux_user' not in settings or 'bevy' not in settings:
             raise AssertionError('Required settings[] entry was not found')
     else:
         settings['bevy'], settings['my_linux_user'] = request_bevy_username_and_password(user_name)
+        settings['my_windows_user'], settings['my_windows_password'] = request_windows_username_and_password(user_name)
     print('Setting up user "{}" for bevy "{}"'.format(settings['my_linux_user'], settings['bevy']))
 
     if '--no-sudo' in argv:  # "sudo off" switch for testing
         print('\nRunning in "--no-sudo" mode. Expect permissions violations...\n')
     else:
-        print('Okay. Now checking for and requesting elevated (sudo) privileges...')
-        sudo.run_elevated()  # Run this script using Administrator privileges
+        print('Okay. Now requesting elevated (sudo) privileges...')
+        names = {k: settings[k] for k in ('bevy', 'my_linux_user', 'my_windows_user', 'my_windows_password')}
+        sudo.run_elevated(context=names)  # Run this script using Administrator privileges
 
     master_host = False  # assume this machine is NOT the VM host for the Master
     print('\n\nThis program can make this machine a simple workstation to join the bevy')

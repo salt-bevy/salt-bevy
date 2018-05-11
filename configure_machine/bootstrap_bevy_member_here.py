@@ -664,6 +664,8 @@ if __name__ == '__main__':
 
     if '--no-sudo' in argv:  # "sudo off" switch for testing
         print('\nRunning in "--no-sudo" mode. Expect permissions violations...\n')
+    elif sudo.already_elevated():
+        print('Now running as Administrator...')
     else:
         print('Okay. Now requesting elevated (sudo) privileges...')
         names = {k: settings[k] for k in ('bevy', 'my_linux_user', 'my_windows_user', 'my_windows_password')}

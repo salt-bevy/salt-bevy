@@ -49,7 +49,7 @@ file_roots:    # search this list of directory entries in order
   base:
     - /srv/salt         # first, use the normal place (if it exists)
     {%- for entry in salt['pillar.get']('application_roots', []) %}
-    {%- set appdir = entry.split(';') %}
+    {%- set appdir = entry.split('=') %}
     {%- if appdir|length > 1 and salt['grains.get']('virtual', 'physical') == 'VirtualBox' %}
     - /{{ appdir[1] }}/salt
     {%- else %}
@@ -63,7 +63,7 @@ pillar_roots:  # merge definitions from this list of directories
   base:
     - /srv/pillar
     {%- for entry in salt['pillar.get']('application_roots', []) %}
-    {%- set appdir = entry.split(';') %}
+    {%- set appdir = entry.split('=') %}
     {%- if appdir|length > 1 and salt['grains.get']('virtual', 'physical') == 'VirtualBox' %}
     - /{{ appdir[1] }}/pillar
     {%- else %}

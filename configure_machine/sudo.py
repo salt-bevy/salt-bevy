@@ -135,7 +135,7 @@ if __name__ == "__main__":
         print('......testing with no arguments.......')
         test()
         if not isUserAdmin():
-            print('....... NEXT, a real useful example ...........')
+            print('....... NEXT, a real useful example ... editing the "etc/hosts" file ........')
             if os.name == 'nt':
                 call = ["c:\\Windows\\notepad.exe", "C:\Windows\System32\drivers\etc\hosts"]
             else:

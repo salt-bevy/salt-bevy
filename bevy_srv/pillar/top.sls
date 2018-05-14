@@ -17,12 +17,12 @@
 base:
   '*':
     - core_settings  # all systems share these
+    - 01_bevy_settings
 
   'quail*':
     - manual_bevy_settings
 
   bevymaster*:
-    - 01_bevy_settings
     - manual_bevy_settings
 
   'bevy:*':

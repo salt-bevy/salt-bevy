@@ -2,6 +2,7 @@
 # salt state file to ensure user's priviledges on a virtual machine
 
 {% set my_user = salt['pillar.get']('my_linux_user') %}
+{% set my_windows_user = salt['pillar.get']('my_windows_user', 'my_user') %}
 
 include:
   - interactive_user
@@ -9,8 +10,8 @@ include:
 {% if grains['os'] == "Windows" %}
 ssh_public_key:
   file.managed:
-    - name: 'C:\Users\{{ my_user }}\.ssh\id_rsa.pub'
-    - user: {{ my_user }}
+    - name: 'C:/Users/{{ my_windows_user }}/.ssh/id_rsa.pub'
+    - user: {{ my_windows_user }}
     - source: salt://ssh_keys/{{ my_user }}.pub
     - makedirs: True
     - replace: False

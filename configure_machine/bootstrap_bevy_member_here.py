@@ -667,7 +667,7 @@ if __name__ == '__main__':
     elif sudo.already_elevated():
         print('Now running as Administrator...')
     else:
-        print('Okay. Now requesting elevated (sudo) privileges...')
+        print('\nOkay. Now requesting elevated (sudo) privileges...\n')
         names = {k: settings[k] for k in ('bevy', 'my_linux_user', 'my_windows_user', 'my_windows_password')}
         sudo.run_elevated(context=names)  # Run this script using Administrator privileges
 

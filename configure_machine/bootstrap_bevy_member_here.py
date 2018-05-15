@@ -359,6 +359,19 @@ def affirmative(yes, default=False):
         return default
 
 
+def booleanize(name):
+    try:
+        if name.lower() in ['false', 'none', '']:
+            return False
+    except AttributeError:
+        return False
+    return name
+
+
+def normalize_literal_none(name):
+    return name if booleanize(name) else 'None'
+
+
 def salt_install(master=True):
     print("Checking Salt Version...")
     _current_salt_version = salt_minion_version()
@@ -419,18 +432,21 @@ def request_bevy_username_and_password(user_name: str):
         my_bevy = settings.get('bevy', 'bevy01')
         bevy = input("Name your bevy: [{}]:".format(my_bevy)) or my_bevy
         print()
-
+        print('Salt will create a personal interactive user for you on each machine in the bevy.')
+        print('If you do not wish to have a user created for you, enter "None" as the user name.')
+        print()
         default_user = settings.get('my_linux_user') or user_name
         print('Please supply your desired user name to be used on non-Windows minions.')
         print('(Hit <enter> to use "{}")'.format(default_user))
-        my_linux_user = input('User Name:') or default_user
+        my_linux_user = normalize_literal_none(input('User Name:') or default_user)
         print()
 
-        if pwd_hash.hashpath.exists() and loop is Ellipsis:
-            print('(using the password hash from {}'.format(pwd_hash.hashpath))
-        else:
-            pwd_hash.make_file()  # asks your user to type a password, then stores the hash.
-            pwd_hash.hashpath.chmod(0o666)
+        if booleanize(my_linux_user):  # establish a password for the user
+            if pwd_hash.hashpath.exists() and loop is Ellipsis:
+                print('(using the password hash from {}'.format(pwd_hash.hashpath))
+            else:
+                pwd_hash.make_file()  # asks your user to type a password, then stores the hash.
+                pwd_hash.hashpath.chmod(0o666)
         loop = not affirmative(
             input('Use user name "{}" in bevy "{}"'
                   '? [Y/n]:'.format(my_linux_user, bevy)),
@@ -444,18 +460,31 @@ def request_windows_username_and_password(user_name: str):
 
     :param user_name: system default user name
     """
+    print()
+    print('NOTE:')
+    print('If you log in to a Windows VM interactively, it will accept the password you set here,')
+    print('then it will create another user account, with a different home directory,')
+    print('to use for your interactive sessions.')
+    print('    (Why does Microsoft insist on doing this?)')
+    print('You might prefer to create your Windows user later from a GUI screen.')
+    print('If you wish to use a Microsoft Account username, you _must_ create it from a GUI.')
+    print('Enter the name as "None" to inhibit Salt creation of a Windows user ID.')
     my_windows_user = my_windows_password = ''
     loop = Ellipsis  # Python trivia: Ellipsis evaluates as True
     while loop:
         print()
-        default_user = settings.get('my_windows_user', '') or user_name
+        default_user = settings.get('my_windows_user', 'None') or user_name
         print('Please supply your desired user name to be used on any Windows minions.')
         print('(Hit <enter> to use "{}")'.format(default_user))
-        my_windows_user = input('Windows User Name:') or default_user
+        my_windows_user = normalize_literal_none(input('Windows User Name:') or default_user)
         print()
-        print('CAUTION: Windows passwords are stored in plain text. Do not use a valuable password here...')
-        default_wpwd = settings.get('my_windows_password', '')
-        my_windows_password = input('Windows insecure password: [{}]:'.format(default_wpwd)) or default_wpwd
+        if booleanize(my_windows_user):
+            print('CAUTION: Windows passwords are stored in plain text.')
+            print('Do not use a valuable password here...')
+            default_wpwd = settings.get('my_windows_password', '')
+            my_windows_password = input('Windows insecure password: [{}]:'.format(default_wpwd)) or default_wpwd
+        else:
+            my_windows_password = ''
         loop = not affirmative(
             input('Use Windows user name "{}" with password "{}"'
                   '? [Y/n]:'.format(my_windows_user, my_windows_password)),
@@ -656,7 +685,7 @@ if __name__ == '__main__':
 
     if sudo.already_elevated():
         if 'my_linux_user' not in settings or 'bevy' not in settings:
-            raise AssertionError('Required settings[] entry was not found')
+            raise RuntimeError('Expected settings[] entry was not found')
     else:
         settings['bevy'], settings['my_linux_user'] = request_bevy_username_and_password(user_name)
         settings['my_windows_user'], settings['my_windows_password'] = request_windows_username_and_password(user_name)
@@ -684,9 +713,9 @@ if __name__ == '__main__':
             'Will the Bevy Master be a VM guest of this machine? [y/N]:'))
     get_additional_roots(settings)
 
+    node_name = default = settings.get('id',  # determine machine ID
+                           'bevymaster' if master else platform.node().split('.')[0])
     while Ellipsis:
-        default = settings.get('id', # determine machine ID
-                    'bevymaster' if master else platform.node().split('.')[0])
         name = input("What will be the Salt Node Id for this machine? [{}]:".format(default)) or default
         if name == default or affirmative(input('Use node name "{}"? [Y/n]:'.format(name)), True):
             settings['id'] = name

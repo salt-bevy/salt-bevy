@@ -307,6 +307,7 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
  # . this Windows 10 machine bootstraps Salt and connects to bevy master.
   config.vm.define "win10", autostart: false do |quail_config|
     quail_config.vm.box = "gusztavvargadr/w10e"  #"Microsoft/EdgeOnWindows10"
+    quail_config.vm.hostname = 'win10'
     quail_config.vm.network "public_network", bridge: interface_guesses
     quail_config.vm.network "private_network", ip: NETWORK + ".2.10"
     if ARGV.length > 1 and ARGV[0] == "up" and ARGV[1] == "win10"
@@ -321,6 +322,7 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
         v.cpus = 2
         v.customize ["modifyvm", :id, "--natnet1", NETWORK + ".17.192/27"]  # do not use 10.0 network for NAT
         v.customize ["modifyvm", :id, "--natdnshostresolver1", "on"]  # use host's DNS resolver
+        v.customize ["storageattach", :id, "--storagectl", "IDE Controller", "--port", "1", "--device", "0", "--type", "dvddrive", "--medium", "emptydrive"]
     end
     quail_config.vm.guest = :windows
     quail_config.vm.boot_timeout = 900

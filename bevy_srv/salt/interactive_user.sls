@@ -9,14 +9,15 @@
   {% set make_gid = -3 %}
 {% endif %}
 {% if grains['os'] == 'Windows' %}
-  {% set my_user = pillar['my_windows_user'] %}
+  {% set my_user = salt['pillar.get']('my_windows_user', 'None') %}
 {% else %}
-  {% set my_user = pillar['my_linux_user'] %}
+  {% set my_user = salt['pillar.get']('my_linux_user', 'None') %}
 {% endif %}
 {% set home = 'C:/Users/' if grains['os'] == "Windows" else '/Users/' if grains['os'] == 'MacOS' else '/home/' %}
 {% set users_group = 'Users' if grains['os'] == "Windows" else 'users' %}
 
-{% if not salt['file.directory_exists'](home + my_user + "/Desktop") %} {# do not do this on user's workstation #}
+{% if my_user != 'None' %}
+ {% if not salt['file.directory_exists'](home + my_user + "/Desktop") %} {# do not do this on user's workstation #}
 staff:
   group:
   - present
@@ -37,6 +38,7 @@ staff:
     - home: {{ home }}{{ my_user }}'
     {% if grains['os'] == 'Windows' %}
     - password: {{ salt['pillar.get']('my_windows_password') }}
+    - win_profile: C:/Users/{{ my_user }}
     {% else %}
     - shell: /bin/bash
     - password: "{{ salt['pillar.get']('linux_password_hash') }}"
@@ -44,10 +46,11 @@ staff:
     {% if make_uid > 0 %}- uid: {{ make_uid }} {% endif %}
     {% endif %}
 
-{% if grains['os'] in ['Windows', 'MacOS'] %}
+  {% if grains['os'] in ['Windows', 'MacOS'] %}
 {{ home }}{{ my_user }}:
   file.directory:
     - user: {{ my_user }}
+  {% endif %}
  {% endif %}
 {% endif %}
 ...

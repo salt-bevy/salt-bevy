@@ -8,9 +8,9 @@ vs_2017_choc_bt:
       - visualstudio2017buildtools
 
 {# NOTE: there is a bug in old Salt-Minions. You may need to hand install 2018.3.0 for chocolatey to work.  #}
-dotnet4.0:
-  chocolatey.installed:
-    - name: dotnet4.0
+#dotnet4.0:
+#  chocolatey.installed:
+#    - name: dotnet4.0
 
 visualstudio2017buildtools:
   chocolatey.installed:

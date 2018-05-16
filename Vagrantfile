@@ -312,6 +312,7 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
     quail_config.vm.network "private_network", ip: NETWORK + ".2.10"
     if ARGV.length > 1 and ARGV[0] == "up" and ARGV[1] == "win10"
       puts "Starting #{ARGV[1]} as a Salt minion of #{settings['bevymaster_url']}."
+      puts "NOTE: you may need to run \"vagrant up\" twice for this Windows minion."
       end
     quail_config.vm.provider "virtualbox" do |v|
         v.name = BEVY + '_win10'  # ! N.O.T.E.: name must be unique
@@ -330,15 +331,16 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
     #quail_config.winrm.password = "Passw0rd!"
     #quail_config.winrm.username = "IEUser"
     script = "new-item C:\\salt\\conf\\minion.d -itemtype directory\r\n"
-    script += "'master: #{settings['bevymaster_url']}' > C:\\salt\\conf\\minion.d\\00_vagrant_master_address.conf\r\n"
     quail_config.vm.provision "shell", inline: script
     quail_config.vm.provision "file", source: settings['WINDOWS_GUEST_CONFIG_FILE'], destination: "/etc/salt/minion.d/00_vagrant_boot.conf"
     quail_config.vm.provision :salt do |salt|  # salt_cloud cannot push Windows salt
         salt.minion_id = "win10"
+        salt.master_id = "#{settings['bevymaster_url']}"
         #salt.log_level = "info"
         salt.verbose = false
         salt.colorize = true
-        #salt.run_highstate = true
+        salt.run_highstate = true
+        salt.version = "2018.3.0"  # TODO: remove this when this becomes default. Needed for chocolatey
     end
   end
 
@@ -374,7 +376,7 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
     quail_config.vm.provision :salt do |salt|  # salt_cloud cannot push Windows salt
         salt.minion_id = "win16"
         salt.log_level = "info"
-        salt.version = '2018.3.0'
+        salt.version = "2018.3.0"  # TODO: remove this when this becomes default. Needed for chocolatey
         salt.verbose = true
         salt.colorize = true
         salt.run_highstate = true
@@ -416,6 +418,7 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
         #salt.log_level = "info"
         salt.verbose = false
         salt.colorize = true
+        salt.version = "2018.3.0"  # TODO: remove this when this becomes default. Needed for chocolatey
         #salt.run_highstate = true
     end
   end

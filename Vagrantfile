@@ -252,6 +252,33 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
        end
   end
 
+
+  # . . . . . . . . . . . . Define machine QUAIL18 . . . . . . . . . . . . . .
+  # This Ubuntu 18.04 machine is designed to be run by salt-cloud
+  config.vm.define "quail18", autostart: false do |quail_config|
+    quail_config.vm.box = "ubuntu/bionic64"
+    quail_config.vm.hostname = "quail18" # + DOMAIN
+    quail_config.vm.network "private_network", ip: NETWORK + ".2.18"
+    if ARGV.length > 1 and ARGV[0] == "up" and ARGV[1] == "quail18"
+      puts "Starting #{ARGV[1]} at #{NETWORK}.2.18..."
+      end
+    quail_config.vm.network "public_network", bridge: interface_guesses
+
+    quail_config.vm.provider "virtualbox" do |v|
+        v.name = BEVY + '_quai18'  # ! N.O.T.E.: name must be unique
+        v.memory = 1024       # limit memory for the virtual box
+        v.cpus = 1
+        v.linked_clone = true # make a soft copy of the base Vagrant box
+        v.customize ["modifyvm", :id, "--natnet1", NETWORK + ".18.0/27"]  # do not use 10.0 network for NAT
+        v.customize ["modifyvm", :id, "--natdnshostresolver1", "on"]  # use host's DNS resolver
+	end
+    quail_config.vm.provider vmware do |v|
+        v.vmx["memsize"] = "1024"
+        v.vmx["numvcpus"] = "1"
+	end
+  end
+
+
   # . . . . . . . . . . . . Define machine QUAIL16 . . . . . . . . . . . . . .
   # This Ubuntu 16.04 machine is designed to be run by salt-cloud
   config.vm.define "quail16", autostart: false do |quail_config|
@@ -387,7 +414,6 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
  # . this machine bootstraps a salt minion on Windows Server 2012.
   config.vm.define "win12", autostart: false do |quail_config|
     quail_config.vm.box = "devopsguys/Windows2012R2Eval"
-
     quail_config.vm.network "public_network", bridge: interface_guesses
     quail_config.vm.network "private_network", ip: NETWORK + ".2.12"
     if ARGV.length > 1 and ARGV[0] == "up" and ARGV[1] == "win12"

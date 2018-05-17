@@ -52,7 +52,7 @@ file_roots:    # search this list of directory entries in order
     {%- for entry in salt['pillar.get']('application_roots', []) %}
     {%- set appdir = entry.split('=') %}
     {%- if appdir|length > 1 and salt['grains.get']('virtual', 'physical') == 'VirtualBox' %}
-    - /{{ appdir[1] }}/salt
+    - /projects/{{ appdir[1] }}/salt
     {%- else %}
     - {{ appdir[0] }}/salt
     {%- endif %}
@@ -66,7 +66,7 @@ pillar_roots:  # merge definitions from this list of directories
     {%- for entry in salt['pillar.get']('application_roots', []) %}
     {%- set appdir = entry.split('=') %}
     {%- if appdir|length > 1 and salt['grains.get']('virtual', 'physical') == 'VirtualBox' %}
-    - /{{ appdir[1] }}/pillar
+    - /projects/{{ appdir[1] }}/pillar
     {%- else %}
     - {{ appdir[0] }}/pillar
     {%- endif %}

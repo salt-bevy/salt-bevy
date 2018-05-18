@@ -738,6 +738,7 @@ if __name__ == '__main__':
             settings['id'] = name
             node_name = name
             break
+    my_settings['id'] = node_name
 
     my_directory = Path(os.path.dirname(os.path.abspath(__file__)))
     bevy_root_node = (my_directory / '../bevy_srv').resolve()  # this dir is part of the Salt file_roots dir
@@ -752,9 +753,10 @@ if __name__ == '__main__':
     while on_a_workstation:  # if on a workstation, repeat until user says okay
         vbox_install = False
         vhost = settings.setdefault('vagranthost', 'none')  # node ID of Vagrant host machine
-        default = my_settings['master_host'] or vhost == node_name
-        my_settings['master_host'] = get_affirmation('Will this machine be the Host for other Vagrant virtual machines?', default)
-        if my_settings['master_host']:
+        default = my_settings.get('vm_host') or my_settings['master_host'] or vhost == node_name
+        my_settings['vm_host'] = my_settings['master_host'] or  \
+                                 get_affirmation('Will this machine be the Host for other Vagrant virtual machines?', default)
+        if my_settings['vm_host']:
             # test for Vagrant being already installed
             rtn = subprocess.call('vagrant -v', shell=True)
             vagrant_present = rtn == 0
@@ -790,7 +792,7 @@ if __name__ == '__main__':
                     continue  # user committed an entry error ... retry
                 except OSError:
                     pass  # entry was not an IP address.  Good.
-        if my_settings['master_host'] and settings['vagranthost'] and settings['vagranthost'] != "none":
+        if my_settings['vm_host'] and settings['vagranthost'] and settings['vagranthost'] != "none":
             runas = settings.get('runas') or settings['my_linux_user']
             resp = input(
                 'What user on {} will own the Vagrantbox files?'
@@ -817,7 +819,7 @@ if __name__ == '__main__':
         if affirmative(input('Correct? [Y/n]:'), default=True):
             break
 
-    if my_settings['master_host']:
+    if my_settings['vm_host']:
         settings['vagrant_prefix'], settings['vagrant_network'] = choose_vagrant_network()
         choice = choose_bridge_interface()
         settings['vagrant_interface_guess'] = choice['name']
@@ -840,21 +842,21 @@ if __name__ == '__main__':
                 exit(1)
         run_second_minion = master_id not in ['localhost', 'salt', '127.0.0.1'] and \
                             platform.system() != 'Windows'  # TODO: figure out how to run 2nd minion on Windows
-    historic_second_minion = settings.get('second_minion_id', 'None') != 'None'
+    historic_second_minion = my_settings.get('second_minion_id', 'None') != 'None'
     if run_second_minion or historic_second_minion:
         print('Your Salt master id was detected as: {}'.format(master_id))
         print('You may continue to use that primary master, and add a second master for your bevy.')
         print('Your previously used second master minion ID was "{}"'.format(
-            settings.get('second_minion_id', 'None')))
+            my_settings.get('second_minion_id', 'None')))
         while ...:
-            default = settings.get('second_minion_id', 'bevymaster' if my_settings['master'] else node_name)
+            default = my_settings.get('second_minion_id', 'bevymaster' if my_settings['master'] else node_name)
             print('Enter "None" to use the primary Salt Master only.')
             response = normalize_literal_none(input(
                 'What ID do you want to use for your second master? [{}]'.format(default))) or default
             if response == 'None' or affirmative(input('Use "{}"?: [Y/n]:'.format(response)), True):
-                settings['second_minion_id'] = response
+                my_settings['second_minion_id'] = response
                 break
-        run_second_minion = settings['second_minion_id'] != "None"
+        run_second_minion = my_settings['second_minion_id'] != "None"
     two = '2' if run_second_minion else ''
 
     master_address = choose_master_address(settings.get('bevymaster_url', master_id))
@@ -882,7 +884,7 @@ if __name__ == '__main__':
         settings['master_vagrant_ip'] = 'None'
 
     write_config_file(Path(SALTCALL_CONFIG_FILE), my_settings['master'], virtual=False, windows=platform.system()=='Windows', master_host=my_settings['master_host'])
-    if my_settings['master_host']:
+    if my_settings['vm_host']:
         write_config_file(Path(GUEST_MINION_CONFIG_FILE), is_master=False, virtual=True, master_host=my_settings['master_host'])
         write_config_file(Path(WINDOWS_GUEST_CONFIG_FILE), is_master=False, virtual=True, windows=True, master_host=my_settings['master_host'])
 
@@ -907,18 +909,18 @@ if __name__ == '__main__':
                          )
 
     else:  # not making a master, make a minion
-        if my_settings['master_host']:
-            my_master_url = settings['master_vagrant_ip']
-        else:
-            my_master_url = settings['bevymaster_url']
+        default = settings.get('master_vagrant_ip', '') if my_settings['master_host'] else \
+                                            settings.get('bevymaster_url', '')
+        my_master_url = my_settings.get('my_master_url', default)
         while Ellipsis:  # loop until user says okay
             print('Trying {} for bevy master'.format(my_master_url))
             try:  # look up the address we have, and see if it appears good
                 ip_ = socket.getaddrinfo(my_master_url, 4506, type=socket.SOCK_STREAM)
                 okay = input("Use {} as this machine's bevy master address? [Y/n]:".format(ip_[0][4][0]))
                 if affirmative(okay, True):
-                    if my_settings['master_host'] and my_master_url != settings['master_vagrant_ip']:
-                        if affirmative(input('Also use as the default Vagrant master address? [Y/n]:'), True):
+                    my_settings['my_master_url'] = my_master_url
+                    if my_settings['vm_host'] and my_master_url != settings['master_vagrant_ip']:
+                        if affirmative(input("Also use as master address for other Vagrant VMs? [Y/n]:"), True):
                             settings['master_vagrant_ip'] = my_master_url
                             write_bevy_settings_files()
                     break  # it looks good -- exit the loop

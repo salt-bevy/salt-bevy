@@ -852,8 +852,10 @@ if __name__ == '__main__':
         print("Sorry. Permission error when trying to read or remove {}".format(master_pub))
 
     if master_host:
-        settings.setdefault('master_vagrant_ip', settings['vagrant_prefix'] + '.2.2')
+        settings['master_vagrant_ip'] = settings['vagrant_prefix'] + '.2.2'
         write_config_file(Path(SALT_SRV_ROOT) / GUEST_MASTER_CONFIG_FILE, is_master=True, virtual=True, master_host=master_host)
+    else:
+        settings['master_vagrant_ip'] = 'None'
 
     write_config_file(Path(SALTCALL_CONFIG_FILE), master, virtual=False, windows=platform.system()=='Windows', master_host=master_host)
     if isvagranthost or master_host:

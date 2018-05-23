@@ -35,8 +35,20 @@ windows_pygit2_failure_workaround:
       - '"{{ salt['environ.get']('ProgramFiles(x86)') }}\Notepad++\Notepad++.exe" %*'
     - unless:  {# do not install this if there is an existing "edit" command #}
       - where edit
+{{ salt['environ.get']('SystemRoot') }}/tail.bat:  {# very dirty way to create a "tail -f" command for all users #}
+  file.managed:
+    - contents: |
+        @ECHO OFF
+        IF "%1"=="-f" (
+        powershell get-content "%2" -tail 10 -wait
+        ) ELSE (
+        start /b powershell get-content "%1" -tail 10
+        )
+    - unless:  {# do not install this if there is an existing "tail" command #}
+      - where tail
 
-{% else %}
+{% else %}  {# Not Windaws #}
+
 {% if grains['mem_total'] < 2000 %}
 swapspace:
   pkg.installed:

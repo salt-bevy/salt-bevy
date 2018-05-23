@@ -477,11 +477,6 @@ def request_windows_username_and_password(user_name: str):
     """
     print()
     print('NOTE:')
-    print('If you log in to a Windows VM interactively, it will accept the password you set here,')
-    print('then it will create another user account, with a different home directory,')
-    print('to use for your interactive sessions.')
-    print('    (Why does Microsoft insist on doing this?)')
-    print('You might prefer to create your Windows user later from a GUI screen.')
     print('If you wish to use a Microsoft Account username, you _must_ create it from a GUI.')
     print('Enter the name as "None" to inhibit Salt creation of a Windows user ID.')
     my_windows_user = my_windows_password = ''

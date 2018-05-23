@@ -50,6 +50,12 @@ staff:
 {{ home }}{{ my_user }}:
   file.directory:
     - user: {{ my_user }}
+    {% if grains['os'] == 'Windows' %}
+  cmd.run:  {# create a file in the user's context to force activation of the context #}
+    - name: 'echo "This is a dummy document created by Salt." > %userprofile%\Documents\erase_me.txt'
+    - runas: {{ my_user }}
+    - password: {{ salt['pillar.get']('my_windows_password') }}
+   {% endif %}
   {% endif %}
  {% endif %}
 {% endif %}

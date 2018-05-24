@@ -808,7 +808,7 @@ if __name__ == '__main__':
             if vagrant_present:
                 print('Vagrant is already present on this machine.')
             else:
-                print('CAUTION: Vagrant is not yet installed on this machine.')
+                print('CAUTION: Vagrant may not yet be installed on this machine.')
         else:
             print('No Vagrant Box will be used.')
         if affirmative(input('Continue? [Y/n]:'), default=True):

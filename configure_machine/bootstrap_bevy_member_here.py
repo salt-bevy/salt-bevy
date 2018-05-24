@@ -218,7 +218,7 @@ def write_config_file(config_file_name, is_master: bool, virtual=True, windows=F
 # written by: {1}
 #
 master: {2}
-
+{5}
 file_roots:    # states are searched in the given order -- first found wins
   base: {3!r}
 top_file_merging_strategy: same  # do not merge the top.sls file from srv/salt, just use it
@@ -243,6 +243,7 @@ grains:
     master_url = settings.get('master_vagrant_ip', '') \
         if master_host else settings.get('bevymaster_url', '')
     master = 'localhost' if is_master else master_url
+    id = '' if virtual else 'id: {}'.format(my_settings['id'])
 
     more_roots, more_pillars = format_additional_roots(settings, virtual)
 
@@ -254,7 +255,7 @@ grains:
     newline = '\r\n' if windows else '\n'
     try:
         with config_file_name.open('w', newline=newline) as config_file:
-            config_file.write(template.format(config_file_name, this_file, master, file_roots, pillar_roots))
+            config_file.write(template.format(config_file_name, this_file, master, file_roots, pillar_roots, id))
             print('file {} written'.format(str(config_file_name)))
     except PermissionError:
         print('Sorry. Permission error when trying to write {}'.format(str(config_file_name)))
@@ -730,7 +731,6 @@ if __name__ == '__main__':
     while Ellipsis:
         name = input("What will be the Salt Node Id for this machine (for the first or only minion)? [{}]:".format(default)) or default
         if name == default or affirmative(input('Use node name "{}"? [Y/n]:'.format(name)), True):
-            settings['id'] = name
             node_name = name
             break
     my_settings['id'] = node_name

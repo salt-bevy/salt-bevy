@@ -814,7 +814,7 @@ if __name__ == '__main__':
         if affirmative(input('Correct? [Y/n]:'), default=True):
             break
 
-    if my_settings['vm_host']:
+    if my_settings.get('vm_host', False):
         settings['vagrant_prefix'], settings['vagrant_network'] = choose_vagrant_network()
         choice = choose_bridge_interface()
         settings['vagrant_interface_guess'] = choice['name']

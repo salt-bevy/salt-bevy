@@ -811,10 +811,10 @@ if __name__ == '__main__':
                 print('CAUTION: Vagrant is not yet installed on this machine.')
         else:
             print('No Vagrant Box will be used.')
-        if affirmative(input('Correct? [Y/n]:'), default=True):
+        if affirmative(input('Continue? [Y/n]:'), default=True):
             break
 
-    if my_settings.get('vm_host', False):
+    if my_settings.setdefault('vm_host', False):
         settings['vagrant_prefix'], settings['vagrant_network'] = choose_vagrant_network()
         choice = choose_bridge_interface()
         settings['vagrant_interface_guess'] = choice['name']

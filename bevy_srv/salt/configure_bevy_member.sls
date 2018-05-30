@@ -232,18 +232,19 @@ add_salt{{ other_minion }}_command:
         then
         export ETC_BASH_BASHRC_INCLUDED=1
         printf ".   .   .   .   .   .   .   .   .   .   .   .   .   .   .   .   .   .\\n"
-        printf " * This computer is running a second Salt minion.\\n"
+        printf " * This computer is set up to run multiple Salt minions.\\n"
         printf "\\n"
-        printf " * To use the system Salt master, use the \\\"sudo salt-call\\\" command as usual.\\n"
+        printf " * To use the first (original) Salt master, use the \\\"sudo salt-call\\\" command as usual.\\n"
         printf "\\n"
-        printf " * For salt-call to your Bevy master, use the \\\"salt{{ other_minion }}\\\" command.\\n"
+        printf " * For a salt-call using your second (bevy) master, use the \\\"salt{{ other_minion }}\\\" command.\\n"
         printf "  For example:\\n"
         printf "     salt{{ other_minion }} grains.get virtual\\n"
         printf "  Or, if you wanted to stop all this, you would use:\\n"
         printf "     salt{{ other_minion }} state.apply remove_second_minion\\n"
         printf "\\n"
-        printf " * To operate the second minion daemon,  use (for example):\\n"
+        printf " * To operate the second minion's daemon,  use (for example):\\n"
         printf "     sudo systemctl status salt{{ other_minion }}-minion\\n"
+        printf " * You will find its configurations under /etc/salt{{ other_minion }}/\\n"
         printf ".   .   .   .   .   .   .   .   .   .   .   .   .   .   .   .   .   .\\n"
         fi
 

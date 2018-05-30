@@ -221,26 +221,31 @@ systemctl_reload_{{ other_minion }}:
       - file: edit_salt-minion{{ other_minion }}_service
 
 add_salt{{ other_minion }}_command:
-  file.append:
+  file.blockreplace:
     - name: /etc/bash.bashrc
-    - text:
-      - '# v v v v v v  added by Salt  v v v v v v ( -- Do not edit or remove this line -- )'
-      - "alias salt{{ other_minion }}='sudo salt-call --config-dir=/etc/salt{{ other_minion }} \"$@\"'"
-      - 'printf ".   .   .   .   .   .   .   .   .   .   .   .   .   .   .   .   .   .\\n"'
-      - 'printf " * This computer is running a second Salt minion.\\n"'
-      - 'printf "\\n"'
-      - 'printf " * To use the system Salt master, use the \\\"sudo salt-call\\\" command as usual.\\n"'
-      - 'printf "\\n"'
-      - 'printf " * For salt-call to your Bevy master, use the \\\"salt{{ other_minion }}\\\" command.\\n"'
-      - 'printf "  For example:\\n"'
-      - 'printf "     salt{{ other_minion }} grains.get virtual\\n"'
-      - 'printf "  Or, if you wanted to stop all this, you would use:\\n"'
-      - 'printf "     salt{{ other_minion }} state.apply remove_second_minion\\n"'
-      - 'printf "\\n"'
-      - 'printf " * To operate the second minion daemon,  use (for example):\\n"'
-      - 'printf "     sudo systemctl status salt{{ other_minion }}-minion\\n"'
-      - 'printf ".   .   .   .   .   .   .   .   .   .   .   .   .   .   .   .   .   .\\n"'
-      - '# ^ ^ ^ ^ ^ ^  added by Salt  ^ ^ ^ ^ ^ ^ ( -- Do not edit or remove this line -- )'
+    - marker_start: '# v v v v v v  added by Salt  v v v v v v ( -- Do not edit or remove this line -- )'
+    - marker_end:   '# ^ ^ ^ ^ ^ ^  added by Salt  ^ ^ ^ ^ ^ ^ ( -- Do not edit or remove this line -- )'
+    - append_if_not_found: True
+    - content: |
+        alias salt{{ other_minion }}='sudo salt-call --config-dir=/etc/salt{{ other_minion }} \"$@\"'
+        if [ ! -n "${ETC_BASH_BASHRC_INCLUDED}" ]
+        then
+        export ETC_BASH_BASHRC_INCLUDED=1
+        printf ".   .   .   .   .   .   .   .   .   .   .   .   .   .   .   .   .   .\\n"
+        printf " * This computer is running a second Salt minion.\\n"
+        printf "\\n"
+        printf " * To use the system Salt master, use the \\\"sudo salt-call\\\" command as usual.\\n"
+        printf "\\n"
+        printf " * For salt-call to your Bevy master, use the \\\"salt{{ other_minion }}\\\" command.\\n"
+        printf "  For example:\\n"
+        printf "     salt{{ other_minion }} grains.get virtual\\n"
+        printf "  Or, if you wanted to stop all this, you would use:\\n"
+        printf "     salt{{ other_minion }} state.apply remove_second_minion\\n"
+        printf "\\n"
+        printf " * To operate the second minion daemon,  use (for example):\\n"
+        printf "     sudo systemctl status salt{{ other_minion }}-minion\\n"
+        printf ".   .   .   .   .   .   .   .   .   .   .   .   .   .   .   .   .   .\\n"
+        fi
 
 /etc/profile:
   file.append:

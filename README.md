@@ -262,23 +262,31 @@ If you change it, search for all occurrances.
 
 ### A Private Test Network
 
-Some of the more advanced lessons (such as DHCP and PXE) cannot be run on a corporate or
-school network without messing up many things. Don't do that. 
+Most lessons presented here are designed to be good network citizens.
+If you keep your bevy names uinque, several bevys can co-exist on a network with no problems.
+Even hardware MAC addresses (where needed) are hashed by the bevy name.
+
+However, if you wish to run the more advanced network infrastructure lessons
+(such as DHCP and PXE) plan also to buy some hardware.
+
+Some lessons will contain warnings if they cannot be run on a corporate or
+school network without messing something up.
 \[Trust me, I know about messing things up -- I once killed the then-experimental
 Internet in all of Utah and Colorado by misconfiguring a router. -- Vernon\] 
 
-If you are working from a home office, you may be okay using your home router -- 
-but not while your spouse is streaming a movie. 
-Otherwise, you will want a router of your very own to mess up. 
 
-Consider ordering a special router soon. I use a RouterBoard / Mikrotik 
+If you are working from a home office, you should be okay using your home router
+for the advanced lessons (but not while your spouse is streaming a movie).
+
+Otherwise, you will want a router of your very own for the advanced lessons.
+Consider ordering a special router soon. I use a RouterBoard / Mikrotik
 [hAP lite](https://mikrotik.com/product/RB941-2nD-TC).
 Their RouterOS operating system has professional features lacking in most popular home routers.
 I found mine on Amazon for less than $30 USD. Buy some CAT-5 cables, too.
 
-For test computers, I use an old HP laptop that once ran Windows Vista, and a Raspberry Pi. 
-Also running on the same net, I have two development Ubuntu laptops, a Windows 10 laptop, 
-an old MacBook, and my Android phone. Those make a good test bed.
+For test computers on my private network, I use an old HP laptop that once ran Windows Vista, and a Raspberry Pi.
+Also running on my test net, I have two development Ubuntu laptops, a Windows 10 laptop,
+an old MacBook, and my Android phone.
 
 # Updating this project.
 

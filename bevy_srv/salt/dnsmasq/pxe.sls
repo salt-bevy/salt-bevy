@@ -1,6 +1,18 @@
 ---
 # salt state file for making a PXE boot server
 
+check_private_network:
+{# Your PXE private network should be have been set in pillar/manual_bevy_settings.sls for your situation #}
+{#                                     the 192.0.2.0 network is IANA reserved for examples only #}
+{% set pxe_network_cidr = salt['pillar.get']('pxe_network_cidr', '192.0.2.0/24')) %}
+{% if salt['network.in_subnet'](pxe_network_cidr) %}
+  test.nop:
+    name: 'You DO have a network interface on the PXE network.'
+{% else %}
+  test.fail_without_changes:
+    - name: 'Salt State selection ERROR: Your machine does not have an interface on the {{ pxe_network_cidr }} network.'
+{% endif %}
+
 pxe_packages:
   pkg.installed:
     - names:

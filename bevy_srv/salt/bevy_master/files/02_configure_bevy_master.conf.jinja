@@ -1,48 +1,34 @@
 {#- this is the jinja template used to create the configuration file
-     <salt_config_directory>/minion.d/02_configure_bevy_member.conf-#}
+     <salt_config_directory>/minion.d/02_configure_bevy_master.conf-#}
 # {{ pillar['salt_managed_message'] }}
-# created from template bevy_master/files/02_configure_bevy_member.conf.jinja (0.1)
+# created from template bevy_master/files/02_configure_bevy_master.conf.jinja (0.1)
 
 # these settings are specific to the running Salt master or stand-alone minion
 
 {% set bevy_root = salt['config.get']('bevy_root', '/projects/salt-bevy/bevy_srv') %}
-id: {{ salt['config.get']('node_name', salt['config.get']('id')) }}
-{% set is_master = salt['config.get']('id', '').startswith('bevymaster') %}
 
-{% if is_master %}master: localhost
-{% else %}
+{# ipv6: true  # enable IPv6 dual-stack
+interface: '::' #}
+
 master: {{ salt['config.get']('my_master_url', salt['config.get']('master')) }}
-{% endif %}
-{% set minion_number = salt['config.get']('run_second_minion', '') %}
 
 grains:
   datacenter: bevy
   bevy: {{ salt['config.get']('bevy') }}
   environment: dev
 salt_config_directory: {{ salt['config.get']('salt_config_directory') }}  # remember where I am at
-run_second_minion: {{ salt['config.get']('run_second_minion', '') }}
 
-{% if is_master -%}
 {% if salt['pillar.get']('autosign_minion_ids', false) %}
 {# This quick and dirty way to pre-accept minions with known names is insecure. #}
 autosign_file: {{ salt['config.get']('salt_config_directory') }}/pki/master/autosign.minions
 {% endif %}
 winrepo_remotes: []  # do not support Windows minions before v2015.8
 timeout: 20  # give Windows minions more time to respond (default was 5 seconds).
-{% endif -%}
-
-{% if minion_number != '' %}
-pidfile: /var/run/salt-minion{{ minion_number }}.pid  # settings for second minion
-pki_dir: {{ salt['config.get']('salt_config_directory') }}/pki/minion{{ minion_number }}
-sock_dir: /var/run/salt-minion{{ minion_number }}
-log_file: /var/log/salt/minion{{ minion_number }}
-{% endif %}
 
 worker_threads: 2  {# sufficient for test systems #}
 
 mine_interval: 5   # this is a test system, so run the mine every five minutes
 
-{% if is_master or salt['file.directory_exists']('/srv/salt') %}
 # for master we need to tell Salt where to find its files
 #
 file_roots:    # search this list of directory entries in order
@@ -72,6 +58,10 @@ pillar_roots:  # merge definitions from this list of directories
     {%- endfor %}
     - '{{ bevy_root }}/pillar'
 pillar_source_merging_strategy: recurse
-{% endif %}
+
 file_ignore_regex:
   - '/\.git($|/)'
+
+tcp_keepalive: True
+tcp_keepalive_idle: 200
+tcp_keepalive_intvl: 75

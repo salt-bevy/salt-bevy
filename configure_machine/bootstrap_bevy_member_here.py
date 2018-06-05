@@ -825,7 +825,7 @@ if __name__ == '__main__':
     we_installed_it = salt_install(my_settings['master'])  # download & run salt
 
     if we_installed_it:
-        run_second_minion = False
+        use_second_minion = False
         master_id = 'salt'
     else:
         master_id = get_salt_master_id()
@@ -835,10 +835,10 @@ if __name__ == '__main__':
                 master_id = 'salt'
             else:
                 exit(1)
-        run_second_minion = master_id not in ['localhost', 'salt', '127.0.0.1'] and \
+        use_second_minion = master_id not in ['localhost', 'salt', '127.0.0.1'] and \
                             platform.system() != 'Windows'  # TODO: figure out how to run 2nd minion on Windows
     historic_second_minion = my_settings.get('second_minion_id', 'None') != 'None'
-    if run_second_minion or historic_second_minion:
+    if use_second_minion or historic_second_minion:
         print('Your Salt master id was detected as: {}'.format(master_id))
         print('You may continue to use that primary master, and add a second master for your bevy.')
         print('Your previously used second master minion ID was "{}"'.format(
@@ -851,8 +851,8 @@ if __name__ == '__main__':
             if response == 'None' or affirmative(input('Use "{}"?: [Y/n]:'.format(response)), True):
                 my_settings['second_minion_id'] = response
                 break
-        run_second_minion = my_settings['second_minion_id'] != "None"
-    two = '2' if run_second_minion else ''
+        use_second_minion = my_settings['second_minion_id'] != "None"
+    two = my_settings.get('run_second_minion') or '2' if use_second_minion else ''
 
     master_address = choose_master_address(settings.get('bevymaster_url', master_id))
     settings['bevymaster_url'] = master_address
@@ -895,7 +895,7 @@ if __name__ == '__main__':
                          bevy_root=str(bevy_root_node),
                          bevy=settings['bevy'],
                          bevymaster_url=master_address,
-                         run_second_minion=run_second_minion,
+                         run_second_minion=two,
                          vbox_install=settings.get('vbox_install', False),
                          vagranthost=settings.get('vagranthost', False),
                          runas=settings.get('runas', ''),
@@ -931,7 +931,7 @@ if __name__ == '__main__':
                          bevy=settings['bevy'],
                          bevymaster_url=settings['bevymaster_url'],
                          my_master_url=my_master_url,
-                         run_second_minion=run_second_minion,
+                         run_second_minion=two,
                          vbox_install=settings.get('vbox_install', False),
                          my_linux_user=settings['my_linux_user'],
                          vagranthost=settings.get('vagranthost', False),

@@ -76,8 +76,8 @@ salt-cloud:
 
 salt-master-config:
   file.managed:
-    - name: {{ salt['config.get']('salt_config_directory') }}/master.d/02_configure_bevy_member.conf
-    - source: salt://bevy_master/files/02_configure_bevy_member.conf.jinja
+    - name: {{ salt['config.get']('salt_config_directory') }}/master.d/02_configure_bevy_master.conf
+    - source: salt://bevy_master/files/02_configure_bevy_master.conf.jinja
     - template: jinja
     - makedirs: true
 

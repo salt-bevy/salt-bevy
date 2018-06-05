@@ -36,9 +36,9 @@ BEVY_SETTINGS_FILE_NAME = '/srv/pillar/01_bevy_settings.sls'
 # or a bevy minion which is a headless server for some service (perhaps also as a local VM).
 # Any of these (except a local VM) might very possibly already have been a minion of some other Salt Master
 # before our bevy arrives on the scene. We may want to preserve that minion's connection.
-# We will attempt to detect that situation, and we will use the setting "run_second_minion" (which may contain
-# "False" or a string literal "2") to allow both minions to operate side-by-side.
-#  It theoretically might work to have "run_second_minion" be any of the values "2" through "Z", in case
+# We will attempt to detect that situation, and we will use the setting "additional_minion_tag" (which may contain
+# "" or a string literal "2") to allow both minions to operate side-by-side.
+#  It theoretically might work to have "additional_minion_tag" be any of the values "2" through "Z", in case
 # we are running three or more minions, but that situation would be really weird.
 # # # # #
 MY_SETTINGS_FILE_NAME = '/etc/salt-bevy_my_settings.conf'
@@ -852,7 +852,7 @@ if __name__ == '__main__':
                 my_settings['second_minion_id'] = response
                 break
         use_second_minion = my_settings['second_minion_id'] != "None"
-    two = my_settings.get('run_second_minion') or '2' if use_second_minion else ''
+    two = my_settings.get('additional_minion_tag') or '2' if use_second_minion else ''
 
     master_address = choose_master_address(settings.get('bevymaster_url', master_id))
     settings['bevymaster_url'] = master_address
@@ -895,7 +895,7 @@ if __name__ == '__main__':
                          bevy_root=str(bevy_root_node),
                          bevy=settings['bevy'],
                          bevymaster_url=master_address,
-                         run_second_minion=two,
+                         additional_minion_tag=two,
                          vbox_install=settings.get('vbox_install', False),
                          vagranthost=settings.get('vagranthost', False),
                          runas=settings.get('runas', ''),
@@ -931,7 +931,7 @@ if __name__ == '__main__':
                          bevy=settings['bevy'],
                          bevymaster_url=settings['bevymaster_url'],
                          my_master_url=my_master_url,
-                         run_second_minion=two,
+                         additional_minion_tag=two,
                          vbox_install=settings.get('vbox_install', False),
                          my_linux_user=settings['my_linux_user'],
                          vagranthost=settings.get('vagranthost', False),

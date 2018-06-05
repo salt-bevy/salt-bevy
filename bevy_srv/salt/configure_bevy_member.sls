@@ -12,7 +12,7 @@ include:
 # ANOTHER NOTE: edit the vbox_settings.sls pillar definition when the version of VirtualBox changes
 #
 {% set my_username = salt['config.get']('my_linux_user') %}
-{% if salt['config.get']('run_second_minion', False) %}
+{% if salt['config.get']('additional_minion_tag', False) %}
   {% set other_minion = "2" %}
 {% else %}
   {% set other_minion = "" %}

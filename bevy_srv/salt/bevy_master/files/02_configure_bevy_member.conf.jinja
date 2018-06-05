@@ -13,14 +13,14 @@ id: {{ salt['config.get']('node_name', salt['config.get']('id')) }}
 {% else %}
 master: {{ salt['config.get']('my_master_url', salt['config.get']('master')) }}
 {% endif %}
-{% set minion_number = salt['config.get']('run_second_minion', '') %}
+{% set minion_number = salt['config.get']('additional_minion_tag', '') %}
 
 grains:
   datacenter: bevy
   bevy: {{ salt['config.get']('bevy') }}
   environment: dev
 salt_config_directory: {{ salt['config.get']('salt_config_directory') }}  # remember where I am at
-run_second_minion: {{ salt['config.get']('run_second_minion', '') }}
+additional_minion_tag: {{ salt['config.get']('additional_minion_tag', '') }}
 
 {% if is_master -%}
 {% if salt['pillar.get']('autosign_minion_ids', false) %}

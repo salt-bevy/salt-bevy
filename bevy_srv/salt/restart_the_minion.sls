@@ -25,6 +25,6 @@ restart-the-minion:
     {% elif grains['os_family'] == 'Windows' %}
     - name: 'py \tmp\run_command_later.py 10 net stop salt-minion; net start salt-minion;echo .;echo .;echo "Hit [Enter] to close this window..."'
     {% else %}
-    - name: "/tmp/run_command_later.py 10 systemctl restart salt{{ other_minion }}-minion"
+    - name: "/tmp/run_command_later.py 10 salt-call --config-dir=/etc/salt{{ other_minion }} --local service.restart salt{{ other_minion }}-minion"
     {% endif %}
 ...

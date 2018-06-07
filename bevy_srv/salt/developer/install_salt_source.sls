@@ -3,6 +3,11 @@
 #
 {% set projects_root = salt['config.get']('projects_root', '/opt') %}
 
+ensure_{{ projects_root }}_exists:
+  file.directory:
+    - name: {{ projects_root }}
+    - makedirs: True
+
 {{ projects_root }}/salt:
   git.latest:
     - name: https://github.com/saltstack/salt.git
@@ -44,4 +49,5 @@ dev_env_salt:  # install the development copy of salt
   cmd.run:
     - name: '{{ project_python }} setup.py install'
     - cwd: {{ projects_root }}/salt
+    - hide_output: True
 ...

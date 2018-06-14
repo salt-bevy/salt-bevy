@@ -214,7 +214,7 @@ def write_config_file(config_file_name, is_master: bool, virtual=True, windows=F
     '''
     template = """
 # initial configuration file for a bevy member.
-# file: {0}
+# from file: {0}
 # written by: {1}
 #
 master: {2}
@@ -238,12 +238,14 @@ grains:
   environment: dev
   roles:
     - bevy_member
+    {6}
 """
     bevy_srv_path = PurePosixPath('/vagrant') if virtual else PurePosixPath(this_file.parent.parent.as_posix())
     master_url = settings.get('master_vagrant_ip', '') \
         if master_host else settings.get('bevymaster_url', '')
     master = 'localhost' if is_master else master_url
     id = '' if virtual else 'id: {}'.format(my_settings['id'])
+    mstr = '- salt_master' if is_master else ''
 
     more_roots, more_pillars = format_additional_roots(settings, virtual)
 
@@ -255,7 +257,7 @@ grains:
     newline = '\r\n' if windows else '\n'
     try:
         with config_file_name.open('w', newline=newline) as config_file:
-            config_file.write(template.format(config_file_name, this_file, master, file_roots, pillar_roots, id))
+            config_file.write(template.format(config_file_name, this_file, master, file_roots, pillar_roots, id, mstr))
             print('file {} written'.format(str(config_file_name)))
     except PermissionError:
         print('Sorry. Permission error when trying to write {}'.format(str(config_file_name)))

@@ -5,7 +5,8 @@ base:
   '*':
     - common
 
-  bevymaster:
+  bevyma
     - bevy_master.define_interactive_user
     - bevy_master
     - bevy_master.local_windows_repository
+    - playready_configure_master

@@ -3,19 +3,16 @@
 {# this is an example of things you may always want installed. #}
 
 {% if grains['os_family'] == 'Windows' %}
-
 pkg.refresh_db:
   module.run:
   - require_in:
     - pkg: windows_packages
-
 windows_packages:
 {# Assumes that you ran bevy_master.local_windows_repository on the Master #}
   pkg.installed:
     - pkgs:
       - npp
       - git
-
 windows_pygit2:
   pip.installed:
     - name: pygit2

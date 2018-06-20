@@ -141,7 +141,7 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
     quail_config.vm.provision "shell", inline: script
     quail_config.vm.provision "file", source: settings['GUEST_MINION_CONFIG_FILE'], destination: "/etc/salt/minion.d/00_vagrant_boot.conf"
     quail_config.vm.provision :salt do |salt|
-       # salt.install_type = "stable 2018.3.0"
+       # salt.install_type = "stable 2018.3.1"
        salt.verbose = false
        salt.bootstrap_options = "-A #{settings['bevymaster_url']} -i quail2 -F -P "
        salt.run_highstate = true
@@ -196,7 +196,7 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
     master_config.vm.provision "file", source: settings['GUEST_MASTER_CONFIG_FILE'], destination: "/etc/salt/minion.d/00_vagrant_boot.conf"
     master_config.vm.provision "file", source: BEVY_SETTINGS_FILE_NAME, destination: BEVY_SETTINGS_FILE_NAME
     master_config.vm.provision :salt do |salt|
-       # salt.install_type = "stable 2018.3.0"
+       # salt.install_type = "stable 2018.3.1"
        salt.verbose = true
        salt.log_level = "info"
        salt.colorize = true
@@ -353,7 +353,7 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
         salt.verbose = false
         salt.colorize = true
         salt.run_highstate = true
-        salt.version = "2018.3.0"  # TODO: remove this when this becomes default. Needed for chocolatey
+        salt.version = "2018.3.1"  # TODO: remove this when this becomes default. Needed for chocolatey
     end
   end
 
@@ -389,7 +389,7 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
         salt.minion_id = "win16"
         salt.master_id = "#{settings['bevymaster_url']}"
         salt.log_level = "info"
-        salt.version = "2018.3.0"  # TODO: remove this when this becomes default. Needed for chocolatey
+        salt.version = "2018.3.1"  # TODO: remove this when this becomes default. Needed for chocolatey
         salt.verbose = true
         salt.colorize = true
         salt.run_highstate = true
@@ -429,7 +429,7 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
         #salt.log_level = "info"
         salt.verbose = false
         salt.colorize = true
-        salt.version = "2018.3.0"  # TODO: remove this when this becomes default. Needed for chocolatey
+        salt.version = "2018.3.1"  # TODO: remove this when this becomes default. Needed for chocolatey
         #salt.run_highstate = true
     end
   end

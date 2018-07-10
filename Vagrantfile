@@ -238,6 +238,7 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
          "runas" => login,
          "cwd" => Dir.pwd,
          "vbox_install" => false,
+         "server_role" => 'master',
          "doing_bootstrap" => true,  # flag for Salt state system
          })
        end

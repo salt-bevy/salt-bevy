@@ -902,6 +902,7 @@ if __name__ == '__main__':
                          vagranthost=settings.get('vagranthost', False),
                          runas=settings.get('runas', ''),
                          cwd=settings.get('cwd', ''),
+                         server_role='master',
                          doing_bootstrap=True,  # initialize environment
                          )
 

@@ -19,6 +19,12 @@ include:
 {% endif %}
 {% set message = pillar['salt_managed_message'] %}
 
+{% if salt['pillar.get']('server_role', '') != '' %}
+roles:
+  grains.list_present:
+    - value: {{ salt['pillar.get']('server_role', '') }} {# from Vagrantfile or configure.py #}
+{% endif %}
+
 {% if salt['grains.get']('os_family') == 'MacOS' %}
 make-dirs-visible:
   cmd.run:

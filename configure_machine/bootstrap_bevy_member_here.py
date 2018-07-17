@@ -824,13 +824,13 @@ if __name__ == '__main__':
 
     settings.setdefault('fqdn_pattern',  DEFAULT_FQDN_PATTERN)
 
+    master_id = get_salt_master_id()
     we_installed_it = salt_install(my_settings['master'])  # download & run salt
 
-    if we_installed_it:
+    if we_installed_it and master_id.startswith('!'):
         use_second_minion = False
         master_id = 'salt'
     else:
-        master_id = get_salt_master_id()
         if master_id is None or master_id.startswith('!'):
             print('WARNING: Something wrong. Salt master should be known at this point.')
             if affirmative(input('continue anyway?')):

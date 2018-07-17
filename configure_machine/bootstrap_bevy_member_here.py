@@ -534,14 +534,16 @@ def write_ssh_key_file(my_linux_user):
 
     pub_key = ''
     while not affirmative(okay, default=True):
-        print('Next, cut the text of your ssh public key to transmit it\n')
-        print('to your new server.\n')
-        print('You can usually get it by typing:\n')
+        print('Next, cut the text of your ssh public key to transmit it to your new server.\n')
+        print('  (or type "exit" to bypass ssh key uploads.)')
+        print('You can usually get your ssh key by typing:\n')
         print('   cat ~/.ssh/id_rsa.pub\n')
         print()
         pub_key = input('Paste it here --->')
         print('.......... (checking) ..........')
         if len(pub_key) < 64:
+            if pub_key == 'exit':
+                return
             print('too short!')
             continue
         print('I received ===>{}\n'.format(pub_key))
@@ -557,14 +559,18 @@ def write_ssh_key_file(my_linux_user):
             print('file {} written.'.format(str(user_key_file)))
 
 
-def get_salt_master_id():
-    out = salt_call_json("config.get master")
-    try:
-        master_id = out['local']
-    except (KeyError, TypeError):
-        master_id = "!!No answer from salt-call!!"
-    ans = master_id[0] if isinstance(master_id, list) else master_id
-    print('configured master now = "{}"'.format(master_id))
+def get_salt_master_url():
+    try:  # use a stored value -- needed for 2nd minion
+        ans = my_settings['master_url']
+    except KeyError:
+        # get it the hard way
+        out = salt_call_json("config.get master")
+        try:
+            master_url = out['local']
+        except (KeyError, TypeError):
+            master_url = "!!No answer from salt-call!!"
+        ans = master_url[0] if isinstance(master_url, list) else master_url
+    print('configured master now = "{}"'.format(ans))
     return ans
 
 
@@ -824,39 +830,44 @@ if __name__ == '__main__':
 
     settings.setdefault('fqdn_pattern',  DEFAULT_FQDN_PATTERN)
 
-    master_id = get_salt_master_id()
+    master_url = get_salt_master_url()
     we_installed_it = salt_install(my_settings['master'])  # download & run salt
 
-    if we_installed_it and master_id.startswith('!'):
-        use_second_minion = False
-        master_id = 'salt'
+    if we_installed_it and master_url.startswith('!'):
+        ask_second_minion = False
+        master_url = 'salt'
     else:
-        if master_id is None or master_id.startswith('!'):
+        if master_url is None or master_url.startswith('!'):
             print('WARNING: Something wrong. Salt master should be known at this point.')
             if affirmative(input('continue anyway?')):
-                master_id = 'salt'
+                master_url = 'salt'
             else:
                 exit(1)
-        use_second_minion = master_id not in ['localhost', 'salt', '127.0.0.1'] and \
+        ask_second_minion = master_url not in ['localhost', 'salt', '127.0.0.1'] and \
                             platform.system() != 'Windows'  # TODO: figure out how to run 2nd minion on Windows
-    historic_second_minion = my_settings.get('second_minion_id', 'None') != 'None'
-    if use_second_minion or historic_second_minion:
-        print('Your Salt master id was detected as: {}'.format(master_id))
-        print('You may continue to use that primary master, and add a second master for your bevy.')
-        print('Your previously used second master minion ID was "{}"'.format(
+    second_minion_id = my_settings.setdefault('second_minion_id',
+                                              NotImplemented if ask_second_minion else 'Not Appropriate')
+    historic_second_minion = second_minion_id != 'Not Appropriate'
+    if ask_second_minion or historic_second_minion:
+        print('Your Salt master URL was detected as: {}'.format(master_url))
+        if settings.get('bevymaster_url', None):
+            print("Your bevymaster's URL was: {}".format(settings['bevymaster_url']))
+        print('You may continue to use that primary master, and also use a second master for your bevy.')
+        print('Your previously used minion ID was "{}" on your (optional) second master'.format(
             my_settings.get('second_minion_id', 'None')))
         while ...:
             default = my_settings.get('second_minion_id', 'bevymaster' if my_settings['master'] else node_name)
             print('Enter "None" to use the primary Salt Master only.')
             response = normalize_literal_none(input(
-                'What ID do you want to use for your second master? [{}]'.format(default))) or default
+                'What ID do you want to use for this node on your second master? [{}]'.format(default))) or default
             if response == 'None' or affirmative(input('Use "{}"?: [Y/n]:'.format(response)), True):
                 my_settings['second_minion_id'] = response
                 break
-        use_second_minion = my_settings['second_minion_id'] != "None"
-    two = my_settings.get('additional_minion_tag') or '2' if use_second_minion else ''
+        ask_second_minion = my_settings['second_minion_id'] != "None"
+    two = my_settings.get('additional_minion_tag') or '2' if ask_second_minion else ''
+    my_settings['additional_minion_tag'] = two
 
-    master_address = choose_master_address(settings.get('bevymaster_url', master_id))
+    master_address = choose_master_address(settings.get('bevymaster_url', master_url))
     settings['bevymaster_url'] = master_address
 
     if platform.system() == 'Windows':
@@ -911,7 +922,7 @@ if __name__ == '__main__':
                                             settings.get('bevymaster_url', '')
         my_master_url = my_settings.get('my_master_url', default)
         while Ellipsis:  # loop until user says okay
-            print('Trying {} for bevy master'.format(my_master_url))
+            print('Checking {} for bevy master address validity...'.format(my_master_url))
             try:  # look up the address we have, and see if it appears good
                 ip_ = socket.getaddrinfo(my_master_url, 4506, type=socket.SOCK_STREAM)
                 okay = input("Use {} as this machine's bevy master address? [Y/n]:".format(ip_[0][4][0]))

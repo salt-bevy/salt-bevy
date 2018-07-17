@@ -13,7 +13,7 @@ include:
 #
 {% set my_username = salt['config.get']('my_linux_user') %}
 {% if salt['config.get']('additional_minion_tag', False) %}
-  {% set other_minion = "2" %}
+  {% set other_minion = salt['config.get']('additional_minion_tag', "2") %}
 {% else %}
   {% set other_minion = "" %}
 {% endif %}

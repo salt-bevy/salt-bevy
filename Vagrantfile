@@ -418,7 +418,7 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
         v.customize ["modifyvm", :id, "--natdnshostresolver1", "on"]  # use host's DNS resolver
     end
     quail_config.vm.guest = :windows
-    quail_config.vm.boot_timeout = 600
+    quail_config.vm.boot_timeout = 900
     quail_config.vm.graceful_halt_timeout = 60
     script = "new-item C:\\salt\\conf\\minion.d -itemtype directory\r\n"
     #script += "echo 'master: #{settings['bevymaster_url']}' > C:\\salt\\conf\\minion.d\\00_vagrant_master_address.conf\r\n"

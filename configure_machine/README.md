@@ -105,7 +105,7 @@ It is designed to be used mostly by the salt master.
 
     It is a list of application repos each of which provides a portion of the complete bevy.
 The list is composed of pairs of strings, with the actual directory path
-(on the host machine), a semi-colon (';') charactor, and the Vagrant share
+(on the host machine), an equal sign ('='), and the Vagrant share
 path (on a guest machine) where it will be mapped.
 
     Each application roots directory must contain a `./salt` and `./pillar` sub-directory

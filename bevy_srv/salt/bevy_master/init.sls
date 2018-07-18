@@ -5,7 +5,7 @@
 # ANOTHER NOTE: edit the vbox_settings.sls pillar definition when the version of VirtualBox changes
 #
 {% set my_username = salt['config.get']('my_linux_user') %}
-{% set other_minion = "2" if salt['config.get']('additional_minion_tag') else "" %}
+{% set other_minion = salt['config.get']('additional_minion_tag', "") %}
 
 bevy_master_grain:
   grains.list_present:
@@ -85,6 +85,7 @@ salt-master-config:
 salt-master-autosign-file:
   file.managed:
     - name: {{ salt['config.get']('salt_config_directory') }}/pki/master/autosign.minions
+    - makedirs: True
     - contents_pillar: autosign_minion_ids
     - mode: 600  # access to the autosign file must be restricted.
 {% endif %}

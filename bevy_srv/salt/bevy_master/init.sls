@@ -11,7 +11,7 @@ bevy_master_grain:
   grains.list_present:
     - name: roles
     - value:
-      - bevy_master
+      - master
 update_the_grains:
   module.run:
     - name: saltutil.sync_grains

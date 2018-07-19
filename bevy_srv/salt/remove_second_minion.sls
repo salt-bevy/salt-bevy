@@ -1,8 +1,7 @@
 ---
 # salt state file for removing a second minion
 
-{% set run_second = salt['config.get']('additional_minion_tag', none) %}
-{% set other_minion = '2' if run_second|int(-1) < 1 else run_second|string %}
+{% set other_minion = salt['config.get']('additional_minion_tag', '') %}
 
 systemctl_stop{{ other_minion }}:
   service.dead:

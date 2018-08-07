@@ -47,12 +47,6 @@ hash_path = File.join(Dir.home, '.ssh', HASHFILE_NAME)  # where you store it ^ ^
 vagrant_command = ARGV[0]
 vagrant_object = ARGV.length > 1 ? ARGV[1] : ""  # the name (if any) of the vagrant VM for this command
 
-unless Vagrant.has_plugin?("vagrant-vbguest")
-  system("vagrant plugin install vagrant-vbguest")
-  puts "Dependencies installed, please try the command again."
-  exit
-end
-
 # Bridged networks make the machine appear as another physical device on your network.
 # We must supply a list of names to avoid Vagrant asking for interactive input
 #

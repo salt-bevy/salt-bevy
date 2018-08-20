@@ -13,6 +13,8 @@ windows_packages:
     - pkgs:
       - npp
       - git
+      - python3_x64
+
 windows_pygit2:
   pip.installed:
     - name: pygit2
@@ -43,6 +45,8 @@ windows_pygit2_failure_workaround:
         )
     - unless:  {# do not install this if there is an existing "tail" command #}
       - where tail
+include:
+  - restart_the_minion
 
 {% else %}  {# Not Windaws #}
 

@@ -348,7 +348,7 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
         salt.verbose = false
         salt.colorize = true
         salt.run_highstate = true
-        salt.version = "2018.3.1"  # TODO: remove this when this becomes default. Needed for chocolatey
+        salt.version = "2018.3.2"  # TODO: remove this when this becomes default. Needed for chocolatey
     end
   end
 
@@ -357,7 +357,6 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
   config.vm.define "win16", autostart: false do |quail_config|
     quail_config.vm.box = "gusztavvargadr/w16s" # Windows Server 2016 standard
     # or "mwrock/Windows2016"
-    # quail_config.vm.hostname = "windowstest"  # use of this setting causes VM to reboot Windows.
 
     quail_config.vm.network "public_network", bridge: interface_guesses
     quail_config.vm.network "private_network", ip: NETWORK + ".2.16"
@@ -385,7 +384,7 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
         salt.minion_id = "win16"
         salt.master_id = "#{settings['bevymaster_url']}"
         salt.log_level = "info"
-        salt.version = "2018.3.1"  # TODO: remove this when this becomes default. Needed for chocolatey
+        salt.version = "2018.3.2"  # TODO: remove this when this becomes default. Needed for chocolatey
         salt.verbose = true
         salt.colorize = true
         salt.run_highstate = true
@@ -427,7 +426,7 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
         #salt.log_level = "info"
         salt.verbose = false
         salt.colorize = true
-        salt.version = "2018.3.1"  # TODO: remove this when this becomes default. Needed for chocolatey
+        salt.version = "2018.3.2"  # TODO: remove this when this becomes default. Needed for chocolatey
         #salt.run_highstate = true
     end
   end

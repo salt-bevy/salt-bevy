@@ -1,4 +1,4 @@
-# file /bevy_srv/pillar/top.sls
+//# file /bevy_srv/pillar/top.sls
 #
 #   This is an actual pillar top file (not a template) used by the Bevy Master server
 #     (on Bevy Master servers where files can be shared with your development workstation)

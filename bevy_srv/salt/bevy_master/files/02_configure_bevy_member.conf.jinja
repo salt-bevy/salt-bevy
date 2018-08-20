@@ -7,7 +7,8 @@
 
 {% set bevy_root = salt['config.get']('bevy_root', '/projects/salt-bevy/bevy_srv') %}
 id: {{ salt['config.get']('node_name', salt['config.get']('id')) }}
-{% set is_master = salt['config.get']('id', '').startswith('bevymaster') %}
+{% set is_master = salt['config.get']('id', '').startswith('bevymaster') or
+    salt['config.get']('bevy','') == 'local' %}
 
 {% if is_master %}master: localhost
 {% else %}
@@ -16,9 +17,10 @@ master: {{ salt['config.get']('my_master_url', salt['config.get']('master')) }}
 {% set minion_number = salt['config.get']('additional_minion_tag', '') %}
 
 grains:
-  datacenter: bevy
+  datacenter: {{ salt['config.get']('datacenter', 'bevy') }}
   bevy: {{ salt['config.get']('bevy') }}
   environment: dev
+  stacks: {{ salt['config.get']('stacks', [] }}
 salt_config_directory: {{ salt['config.get']('salt_config_directory') }}  # remember where I am at
 additional_minion_tag: {{ salt['config.get']('additional_minion_tag', '') }}
 
@@ -27,7 +29,7 @@ additional_minion_tag: {{ salt['config.get']('additional_minion_tag', '') }}
 {# This quick and dirty way to pre-accept minions with known names is insecure. #}
 autosign_file: {{ salt['config.get']('salt_config_directory') }}/pki/master/autosign.minions
 {% endif %}
-winrepo_remotes: []  # do not support Windows minions before v2015.8
+winrepo_remotes: []  # do not support Windows minions before salt v2015.8
 timeout: 20  # give Windows minions more time to respond (default was 5 seconds).
 {% endif -%}
 
@@ -72,6 +74,6 @@ pillar_roots:  # merge definitions from this list of directories
     {%- endfor %}
     - '{{ bevy_root }}/pillar'
 pillar_source_merging_strategy: recurse
-{% endif %}
+{% endif %} {# is_master or ... #}
 file_ignore_regex:
   - '/\.git($|/)'

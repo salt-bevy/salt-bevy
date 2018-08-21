@@ -13,7 +13,16 @@ windows_packages:
     - pkgs:
       - npp
       - git
-      - python3_x64
+
+chocolaty_boot:
+  module.run:
+    - name: chocolatey.bootstrap
+    - require_in:
+      - windows_py3
+
+windows_py3:
+  chocolatey.installed:
+    - name: python3
 
 windows_pygit2:
   pip.installed:
@@ -67,6 +76,7 @@ debian_packages:
       - mtr
       - nano
       - python-pip
+      - python3
       - tree
 {% endif %}
 

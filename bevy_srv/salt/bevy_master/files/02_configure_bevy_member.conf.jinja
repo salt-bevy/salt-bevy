@@ -20,7 +20,7 @@ grains:
   datacenter: {{ salt['config.get']('datacenter', 'bevy') }}
   bevy: {{ salt['config.get']('bevy') }}
   environment: dev
-  stacks: {{ salt['config.get']('stacks', [] }}
+  stacks: {{ salt['config.get']('stacks', []) }}
 salt_config_directory: {{ salt['config.get']('salt_config_directory') }}  # remember where I am at
 additional_minion_tag: {{ salt['config.get']('additional_minion_tag', '') }}
 

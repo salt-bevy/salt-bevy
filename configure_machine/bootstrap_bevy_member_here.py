@@ -20,7 +20,9 @@ import yaml
 import ifaddr
 
 # import modules from this directory
+# noinspection PyUnresolvedReferences
 import pwd_hash
+# noinspection PyUnresolvedReferences
 import sudo
 
 # # # # #
@@ -712,11 +714,11 @@ if __name__ == '__main__':
     print('Setting up user "{}" for bevy "{}"'.format(settings['my_linux_user'], settings['bevy']))
 
     if '--no-sudo' in argv:  # "sudo off" switch for testing
-        print('\nRunning in "--no-sudo" mode. Expect permissions violations...\n')
+        print('\n\n!!! Running in "--no-sudo" mode. Expect permissions violations...\n')
     elif sudo.already_elevated():
         print('Now running as Administrator...')
     else:
-        print('\nOkay. Now requesting elevated (sudo) privileges...\n')
+        print('\n\n ... Okay. Now requesting elevated (sudo) privileges...\n')
         names = {k: settings[k] for k in ('bevy', 'my_linux_user', 'my_windows_user', 'my_windows_password')}
         sudo.run_elevated(context=names)  # Run this script using Administrator privileges
 

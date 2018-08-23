@@ -25,6 +25,7 @@ import pwd_hash
 # noinspection PyUnresolvedReferences
 import sudo
 
+
 # # # # #
 # This program attempts to establish a DRY single source of truth as the file
 BEVY_SETTINGS_FILE_NAME = '/srv/pillar/01_bevy_settings.sls'

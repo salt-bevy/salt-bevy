@@ -47,12 +47,6 @@ hash_path = File.join(Dir.home, '.ssh', HASHFILE_NAME)  # where you store it ^ ^
 vagrant_command = ARGV[0]
 vagrant_object = ARGV.length > 1 ? ARGV[1] : ""  # the name (if any) of the vagrant VM for this command
 
-unless Vagrant.has_plugin?("vagrant-vbguest")
-  system("vagrant plugin install vagrant-vbguest")
-  puts "Dependencies installed, please try the command again."
-  exit
-end
-
 # Bridged networks make the machine appear as another physical device on your network.
 # We must supply a list of names to avoid Vagrant asking for interactive input
 #
@@ -97,7 +91,6 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
       puts "Starting 'quail1' at #{NETWORK}.2.8..."
       end
     quail_config.vm.network "public_network", bridge: interface_guesses
-
     quail_config.vm.provider "virtualbox" do |v|  # only for VirtualBox boxes
         v.name = BEVY + '_quail1'  # ! N.O.T.E.: name must be unique
         v.memory = 1024       # limit memory for the virtual box
@@ -124,7 +117,6 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
       puts "Starting #{ARGV[1]} at #{NETWORK}.2.5 as a Salt minion with master=#{settings['bevymaster_url']}...\n."
       end
     quail_config.vm.network "public_network", bridge: interface_guesses
-
     quail_config.vm.provider "virtualbox" do |v|
         v.name = BEVY + '_quail2'  # ! N.O.T.E.: name must be unique
         v.memory = 4000       # limit memory for the virtual box
@@ -137,14 +129,13 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
         v.vmx["memsize"] = "5000"
         v.vmx["numvcpus"] = "2"
     end
-
     script = "mkdir -p /etc/salt/minion.d\n"
     script += "chown -R vagrant:staff /etc/salt/minion.d\n"
     script += "chmod -R 775 /etc/salt/minion.d\n"
     quail_config.vm.provision "shell", inline: script
     quail_config.vm.provision "file", source: settings['GUEST_MINION_CONFIG_FILE'], destination: "/etc/salt/minion.d/00_vagrant_boot.conf"
     quail_config.vm.provision :salt do |salt|
-       # salt.install_type = "stable 2018.3.0"
+       # salt.install_type = "stable 2018.3.1"
        salt.verbose = false
        salt.bootstrap_options = "-A #{settings['bevymaster_url']} -i quail2 -F -P "
        salt.run_highstate = true
@@ -168,17 +159,15 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
     master_config.vm.network "public_network", bridge: interface_guesses, mac: "be0000" + bevy_mac
     master_config.vm.synced_folder ".", "/vagrant", :owner => "vagrant", :group => "staff", :mount_options => ["umask=0002"]
     if settings.has_key?('application_roots')  # additional shares for optional applications directories
-      settings['application_roots'].each do |share|  # formatted real-path:share-path
+      settings['application_roots'].each do |share|  # formatted real-path=share-path
         s = share.split('=')
         master_config.vm.synced_folder s[0], "/#{s[1]}", :owner => "vagrant", :group => "staff", :mount_options => ["umask=0002"]
       end
     end
-
     if vagrant_command == "ssh"
       master_config.ssh.username = my_linux_user  # if you type "vagrant ssh", use this username
       master_config.ssh.private_key_path = Dir.home() + "/.ssh/id_rsa"
     end
-
     master_config.vm.provider "virtualbox" do |v|
         v.name = BEVY + '_bevymaster'  # ! N.O.T.E.: name must be unique
         v.memory = 1024       # limit memory for the virtual box
@@ -187,12 +176,10 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
         v.customize ["modifyvm", :id, "--natnet1", NETWORK + ".17.32/27"]  # do not use 10.0 network for NAT
         v.customize ["modifyvm", :id, "--natdnshostresolver1", "on"]  # use host's DNS resolver
     end
-
     master_config.vm.provider vmware do |v|
         v.vmx["memsize"] = "1024"
         v.vmx["numvcpus"] = "1"
 	end
-
     script = "mkdir -p /etc/salt/minion.d\n"
     script += "chown -R vagrant:staff /etc/salt/minion.d\n"
     script += "chmod -R 775 /etc/salt/minion.d\n"
@@ -202,9 +189,8 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
     master_config.vm.provision "shell", inline: script
     master_config.vm.provision "file", source: settings['GUEST_MASTER_CONFIG_FILE'], destination: "/etc/salt/minion.d/00_vagrant_boot.conf"
     master_config.vm.provision "file", source: BEVY_SETTINGS_FILE_NAME, destination: BEVY_SETTINGS_FILE_NAME
-
     master_config.vm.provision :salt do |salt|
-       # salt.install_type = "stable 2018.3.0"
+       # salt.install_type = "stable 2018.3.1"
        salt.verbose = true
        salt.log_level = "info"
        salt.colorize = true
@@ -246,9 +232,9 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
          "runas" => login,
          "cwd" => Dir.pwd,
          "vbox_install" => false,
+         "server_role" => 'master',
          "doing_bootstrap" => true,  # flag for Salt state system
-                   }
-         )
+         })
        end
   end
 
@@ -263,7 +249,6 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
       puts "Starting #{ARGV[1]} at #{NETWORK}.2.18..."
       end
     quail_config.vm.network "public_network", bridge: interface_guesses
-
     quail_config.vm.provider "virtualbox" do |v|
         v.name = BEVY + '_quai18'  # ! N.O.T.E.: name must be unique
         v.memory = 1024       # limit memory for the virtual box
@@ -278,7 +263,6 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
 	end
   end
 
-
   # . . . . . . . . . . . . Define machine QUAIL16 . . . . . . . . . . . . . .
   # This Ubuntu 16.04 machine is designed to be run by salt-cloud
   config.vm.define "quail16", autostart: false do |quail_config|
@@ -289,7 +273,6 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
       puts "Starting #{ARGV[1]} at #{NETWORK}.2.3..."
       end
     quail_config.vm.network "public_network", bridge: interface_guesses
-
     quail_config.vm.provider "virtualbox" do |v|
         v.name = BEVY + '_quai16'  # ! N.O.T.E.: name must be unique
         v.memory = 1024       # limit memory for the virtual box
@@ -304,7 +287,6 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
 	end
   end
 
-
 # . . . . . . . . . . . . Define machine QUAIL14 . . . . . . . . . . . . . .
 # This Ubuntu 14.04 machine is designed to be run by salt-cloud
   config.vm.define "quail14", autostart: false do |quail_config|
@@ -315,7 +297,6 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
       puts "Starting #{ARGV[1]} at #{NETWORK}.2.4..."
       end
     quail_config.vm.network "public_network", bridge: interface_guesses
-
     quail_config.vm.provider "virtualbox" do |v|
         v.name = BEVY + '_quail14'  # ! N.O.T.E.: name must be unique
         v.memory = 1024       # limit memory for the virtual box
@@ -367,7 +348,7 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
         salt.verbose = false
         salt.colorize = true
         salt.run_highstate = true
-        salt.version = "2018.3.0"  # TODO: remove this when this becomes default. Needed for chocolatey
+        salt.version = "2018.3.2"  # TODO: remove this when this becomes default. Needed for chocolatey
     end
   end
 
@@ -376,14 +357,12 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
   config.vm.define "win16", autostart: false do |quail_config|
     quail_config.vm.box = "gusztavvargadr/w16s" # Windows Server 2016 standard
     # or "mwrock/Windows2016"
-    # quail_config.vm.hostname = "windowstest"  # use of this setting causes VM to reboot Windows.
 
     quail_config.vm.network "public_network", bridge: interface_guesses
     quail_config.vm.network "private_network", ip: NETWORK + ".2.16"
     if ARGV.length > 1 and ARGV[0] == "up" and ARGV[1] == "win16"
       puts "Starting #{ARGV[1]} as a Salt minion of #{settings['bevymaster_url']}."
       end
-
     quail_config.vm.provider "virtualbox" do |v|
         v.name = BEVY + '_win16'  # ! N.O.T.E.: name must be unique
         v.gui = true  # turn on the graphic window
@@ -398,13 +377,14 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
     quail_config.vm.boot_timeout = 300
     quail_config.vm.graceful_halt_timeout = 60
     script = "new-item C:\\salt\\conf\\minion.d -itemtype directory\r\n"
+    script += "route add 10.0.0.0 mask 255.0.0.0 #{NETWORK}.17.226 -p\r\n"  # route 10. network through host NAT for VPN
     quail_config.vm.provision "shell", inline: script
     quail_config.vm.provision "file", source: settings['WINDOWS_GUEST_CONFIG_FILE'], destination: "c:/salt/conf/minion.d/00_vagrant_boot.conf"
     quail_config.vm.provision :salt do |salt|  # salt_cloud cannot push Windows salt
         salt.minion_id = "win16"
         salt.master_id = "#{settings['bevymaster_url']}"
         salt.log_level = "info"
-        salt.version = "2018.3.0"  # TODO: remove this when this becomes default. Needed for chocolatey
+        salt.version = "2018.3.2"  # TODO: remove this when this becomes default. Needed for chocolatey
         salt.verbose = true
         salt.colorize = true
         salt.run_highstate = true
@@ -420,7 +400,6 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
     if ARGV.length > 1 and ARGV[0] == "up" and ARGV[1] == "win12"
       puts "Starting #{ARGV[1]} as a Salt minion of #{settings['bevymaster_url']}."
       end
-
     quail_config.vm.provider "virtualbox" do |v|
         v.name = BEVY + '_win12'  # ! N.O.T.E.: name must be unique
         v.gui = true  # turn on the graphic window
@@ -432,12 +411,13 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
         v.customize ["modifyvm", :id, "--natdnshostresolver1", "on"]  # use host's DNS resolver
     end
     quail_config.vm.guest = :windows
-    quail_config.vm.boot_timeout = 600
+    quail_config.vm.boot_timeout = 900
     quail_config.vm.graceful_halt_timeout = 60
-
     script = "new-item C:\\salt\\conf\\minion.d -itemtype directory\r\n"
     #script += "echo 'master: #{settings['bevymaster_url']}' > C:\\salt\\conf\\minion.d\\00_vagrant_master_address.conf\r\n"
-    # script += "route delete 0.0.0.0 #{NETWORK}.2.1\r\n"  # do not try to route through host-only network
+    #script += "route delete 0.0.0.0\r\n"
+    #script += "route add 0.0.0.0 mask 0.0.0.0 #{NETWORK}.17.130 -p\r\n"  # gateway route only through host NAT for VPN
+    script += "route add 10.0.0.0 mask 255.0.0.0 #{NETWORK}.17.130 -p\r\n"  # route 10. network through host NAT for VPN
     quail_config.vm.provision "shell", inline: script
     quail_config.vm.provision "file", source: settings['WINDOWS_GUEST_CONFIG_FILE'], destination: "/etc/salt/minion.d/00_vagrant_boot.conf"
     quail_config.vm.provision :salt do |salt|  # salt_cloud cannot push Windows salt
@@ -446,7 +426,7 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
         #salt.log_level = "info"
         salt.verbose = false
         salt.colorize = true
-        salt.version = "2018.3.0"  # TODO: remove this when this becomes default. Needed for chocolatey
+        salt.version = "2018.3.2"  # TODO: remove this when this becomes default. Needed for chocolatey
         #salt.run_highstate = true
     end
   end

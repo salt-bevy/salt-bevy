@@ -1,11 +1,14 @@
 # salt-bevy
 
-### Using salt-cloud to learn SaltStack basics
+### Using salt-cloud to learn (or use) SaltStack basics
 
 This project uses a salt-cloud network with Vagrant-controlled VirtualBox virtual machines 
-as a sandbox to experiment with and learn [Salt](https://saltstack.com/) and 
+(and others) as a sandbox to experiment with and learn [Salt](https://saltstack.com/) and 
 [salt-cloud](https://docs.saltstack.com/en/latest/topics/cloud) 
 by building and controlling a bevy[3] of computers.
+
+It can also be used to provision and control a small network of production machines, 
+and has provision for linking with and controlling multiple proprietary servers.
 
 See [the Lesson index](lessons/index.md).
 

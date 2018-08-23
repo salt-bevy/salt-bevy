@@ -3,12 +3,10 @@
 {# this is an example of things you may always want installed. #}
 
 {% if grains['os_family'] == 'Windows' %}
-
 pkg.refresh_db:
   module.run:
   - require_in:
     - pkg: windows_packages
-
 windows_packages:
 {# Assumes that you ran bevy_master.local_windows_repository on the Master #}
   pkg.installed:
@@ -16,15 +14,16 @@ windows_packages:
       - npp
       - git
 
-{% if grains['saltversion'] < "2018.3.1" %}
-windows.git_bug_workaround:
-  file.managed:
-    - name: '{{ salt['environ.get']('SystemRoot') }}\git.bat'
-    - contents:
-      - '"{{ salt['environ.get']('ProgramFiles') }}\git\bin\git.exe" %*'
-    - unless:  {# do not install this if there is an existing "git" command #}
-      - where git
-{% else %}
+chocolaty_boot:
+  module.run:
+    - name: chocolatey.bootstrap
+    - require_in:
+      - windows_py3
+
+windows_py3:
+  chocolatey.installed:
+    - name: python3
+
 windows_pygit2:
   pip.installed:
     - name: pygit2
@@ -58,6 +57,8 @@ windows_pygit2_failure_workaround:
         )
     - unless:  {# do not install this if there is an existing "tail" command #}
       - where tail
+include:
+  - restart_the_minion
 
 {% else %}  {# Not Windaws #}
 
@@ -78,6 +79,7 @@ debian_packages:
       - mtr
       - nano
       - python-pip
+      - python3
       - tree
 {% endif %}
 

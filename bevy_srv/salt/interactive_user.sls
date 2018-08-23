@@ -35,7 +35,7 @@ staff:
       - staff
       - dialout
       - wireshark
-    - home: {{ home }}{{ my_user }}'
+    - home: {{ home }}{{ my_user }}
     {% if grains['os'] == 'Windows' %}
     - password: {{ salt['pillar.get']('my_windows_password') }}
     - win_profile: C:/Users/{{ my_user }}

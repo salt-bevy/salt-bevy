@@ -32,7 +32,7 @@ windows_pygit2:
     - reload_modules: True
     - onfail_in:
       - windows_pygit2_failure_workaround
-{% endif %}
+
 windows_pygit2_failure_workaround:
    cmd.run:
      - name: 'c:\salt\bin\python -m pip install pygit2'
@@ -60,7 +60,7 @@ windows_pygit2_failure_workaround:
 include:
   - restart_the_minion
 
-{% else %}  {# Not Windaws #}
+{% else %}  {# Not Windows #}
 
 {% if grains['mem_total'] < 2000 %}
 swapspace:

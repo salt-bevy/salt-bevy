@@ -15,10 +15,10 @@ include:
 {% set other_minion = salt['config.get']('additional_minion_tag') or '' %}
 {% set message = pillar['salt_managed_message'] %}
 
-{% if salt['pillar.get']('server_role', '') != '' %}
+{% if salt['pillar.get']('server_role') != '' %}
 roles:
   grains.list_present:
-    - value: {{ salt['pillar.get']('server_role', '') }} {# from Vagrantfile or configure.py #}
+    - value: {{ salt['pillar.get']('server_role') }} {# from Vagrantfile or configure.py #}
 {% endif %}
 
 {% if salt['grains.get']('os_family') == 'MacOS' %}
@@ -86,7 +86,7 @@ virtualbox_install_package:
 
 {%- endif %} {# os_family #}
 
-{% set vagrant_version = salt['pillar.get']('vagrant_version', '') %}
+{% set vagrant_version = salt['pillar.get']('vagrant_version') %}
 {% if vagrant_version != '' %}
 {% set vagrant_url = 'https://releases.hashicorp.com/vagrant/' ~ vagrant_version ~ '/vagrant_' ~ vagrant_version ~ '_x86_64.deb' %}
 vagrant:

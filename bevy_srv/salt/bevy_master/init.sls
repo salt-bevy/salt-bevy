@@ -81,7 +81,7 @@ salt-master-config:
     - template: jinja
     - makedirs: true
 
-{% if salt['pillar.get']('autosign_minion_ids', '') %}
+{% if salt['pillar.get']('autosign_minion_ids') %}
 salt-master-autosign-file:
   file.managed:
     - name: {{ salt['config.get']('salt_config_directory') }}/pki/master/autosign.minions

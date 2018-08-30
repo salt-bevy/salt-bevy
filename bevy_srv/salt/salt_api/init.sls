@@ -19,10 +19,10 @@ cherrypy:
 
 tls.create_self_signed_cert:
   module.run:
-    - kwargs:
-      - O: 'Sling TV'
-      - L: 'American Fork'
-      - emailAddress: {{ salt['config.get']('my_linux_user') }}@sling.com # will not really work
+      - kwargs:
+          O: {{ salt['pillar.get']('salt-api:tls_organization', 'Dummy Organization') }}
+          L: {{ salt['pillar.get']('salt-api:tls_location', 'supply in manual_bevy_settings.sls') }}
+          emailAddress: {{ salt['pillar.get']('salt-api:tls_emailAddress', 'nobody@nowhere.test') }}
 
 {{ salt['config.get']('salt_config_directory') }}/master.d/api.conf:
   file.managed:

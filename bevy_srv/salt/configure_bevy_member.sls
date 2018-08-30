@@ -12,8 +12,7 @@ include:
 # ANOTHER NOTE: edit the vbox_settings.sls pillar definition when the version of VirtualBox changes
 #
 {% set my_username = salt['config.get']('my_linux_user') %}
-{% set other_minion = salt['config.get']('additional_minion_tag', '') %}
-
+{% set other_minion = salt['config.get']('additional_minion_tag', '') or '' %}
 {% set message = pillar['salt_managed_message'] %}
 
 {% if salt['pillar.get']('server_role', '') != '' %}
@@ -156,7 +155,7 @@ pyvmomi_module:
 {% if salt['grains.get']('os_family') == 'Windows' %}
   {% set my_salt_config = 'C:/salt/conf/minion.d/' %}
 {% else %}
-  {% set my_salt_config = '/etc/salt' + other_minion + '/minion.d/' %}
+  {% set my_salt_config = '/etc/salt' ~ other_minion ~ '/minion.d/' %}
 {% endif %}
 
 {{ my_salt_config }}01_bootstrap_bevy_member.conf:

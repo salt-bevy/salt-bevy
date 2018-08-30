@@ -1,6 +1,6 @@
 ---
 # salt state file to restart the minion
-{% set other_minion = salt['config.get']('additional_minion_tag', '') %}
+{% set other_minion = salt['config.get']('additional_minion_tag') or '' %}
 
 restart-the-minion_setup:
   file.managed:

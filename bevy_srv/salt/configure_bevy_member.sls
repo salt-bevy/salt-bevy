@@ -12,7 +12,7 @@ include:
 # ANOTHER NOTE: edit the vbox_settings.sls pillar definition when the version of VirtualBox changes
 #
 {% set my_username = salt['config.get']('my_linux_user') %}
-{% set other_minion = salt['config.get']('additional_minion_tag', '') or '' %}
+{% set other_minion = salt['config.get']('additional_minion_tag') or '' %}
 {% set message = pillar['salt_managed_message'] %}
 
 {% if salt['pillar.get']('server_role', '') != '' %}

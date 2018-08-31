@@ -6,18 +6,31 @@ A utility program to install a SaltStack minion, and optionally, a master with c
 arguments:  add one or more file_roots and pillar_roots entries.  "[]" are optional, spaces not permitted.
   --add-roots=[path/to/directory1,path/to/directory2]
       where each directory is expected to have a ./salt and ./pillar subdirectory
-      These entries will be mapped as Vagrant shared directories, and included in the file_roots configuration.
+      If you use a definition like:  --add-roots=[/full/path/to/directory1/local_salt=../directory1/local_salt]
+      These entries will be mapped as Vagrant shared directories,
 
 Maintenance command-line switches:
   --no-sudo = Do not attempt to run with elevated privileges, use the present level
   --no-read-settings = Do not read an existing BEVY_SETTINGS_FILE
 """
-import subprocess, os, getpass, json, socket, platform, ipaddress, sys
+import subprocess, os, getpass, json, socket, platform, ipaddress, sys, time
 from pathlib import Path, PurePosixPath
 from urllib.request import urlopen
 
-import yaml
-import ifaddr
+try:
+    import yaml
+    import ifaddr
+except ImportError:
+    print('\nERROR: Python3 setup incomplete. You are missing required prerequisite modules.')
+    if platform.system() == 'Windows':
+        print('Try something like: "py -3 -m pip install pyyaml ifaddr passlib"')
+        print('If "pip" is not found, you may need to exit and re-open your console window.')
+    elif platform.system() == 'Darwin':  # MacOS
+        print('Try something like: "sudo -H pip3 install pyyaml ifaddr passlib"')
+    else:  # Linux
+        print('Try something like: "sudo pip3 install pyyaml ifaddr"')
+    print('Then re-run this command.')
+    sys.exit(10)  # Windows ERROR_BAD_ENVIRONMENT
 
 # import modules from this directory
 # noinspection PyUnresolvedReferences
@@ -44,7 +57,7 @@ BEVY_SETTINGS_FILE_NAME = '/srv/pillar/01_bevy_settings.sls'
 #  It theoretically might work to have "additional_minion_tag" be any of the values "2" through "Z", in case
 # we are running three or more minions, but that situation would be really weird.
 # # # # #
-MY_SETTINGS_FILE_NAME = '/etc/salt-bevy_my_settings.conf'
+MY_SETTINGS_FILE_NAME = '/etc/salt-bevy_my_settings.conf'  # settings specific to the currant machine
 MINIMUM_SALT_VERSION = "2018.3.0"  # ... as a string... the month will be converted to an integer below
 SALT_BOOTSTRAP_URL = "http://bootstrap.saltstack.com/stable/bootstrap-salt.sh"
 SALT_DOWNLOAD_SOURCE = "stable"
@@ -79,20 +92,21 @@ my_settings = {}
 def read_bevy_settings_files():
     global settings
     global my_settings
+
     def read_settings_file(provision_file_name):
         prov_file = Path(provision_file_name)
         try:
-            print("Trying my settings from {}".format(prov_file))
+            print("Trying to read settings from '{}'".format(prov_file))
             with prov_file.open() as provision_file:
                 stored_settings = yaml.safe_load(provision_file.read()) or {}
         except (OSError, yaml.YAMLError) as e:
             print("Unable to read previous values from {} --> {}.".format(provision_file_name, e))
             stored_settings = {}
         return stored_settings
-    if '--no-read-settings' in argv:
-        return
-    settings = read_settings_file(BEVY_SETTINGS_FILE_NAME)
-    my_settings = read_settings_file(MY_SETTINGS_FILE_NAME)
+
+    if '--no-read-settings' not in argv:
+        settings = read_settings_file(BEVY_SETTINGS_FILE_NAME)  # settings for entire bevy
+        my_settings = read_settings_file(MY_SETTINGS_FILE_NAME)  # settings for only this machine
 
 
 def write_bevy_settings_files():
@@ -104,16 +118,17 @@ def write_bevy_settings_files():
             # bevy_settings_file_name.parent.mkdir(parents=True, exist_ok=True)
             with bevy_settings_file_name.open('w') as f:
                 # creating a YAML file the hard way ...
-                f.write('# this file was created by {}\n'.format(this_file))
-                f.write('# Edits here will become the new default values.\n')
+                f.write('# This file was created by {}\n'.format(this_file))
+                f.write('# Manual edits here will also persist to become new default values.\n')
+                f.write('# (except when a tag is ALL_CAPS)\n')
                 for name, value in store_settings.items():
-                    if not name.isupper():  # ignore old settings for Vagrant renewed below
-                        if isinstance(value, str):  # single-quote YAML strings
+                    if not name.isupper():  # ignore old Vagrant settings (added below)
+                        if isinstance(value, str):  # single-quote strings in YAML values
                             f.write("{}: '{}'\n".format(name, value))
-                        else:  # Python repr() everything else
+                        else:  # Python repr() for everything else should work
                             f.write('{}: {!r}\n'.format(name, value))
                 if store_additional:
-                    f.write('# settings for Vagrant to read...\n')
+                    f.write('# settings for Vagrant to read...\n')  # NOTE: names are in UPPER_CASE
                     #... f'strings' are only available in Python 3.5+ ! ...#
                     # f.write(f"SALTCALL_CONFIG_FILE: '{SALTCALL_CONFIG_FILE}'\n")
                     # f.write(f"GUEST_MASTER_CONFIG_FILE: '{GUEST_MASTER_CONFIG_FILE}'\n")
@@ -248,7 +263,7 @@ grains:
         if master_host else settings.get('bevymaster_url', '')
     master = 'localhost' if is_master else master_url
     id = '' if virtual else 'id: {}'.format(my_settings['id'])
-    mstr = '- salt_master' if is_master else ''
+    mstr = '- master' if is_master else ''
 
     more_roots, more_pillars = format_additional_roots(settings, virtual)
 
@@ -453,13 +468,13 @@ def request_bevy_username_and_password(user_name: str):
         my_bevy = settings.get('bevy', 'bevy01')
         bevy = input("Name your bevy: [{}]:".format(my_bevy)) or my_bevy
         print()
-        print('Salt will create a personal interactive user for you on each machine in the bevy.')
-        print('If you do not wish to have a user created for you, enter "None" as the user name.')
+        print('Salt can create a personal interactive user for you on each machine in the bevy.')
         print()
         default_user = settings.get('my_linux_user') or user_name
-        print('Please supply your desired user name to be used on non-Windows minions.')
-        print('(Hit <enter> to use "{}")'.format(default_user))
-        my_linux_user = normalize_literal_none(input('User Name:') or default_user)
+        print('Please supply your desired user name to be used on (non-Windows) minions.')
+        print('If you do not wish to have a user created for you, enter "None" as the user name.')
+        my_linux_user = normalize_literal_none(input(
+            'User Name [{}]:'.format(default_user)) or default_user)
         print()
 
         if booleanize(my_linux_user):  # establish a password for the user
@@ -483,16 +498,18 @@ def request_windows_username_and_password(user_name: str):
     """
     print()
     print('NOTE:')
-    print('If you wish to use a Microsoft Account username, you _must_ create it from a GUI.')
-    print('Enter the name as "None" to inhibit Salt creation of a Windows user ID.')
+    print('If you wish to use your Microsoft Account username, you _must_ do it from a GUI,')
+    print(' not from Salt, so, enter "None" as the user name below...')
+    print()
     my_windows_user = my_windows_password = ''
     loop = Ellipsis  # Python trivia: Ellipsis evaluates as True
     while loop:
         print()
         default_user = settings.get('my_windows_user', 'None') or user_name
         print('Please supply your desired user name to be used on any Windows minions.')
-        print('(Hit <enter> to use "{}")'.format(default_user))
-        my_windows_user = normalize_literal_none(input('Windows User Name:') or default_user)
+        print('Enter "None" to skip...')
+        my_windows_user = normalize_literal_none(input(
+            'Windows User Name [{}]:'.format(default_user)) or default_user)
         print()
         if booleanize(my_windows_user):
             print('CAUTION: Windows passwords are stored in plain text.')
@@ -591,7 +608,7 @@ def choose_master_address(host_name):
     except (socket.error, IndexError):
         pass
     while Ellipsis:  # repeat until user types a valid entry
-        resp = input("What default url address for the master? [{}]:".format(default))
+        resp = input("What default url address for the master (for other minions)? [{}]:".format(default))
         choice = resp or default
         try:  # look up the address we have, and see if it appears good
             ip_ = socket.getaddrinfo(choice, 4506, type=socket.SOCK_STREAM)
@@ -678,9 +695,33 @@ def get_linux_password():
     return linux_password
 
 
-if __name__ == '__main__':
-    user_name = getpass.getuser()
+def display_introductory_text():
+    intro = """
+This program will take you step-by-step through the process of defining a new Bevy,
+(if run on a new Salt-master or a workstation which will host the new master),
+or will collect the information needed to become a minion in an existing Bevy.
 
+Answers you give will (if possible) be stored for use as the defaults for later runs.
+
+The default will appear at the end of the question [in square brackets, like this]:.
+Just hit <Enter> to select the default.
+The default for a yes-no or multiple choice question will be capitalized, like [y/N] or [knAx].
+You can select one of the letters, or just hit <Enter> for the default.
+Case is not significant for multiple choice or "None" responses. 
+Case is preserved for strings.
+....
+"""
+    if '--help' in argv:
+        print(__doc__)
+        exit(0)
+    print(intro)
+
+
+if __name__ == '__main__':
+    if not sudo.already_elevated():
+        display_introductory_text()
+
+    user_name = getpass.getuser()
     if user_name == 'root':
         user_name = os.environ['SUDO_USER']
 
@@ -706,21 +747,24 @@ if __name__ == '__main__':
     except AttributeError:
         on_a_workstation = False  # blatant assumption: Python version is less than 3.5, therefore not a Workstation
 
-    if sudo.already_elevated():
+    if sudo.already_elevated():  # the program has already called itself, and is now running as an administrator
         if 'my_linux_user' not in settings or 'bevy' not in settings:
             raise RuntimeError('Expected settings[] entry was not found')
-    else:
+    else:  # this is the first run. We will call ourselves soon if needed...
         settings['bevy'], settings['my_linux_user'] = request_bevy_username_and_password(user_name)
         settings['my_windows_user'], settings['my_windows_password'] = request_windows_username_and_password(user_name)
     print('Setting up user "{}" for bevy "{}"'.format(settings['my_linux_user'], settings['bevy']))
 
-    if '--no-sudo' in argv:  # "sudo off" switch for testing
-        print('\n\n!!! Running in "--no-sudo" mode. Expect permissions violations...\n')
-    elif sudo.already_elevated():
+    if sudo.already_elevated():
         print('Now running as Administrator...')
+    elif sudo.isUserAdmin():
+        print('(program was run by an administrator to start)')
+    elif '--no-sudo' in argv:  # "sudo off" switch for testing
+        print('\n\n!!! Running in "--no-sudo" mode. Expect permissions violations...\n')
     else:
         print('\n\n ... Okay. Now requesting elevated (sudo) privileges...\n')
         names = {k: settings[k] for k in ('bevy', 'my_linux_user', 'my_windows_user', 'my_windows_password')}
+        time.sleep(2)  # give user a moment to absorb this ...
         sudo.run_elevated(context=names)  # Run this script using Administrator privileges
 
     my_settings.setdefault('master_host',  False)  # assume this machine is NOT the VM host for the Master

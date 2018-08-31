@@ -77,6 +77,7 @@ debian_packages:
       - nano
       - python-pip
       - python3
+      - python3-pip
       - tree
 {% endif %}
 
@@ -85,7 +86,9 @@ ubuntu_packages:
   pkg.installed:
     - pkgs:
       - jq
+      {% if grains['osrelease'] < '18.04' %}
       - python-software-properties
+      {% endif %}
       - silversearcher-ag
       - strace
       - vim-tiny

@@ -146,7 +146,7 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
 # This is the Vagrant version of a Bevy Salt-master.
 # You cannot run it if you are using an external bevymaster.
   config.vm.define "bevymaster", autostart: false do |master_config|
-    master_config.vm.box = "boxesio/xenial64-standard"  # a public VMware & Virtualbox box
+    master_config.vm.box = "ubuntu/bionic64" #"boxesio/xenial64-standard"
     master_config.vm.hostname = "bevymaster"
     master_config.vm.network "private_network", ip: NETWORK + ".2.2"
     if ARGV.length > 1 and ARGV[0] == "up" and ARGV[1] == "bevymaster"

@@ -1,5 +1,5 @@
 ---
-# Salt state for preventing Wisdows 10 applications from stealing file type associations.
+# Salt state for preventing Windows 10 applications from stealing file type associations.
 #
 #Windows Registry Editor Version 5.00
 #

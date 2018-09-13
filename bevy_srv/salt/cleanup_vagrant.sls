@@ -3,10 +3,16 @@
 #    - value: 1048576
 
 remove_the_competition:  # these take a lot of virtual memory.
+  {% if grains['os'] == 'Windows' %}
+  chocolatey.uninstalled:
+    - name: chef-client
+    - order: last  {# wait for chocolatey to be installed #}
+  {% else %}
   pkg.removed:
     - names:
       - puppet
       - chef
+  {% endif %}
 
 {% if grains['os'] not in ["Windows", "MacOS"] %}
 ensure-virt-what:

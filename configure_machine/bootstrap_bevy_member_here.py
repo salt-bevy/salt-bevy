@@ -41,8 +41,8 @@ BEVY_SETTINGS_FILE_NAME = '/srv/pillar/01_bevy_settings.sls'
 # before our bevy arrives on the scene. We may want to preserve that minion's connection.
 # We will attempt to detect that situation, and we will use the setting "additional_minion_tag" (which may contain
 # "" or a string literal "2") to allow both minions to operate side-by-side.
-#  It theoretically might work to have "additional_minion_tag" be any of the values "2" through "Z", in case
-# we are running three or more minions, but that situation would be really weird.
+#  It theoretically might work to have "additional_minion_tag" be any of the values "2" through "Z",
+#   if we were running three or more minions, but that situation would be really weird.
 # # # # #
 MY_SETTINGS_FILE_NAME = '/etc/salt-bevy_my_settings.conf'
 MINIMUM_SALT_VERSION = "2018.3.0"  # ... as a string... the month will be converted to an integer below
@@ -245,7 +245,7 @@ grains:
 """
     bevy_srv_path = PurePosixPath('/vagrant') if virtual else PurePosixPath(this_file.parent.parent.as_posix())
     master_url = settings.get('master_vagrant_ip', '') \
-        if master_host else settings.get('bevymaster_url', '')
+        if master_host else settings.get('master_external_ip', '')
     master = 'localhost' if is_master else master_url
     id = '' if virtual else 'id: {}'.format(my_settings['id'])
     mstr = '- salt_master' if is_master else ''
@@ -853,8 +853,8 @@ if __name__ == '__main__':
     historic_second_minion = second_minion_id != 'Not Appropriate'
     if ask_second_minion or historic_second_minion:
         print('Your Salt master URL was detected as: {}'.format(master_url))
-        if settings.get('bevymaster_url', None):
-            print("Your bevymaster's URL was: {}".format(settings['bevymaster_url']))
+        if settings.get('master_external_ip', None):
+            print("Your bevymaster's URL was: {}".format(settings['master_external_ip']))
         print('You may continue to use that primary master, and also use a second master for your bevy.')
         print('Your previously used minion ID was "{}" on your (optional) second master'.format(
             my_settings.get('second_minion_id', 'None')))
@@ -870,8 +870,8 @@ if __name__ == '__main__':
     two = my_settings.get('additional_minion_tag') or '2' if ask_second_minion else ''
     my_settings['additional_minion_tag'] = two
 
-    master_address = choose_master_address(settings.get('bevymaster_url', master_url))
-    settings['bevymaster_url'] = master_address
+    master_address = choose_master_address(settings.get('master_external_ip', master_url))
+    settings['master_external_ip'] = master_address
 
     if platform.system() == 'Windows':
         master_pub = Path(r'C:\salt{}\conf\pki\minion\minion_master.pub'.format(two))
@@ -910,7 +910,7 @@ if __name__ == '__main__':
                          config_dir=str(Path(SALTCALL_CONFIG_FILE).resolve().parent),
                          bevy_root=str(bevy_root_node),
                          bevy=settings['bevy'],
-                         bevymaster_url=master_address,
+                         master_vagrant_ip=master_address,
                          additional_minion_tag=two,
                          vbox_install=settings.get('vbox_install', False),
                          vagranthost=settings.get('vagranthost', False),
@@ -920,12 +920,13 @@ if __name__ == '__main__':
                          doing_bootstrap=True,  # initialize environment
                          )
 
+
     else:  # not making a master, make a minion
         default = settings.get('master_vagrant_ip', '') if my_settings['master_host'] else \
-                                            settings.get('bevymaster_url', '')
+                                            settings.get('master_external_ip', '')
         my_master_url = my_settings.get('my_master_url', default)
         while Ellipsis:  # loop until user says okay
-            print('Checking {} for bevy master address validity...'.format(my_master_url))
+            print('Checking {} for bevy master{} address validity...'.format(my_master_url, two))
             try:  # look up the address we have, and see if it appears good
                 ip_ = socket.getaddrinfo(my_master_url, 4506, type=socket.SOCK_STREAM)
                 okay = input("Use {} as this machine's bevy master address? [Y/n]:".format(ip_[0][4][0]))
@@ -936,9 +937,9 @@ if __name__ == '__main__':
                             settings['master_vagrant_ip'] = my_master_url
                             write_bevy_settings_files()
                     break  # it looks good -- exit the loop
-            except (socket.error, IndexError):
-                pass  # looks bad -- ask for another
-            my_master_url = input("Try again. Type the name or address of this machine's bevy master?:")
+            except (socket.error, IndexError) as e:
+                print('Sorry. That produced the error==>{}'.format(e))
+            my_master_url = input("Try again. Type the name or address of this machine's master{}?:".format(two))
 
         print('\n\n. . . . . . . . . .\n')
         salt_state_apply('configure_bevy_member',
@@ -946,7 +947,7 @@ if __name__ == '__main__':
                          config_dir=str(Path(SALTCALL_CONFIG_FILE).resolve().parent), # for local
                          bevy_root=str(bevy_root_node),
                          bevy=settings['bevy'],
-                         bevymaster_url=settings['bevymaster_url'],
+                         master_vagrant_ip=settings['master_vagrant_ip'],
                          my_master_url=my_master_url,
                          additional_minion_tag=two,
                          vbox_install=settings.get('vbox_install', False),

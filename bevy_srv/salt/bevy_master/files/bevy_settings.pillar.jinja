@@ -5,7 +5,7 @@ include:
   - manual_bevy_settings
 {% raw %}
 {# * * * INSTALLER: set your actual local network addresses below * * * #}
-{% set bevymaster_url = salt['config.get']('bevymaster_url', '192.168.88.2') %}  {# main IP address of bevy master #}
+{% set master_vagrant_ip = salt['config.get']('master_vagrant_ip', '192.168.88.2') %}  {# main IP address of bevy master #}
 {% set pxe_network_cidr = '192.168.88.0/24' %}
 
 {# Uncomment lines below and replace with your actual values... #}
@@ -22,7 +22,7 @@ include:
 #wol_test_mac: '00-1a-4b-7c-2a-b2'  # mac address of minion machine
 #wol_test_sender_id: bevymaster  # Salt node id of WoL transmitter
 #
-#bevymaster_external_ip: {{ bevymaster_url }}
+#bevymaster_external_ip: {{ master_vagrant_ip }}
 #bevymaster_vagrant_ip: 172.17.2.2  # vagrant host-only IP address of master
 #
 #bevy_dir: '/projects/salt-bevy'  # path to salt-bevy directory tree

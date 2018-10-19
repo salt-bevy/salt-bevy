@@ -254,6 +254,8 @@ fileserver_backend:
 grains:
   datacenter: bevy
   environment: dev
+  
+# log_level_logfile: debug  # uncomment this to get minion logs at debug level
 """
     bevy_srv_path = PurePosixPath('/vagrant') if virtual else PurePosixPath(this_file.parent.parent.as_posix())
     master_url = settings.get('master_vagrant_ip', '') \

@@ -248,7 +248,7 @@ grains:
         if master_host else settings.get('master_external_ip', '')
     master = 'localhost' if is_master else master_url
     id = '' if virtual else 'id: {}'.format(my_settings['id'])
-    mstr = '- salt_master' if is_master else ''
+    mstr = '- master' if is_master else ''
 
     more_roots, more_pillars = format_additional_roots(settings, virtual)
 
@@ -929,11 +929,15 @@ if __name__ == '__main__':
             print('Checking {} for bevy master{} address validity...'.format(my_master_url, two))
             try:  # look up the address we have, and see if it appears good
                 ip_ = socket.getaddrinfo(my_master_url, 4506, type=socket.SOCK_STREAM)
+                if my_settings['master_host']:
+                    print("(Hint: your guest VM bevy master local address will be {})"
+                          .format(settings['master_vagrant_ip']))
                 okay = input("Use {} as this machine's bevy master address? [Y/n]:".format(ip_[0][4][0]))
                 if affirmative(okay, True):
                     my_settings['my_master_url'] = my_master_url
                     if my_settings['vm_host'] and my_master_url != settings['master_vagrant_ip']:
-                        if affirmative(input("Also use as master address for other Vagrant VMs? [Y/n]:"), True):
+                        if affirmative(input("Also use {} as master address for other Vagrant VMs? [Y/n]:"
+                                             .format(my_master_url)), True):
                             settings['master_vagrant_ip'] = my_master_url
                             write_bevy_settings_files()
                     break  # it looks good -- exit the loop

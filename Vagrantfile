@@ -15,9 +15,9 @@ require "ipaddr"
 # . v . v . retrieve stored bevy settings . v . v . v . v . v . v .
 BEVY_SETTINGS_FILE_NAME = '/srv/pillar/01_bevy_settings.sls'
 if File.exists?(BEVY_SETTINGS_FILE_NAME)
-  settings = YAML.load_file(BEVY_SETTINGS_FILE_NAME)
+  settings = YAML.load_file(BEVY_SETTINGS_FILE_NAME)  # get your local settings
 else
-  settings = {"bevy" => "xxxx", "vagrant_prefix" => '172.17'}
+  settings = {"bevy" => "xxxx", "vagrant_prefix" => '172.17'} # only here so you can do "destroy" without SETTINGS
   if ARGV[0] == "up"
     puts "You must run 'configure_machine/bootstrap_bevy_member_here.py' before running 'vagrant up'"
     abort "Unable to read settings file #{BEVY_SETTINGS_FILE_NAME}."
@@ -426,7 +426,7 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
         #salt.log_level = "info"
         salt.verbose = false
         salt.colorize = true
-        salt.version = "2018.3.2"  # TODO: remove this when this becomes default. Needed for chocolatey
+        # salt.version = "2018.3.2"  # TODO: remove this when this becomes default. Needed for chocolatey
         #salt.run_highstate = true
     end
   end

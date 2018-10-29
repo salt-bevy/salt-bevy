@@ -229,7 +229,7 @@ add_salt{{ other_minion }}_command:
     - marker_end:   '# ^ ^ ^ ^ ^ ^  added by Salt  ^ ^ ^ ^ ^ ^ ( -- Do not edit or remove this line -- )'
     - append_if_not_found: True
     - content: |
-        alias salt{{ other_minion }}='sudo salt-call --config-dir=/etc/salt{{ other_minion }} \"$@\"'
+        alias salt{{ other_minion }}='sudo salt-call --config-dir=/etc/salt{{ other_minion }}'
         if [ ! -n "${ETC_BASH_BASHRC_INCLUDED}" ]
         then
         export ETC_BASH_BASHRC_INCLUDED=1

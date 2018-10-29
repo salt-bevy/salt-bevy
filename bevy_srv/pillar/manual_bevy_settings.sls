@@ -1,11 +1,12 @@
 ---
 # salt pillar file for common values for a bevy
 
-{% set bevymaster_url = salt['config.get']('bevymaster_url', '192.168.88.2') %}  {# main IP address of bevy master #}
+{% set master_vagrant_ip = salt['config.get']('master_external_ip', '192.168.88.2') %}  {# main IP address of bevy master #}
+{% set master_external_ip = salt['config.get']('master_external_ip', '192.168.88.2') %}  {# main IP address of bevy master #}
 {% set pxe_network_cidr = '192.168.88.0/24' %}  {# your private local network for PXE operation #}
 pxe_network_cidr: '{{ pxe_network_cidr }}'
-bevymaster_external_ip: {{ bevymaster_url }}
-bevymaster_vagrant_ip: {{ salt['config.get']('master_vagrant_ip', '172.17.2.2') }}  # vagrant host-only IP address of master
+bevymaster_external_ip: {{ master_external_ip }}
+bevymaster_vagrant_ip: {{ master_vagrant_ip }}  # vagrant host-only IP address of master
 
 {# define module functions which will each minion will run periodically to send data to Salt Mine #}
 mine_functions:

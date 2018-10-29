@@ -8,6 +8,7 @@
 # Python3 update by: Vernon Cole 2018
 
 import sys, os, traceback, time, json
+import warnings, subprocess
 
 ELEVATION_FLAG = "--context"
 
@@ -51,7 +52,6 @@ def runAsAdmin(commandLine=None, context=None, wait=True):
         cmdLine.append(ELEVATION_FLAG)
 
     if os.name == 'posix':
-        import subprocess
         cmd = "sudo " + ' '.join(cmdLine)
         print('Running command-->', cmd)
         rc = subprocess.call(cmd, shell=True)
@@ -107,9 +107,67 @@ def get_context():
         if arg.startswith(ELEVATION_FLAG):
             try:
                 return json.loads(arg.split('=')[1])
-            except (IndexError, json.JSONDecodeError):
+            except (IndexError, json.JSONDecodeError) as e:
+                print("Decode Error in Context=>{}".format(e))
                 return {}
     return {}
+
+
+def set_env_variables_permanently_win(key_value_pairs: dict, whole_machine: bool = False):
+    """
+    Similar to os.environ[var_name] = var_value for all pairs provided, but instead of setting the variables in the
+    current process, sets the environment variables permanently at the os MACHINE level.
+
+    Original Recipe from http://code.activestate.com/recipes/416087/
+    :param key_value_pairs: a dictionary of variable name+value to set
+    :param whole_machine: if True the env variables will be set at the MACHINE (HKLM) level.
+           If False it will be done at USER level (HKCU)
+    :return:
+    """
+    if not isinstance(key_value_pairs, dict):
+        raise ValueError('{!r} must be {}'.format(key_value_pairs, dict))
+    if os.name != 'nt':
+        raise ModuleNotFoundError('Attempting Windows operation on non-Windows')
+
+    import winreg
+    import win32gui, win32con
+
+    path = r'SYSTEM\CurrentControlSet\Control\Session Manager\Environment' if whole_machine else r'Environment'
+
+    with winreg.OpenKeyEx(winreg.HKEY_LOCAL_MACHINE if whole_machine else winreg.HKEY_CURRENT_USER,
+                          path, 0,
+                          #winreg.KEY_READ) as key:
+                          winreg.KEY_ALL_ACCESS) as key:
+
+        for name, value in key_value_pairs.items():
+            print(name, '=', value)
+            try:
+                present, value_type = winreg.QueryValueEx(key, name)
+            except OSError:
+                present = NotImplemented
+                value_type = winreg.REG_SZ
+            print('{} = {}'.format(name, present))
+
+            if name.upper() in ['PATH', 'PATHEXT']:
+                if value.upper() in present.split(';'):  # these two keys will always be present and contain ";"
+                    print('Value {} already in {}'.format(value, present))
+                    continue
+                else:
+                    print('"{}" will not be entirely changed. "{}" will be appended at the end.'.format(
+                        name, value))
+                    value = '{};{}'.format(present, value)
+            if value:
+                print("Setting ENVIRONMENT VARIABLE '{}' to '{}'",format(name, value))
+                winreg.SetValueEx(key, name, 0, value_type, value)
+            else:
+                print("Deleting ENV VARIABLE '{}'".format(name))
+                try:
+                    winreg.DeleteValue(key, name)
+                except FileNotFoundError:
+                    pass  # ignore if already deleted
+
+    win32gui.SendMessageTimeout(win32con.HWND_BROADCAST, win32con.WM_SETTINGCHANGE, 0, 'Environment',
+                                win32con.SMTO_ABORTIFHUNG, 1000)
 
 
 def test(command=None):
@@ -140,6 +198,17 @@ if __name__ == "__main__":
             else:
                 call = ['nano', '/etc/hosts']
             test(call)
+    elif "--install-sudo-command" in sys.argv and os.name == 'nt':
+        print('Installing "sudo" command...')
+        import shutil
+        shutil.copy2(__file__, r'C:\Windows\sudo.py')
+        set_env_variables_permanently_win({'PATHEXT': r'.PY'}, whole_machine=True)
+    elif "--set-environment" in sys.argv and os.name == 'nt':
+        ctx = get_context()
+        set_env_variables_permanently_win(ctx, whole_machine=True)
+    elif "--set-user-environment" in sys.argv and os.name == 'nt':
+        ctx = get_context()
+        set_env_variables_permanently_win(ctx, whole_machine=False)
     elif len(sys.argv) == 1:
         print('usage: sudo <command> <arguments>  # will run with elevated priviledges')
     else:

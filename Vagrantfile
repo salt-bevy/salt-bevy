@@ -15,9 +15,9 @@ require "ipaddr"
 # . v . v . retrieve stored bevy settings . v . v . v . v . v . v .
 BEVY_SETTINGS_FILE_NAME = '/srv/pillar/01_bevy_settings.sls'
 if File.exists?(BEVY_SETTINGS_FILE_NAME)
-  settings = YAML.load_file(BEVY_SETTINGS_FILE_NAME)
+  settings = YAML.load_file(BEVY_SETTINGS_FILE_NAME)  # get your local settings
 else
-  settings = {"bevy" => "xxxx", "vagrant_prefix" => '172.17'}
+  settings = {"bevy" => "xxxx", "vagrant_prefix" => '172.17'} # only here so you can do "destroy" without SETTINGS
   if ARGV[0] == "up"
     puts "You must run 'configure_machine/bootstrap_bevy_member_here.py' before running 'vagrant up'"
     abort "Unable to read settings file #{BEVY_SETTINGS_FILE_NAME}."
@@ -114,7 +114,7 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
     quail_config.vm.hostname = "quail2" # + DOMAIN
     quail_config.vm.network "private_network", ip: NETWORK + ".2.5"
     if ARGV.length > 1 and ARGV[0] == "up" and ARGV[1] == "quail2"
-      puts "Starting #{ARGV[1]} at #{NETWORK}.2.5 as a Salt minion with master=#{settings['bevymaster_url']}...\n."
+      puts "Starting #{ARGV[1]} at #{NETWORK}.2.5 as a Salt minion with master=#{settings['master_vagrant_ip']}...\n."
       end
     quail_config.vm.network "public_network", bridge: interface_guesses
     quail_config.vm.provider "virtualbox" do |v|
@@ -137,7 +137,7 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
     quail_config.vm.provision :salt do |salt|
        # salt.install_type = "stable 2018.3.1"
        salt.verbose = false
-       salt.bootstrap_options = "-A #{settings['bevymaster_url']} -i quail2 -F -P "
+       salt.bootstrap_options = "-A #{settings['master_vagrant_ip']} -i quail2 -F -P "
        salt.run_highstate = true
     end
   end
@@ -224,7 +224,7 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
          "my_linux_gid" => gid,
          "bevy_root" => "/vagrant/bevy_srv",
          "bevy" => BEVY,
-         "bevymaster_url" => NETWORK + '.2.2',
+         "master_vagrant_ip" => NETWORK + '.2.2',
          "additional_minion_tag" => '',
          "linux_password_hash" => password_hash,
          "force_linux_user_password" => true,
@@ -319,7 +319,7 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
     quail_config.vm.network "public_network", bridge: interface_guesses
     quail_config.vm.network "private_network", ip: NETWORK + ".2.10"
     if ARGV.length > 1 and ARGV[0] == "up" and ARGV[1] == "win10"
-      puts "Starting #{ARGV[1]} as a Salt minion of #{settings['bevymaster_url']}."
+      puts "Starting #{ARGV[1]} as a Salt minion of #{settings['master_vagrant_ip']}."
       puts "NOTE: you may need to run \"vagrant up\" twice for this Windows minion."
       end
     quail_config.vm.provider "virtualbox" do |v|
@@ -343,7 +343,7 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
     quail_config.vm.provision "file", source: settings['WINDOWS_GUEST_CONFIG_FILE'], destination: "c:/salt/conf/minion.d/00_vagrant_boot.conf"
     quail_config.vm.provision :salt do |salt|  # salt_cloud cannot push Windows salt
         salt.minion_id = "win10"
-        salt.master_id = "#{settings['bevymaster_url']}"
+        salt.master_id = "#{settings['master_vagrant_ip']}"
         #salt.log_level = "info"
         salt.verbose = false
         salt.colorize = true
@@ -361,7 +361,7 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
     quail_config.vm.network "public_network", bridge: interface_guesses
     quail_config.vm.network "private_network", ip: NETWORK + ".2.16"
     if ARGV.length > 1 and ARGV[0] == "up" and ARGV[1] == "win16"
-      puts "Starting #{ARGV[1]} as a Salt minion of #{settings['bevymaster_url']}."
+      puts "Starting #{ARGV[1]} as a Salt minion of #{settings['master_vagrant_ip']}."
       end
     quail_config.vm.provider "virtualbox" do |v|
         v.name = BEVY + '_win16'  # ! N.O.T.E.: name must be unique
@@ -382,12 +382,12 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
     quail_config.vm.provision "file", source: settings['WINDOWS_GUEST_CONFIG_FILE'], destination: "c:/salt/conf/minion.d/00_vagrant_boot.conf"
     quail_config.vm.provision :salt do |salt|  # salt_cloud cannot push Windows salt
         salt.minion_id = "win16"
-        salt.master_id = "#{settings['bevymaster_url']}"
+        salt.master_id = "#{settings['master_vagrant_ip']}"
         salt.log_level = "info"
         salt.version = "2018.3.3"  # TODO: remove this when this becomes default. Needed for chocolatey
         salt.verbose = true
         salt.colorize = true
-        # salt.run_highstate = true
+        salt.run_highstate = true
     end
   end
 
@@ -398,7 +398,7 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
     quail_config.vm.network "public_network", bridge: interface_guesses
     quail_config.vm.network "private_network", ip: NETWORK + ".2.12"
     if ARGV.length > 1 and ARGV[0] == "up" and ARGV[1] == "win12"
-      puts "Starting #{ARGV[1]} as a Salt minion of #{settings['bevymaster_url']}."
+      puts "Starting #{ARGV[1]} as a Salt minion of #{settings['master_vagrant_ip']}."
       end
     quail_config.vm.provider "virtualbox" do |v|
         v.name = BEVY + '_win12'  # ! N.O.T.E.: name must be unique
@@ -419,7 +419,7 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
     quail_config.vm.provision "file", source: settings['WINDOWS_GUEST_CONFIG_FILE'], destination: "c:/salt/conf/minion.d/00_vagrant_boot.conf"
     quail_config.vm.provision :salt do |salt|  # salt_cloud cannot push Windows salt
         salt.minion_id = "win12"
-        salt.master_id = "#{settings['bevymaster_url']}"
+        salt.master_id = "#{settings['master_vagrant_ip']}"
         #salt.log_level = "info"
         salt.verbose = false
         salt.colorize = true

@@ -338,7 +338,7 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
     quail_config.vm.graceful_halt_timeout = 90
     #quail_config.winrm.password = "Passw0rd!"
     #quail_config.winrm.username = "IEUser"
-    script = "new-item C:\\salt\\conf\\minion.d -itemtype directory\r\n"
+    script = "new-item C:\\salt\\conf\\minion.d -itemtype directory -ErrorAction silentlycontinue\r\n"
     quail_config.vm.provision "shell", inline: script
     quail_config.vm.provision "file", source: settings['WINDOWS_GUEST_CONFIG_FILE'], destination: "c:/salt/conf/minion.d/00_vagrant_boot.conf"
     quail_config.vm.provision :salt do |salt|  # salt_cloud cannot push Windows salt
@@ -348,7 +348,7 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
         salt.verbose = false
         salt.colorize = true
         salt.run_highstate = true
-        salt.version = "2018.3.2"  # TODO: remove this when this becomes default. Needed for chocolatey
+        salt.version = "2018.3.3"  # TODO: remove this when this becomes default. Needed for chocolatey
     end
   end
 
@@ -376,15 +376,15 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
     quail_config.vm.guest = :windows
     quail_config.vm.boot_timeout = 300
     quail_config.vm.graceful_halt_timeout = 60
-    script = "new-item C:\\salt\\conf\\minion.d -itemtype directory\r\n"
-    script += "route add 10.0.0.0 mask 255.0.0.0 #{NETWORK}.17.226 -p\r\n"  # route 10. network through host NAT for VPN
+    script = "new-item C:\\salt\\conf\\minion.d -itemtype directory -ErrorAction silentlycontinue\r\n"
+    #script += "route add 10.0.0.0 mask 255.0.0.0 #{NETWORK}.17.226 -p\r\n"  # route 10. network through host NAT for VPN
     quail_config.vm.provision "shell", inline: script
     quail_config.vm.provision "file", source: settings['WINDOWS_GUEST_CONFIG_FILE'], destination: "c:/salt/conf/minion.d/00_vagrant_boot.conf"
     quail_config.vm.provision :salt do |salt|  # salt_cloud cannot push Windows salt
         salt.minion_id = "win16"
         salt.master_id = "#{settings['bevymaster_url']}"
         salt.log_level = "info"
-        salt.version = "2018.3.2"  # TODO: remove this when this becomes default. Needed for chocolatey
+        salt.version = "2018.3.3"  # TODO: remove this when this becomes default. Needed for chocolatey
         salt.verbose = true
         salt.colorize = true
         # salt.run_highstate = true
@@ -413,7 +413,7 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
     quail_config.vm.guest = :windows
     quail_config.vm.boot_timeout = 900
     quail_config.vm.graceful_halt_timeout = 60
-    script = "new-item C:\\salt\\conf\\minion.d -itemtype directory\r\n"
+    script = "new-item C:\\salt\\conf\\minion.d -itemtype directory -ErrorAction silentlycontinue\r\n"
     script += "route add 10.0.0.0 mask 255.0.0.0 #{NETWORK}.17.130 -p\r\n"  # route 10. network through host NAT for VPN
     quail_config.vm.provision "shell", inline: script
     quail_config.vm.provision "file", source: settings['WINDOWS_GUEST_CONFIG_FILE'], destination: "c:/salt/conf/minion.d/00_vagrant_boot.conf"
@@ -423,7 +423,7 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
         #salt.log_level = "info"
         salt.verbose = false
         salt.colorize = true
-        salt.version = "2018.3.2"  # TODO: remove this when this becomes default. Needed for chocolatey
+        salt.version = "2018.3.3"  # TODO: remove this when this becomes default. Needed for chocolatey
         #salt.run_highstate = true
     end
   end

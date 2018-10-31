@@ -27,7 +27,7 @@ bevy_dir: '/projects/salt-bevy'  # path to salt-bevy directory tree
 autosign_minion_ids:
   - '# these id names are from pillar file "manual_bevy_settings.sls" entry "autosign_minion_ids".'
   - '# A minion (or wildcard) named in this list will be accepted automatically.  (Insecure!)'
-  - 'win1[026]' {# regular expression matches either win10, win12 or win16 #}
+  - 'win1[0269]' {# regular expression matches either win10, win12, win16 or win19 #}
   - 'quail2'
 
 dhcp_pxe_range: {{ pxe_network_cidr.split('/')[0] }}  # network for dnsmasq PXE server replies

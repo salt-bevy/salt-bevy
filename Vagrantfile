@@ -356,7 +356,6 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
  # . this machine installs Salt on a Windows 2016 Server and runs highstate.
   config.vm.define "win16", autostart: false do |quail_config|
     quail_config.vm.box = "gusztavvargadr/w16s" # Windows Server 2016 standard
-    # or "mwrock/Windows2016"
 
     quail_config.vm.network "public_network", bridge: interface_guesses
     quail_config.vm.network "private_network", ip: NETWORK + ".2.16"
@@ -376,10 +375,10 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
     quail_config.vm.guest = :windows
     quail_config.vm.boot_timeout = 300
     quail_config.vm.graceful_halt_timeout = 60
-    script = "new-item C:\\salt\\conf\\minion.d -itemtype directory -ErrorAction silentlycontinue\r\n"
-    #script += "route add 10.0.0.0 mask 255.0.0.0 #{NETWORK}.17.226 -p\r\n"  # route 10. network through host NAT for VPN
-    quail_config.vm.provision "shell", inline: script
-    quail_config.vm.provision "file", source: settings['WINDOWS_GUEST_CONFIG_FILE'], destination: "c:/salt/conf/minion.d/00_vagrant_boot.conf"
+    script = "new-item C:\\salt\\conf\\minion.d -itemtype directory\r\n" # -ErrorAction silentlycontinue\r\n"
+    script += "route add 10.0.0.0 mask 255.0.0.0 #{NETWORK}.17.226 -p\r\n"  # route 10. network through host NAT for VPN
+    #quail_config.vm.provision "shell", inline: script
+    #quail_config.vm.provision "file", source: settings['WINDOWS_GUEST_CONFIG_FILE'], destination: "c:/salt/conf/minion.d/00_vagrant_boot.conf"
     quail_config.vm.provision :salt do |salt|  # salt_cloud cannot push Windows salt
         salt.minion_id = "win16"
         salt.master_id = "#{settings['master_vagrant_ip']}"
@@ -427,4 +426,42 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
         #salt.run_highstate = true
     end
   end
+
+   # . . . . . . . . . . . . Define machine win19 . . . . . . . . . . . . . .
+   # . this machine installs Salt on a Windows 2019 Server and runs highstate.
+    config.vm.define "win19", autostart: false do |quail_config|
+      quail_config.vm.box = "StefanScherer/windows_2019"
+      quail_config.vm.network "public_network", bridge: interface_guesses
+      quail_config.vm.network "private_network", ip: NETWORK + ".2.19"
+      if ARGV.length > 1 and ARGV[0] == "up" and ARGV[1] == "win19"
+        puts "Starting #{ARGV[1]} as a Salt minion of #{settings['master_vagrant_ip']}."
+        end
+      quail_config.vm.provider "virtualbox" do |v|
+          v.name = BEVY + '_win19'  # ! N.O.T.E.: name must be unique
+          v.gui = true  # turn on the graphic window
+          v.linked_clone = true
+          v.customize ["modifyvm", :id, "--vram", "27"]  # enough video memory for full screen
+          v.memory = 4096
+          v.cpus = 2
+          v.customize ["modifyvm", :id, "--natnet1", NETWORK + ".18.32/27"]  # do not use 10.0 network for NAT
+          v.customize ["modifyvm", :id, "--natdnshostresolver1", "on"]  # use host's DNS resolver
+      end
+      quail_config.vm.guest = :windows
+      quail_config.vm.boot_timeout = 300
+      quail_config.vm.graceful_halt_timeout = 60
+      #script = "new-item C:\\salt\\conf\\minion.d -itemtype directory -ErrorAction silentlycontinue\r\n"
+      #script += "route add 10.0.0.0 mask 255.0.0.0 #{NETWORK}.18.34 -p\r\n"  # route 10. network through host NAT for VPN
+      #quail_config.vm.provision "shell", inline: script
+      quail_config.vm.provision "file", source: settings['WINDOWS_GUEST_CONFIG_FILE'], destination: "c:/salt/conf/minion.d/00_vagrant_boot.conf"
+      quail_config.vm.provision :salt do |salt|  # salt_cloud cannot push Windows salt
+          salt.minion_id = "win19"
+          salt.master_id = "#{settings['master_vagrant_ip']}"
+          salt.log_level = "info"
+          salt.version = "2018.3.3"  # TODO: remove this when this becomes default. Needed for chocolatey
+          salt.verbose = true
+          salt.colorize = true
+          salt.run_highstate = true
+      end
+    end
+
 end

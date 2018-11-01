@@ -464,4 +464,36 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
       end
     end
 
+# . . . . . . .  Define MacOS mac13 with Salt minion installed . . . . . . . . . . . . . .
+# . this machine bootstraps Salt but no states are run or defined.
+# . Its master is "bevymaster".
+  config.vm.define "mac13", autostart: false do |quail_config|
+    quail_config.vm.box = "burinkhazad/macos-high-sierra"
+    quail_config.vm.hostname = "mac13" # + DOMAIN
+    quail_config.vm.network "private_network", ip: NETWORK + ".2.13"
+    if ARGV.length > 1 and ARGV[0] == "up" and ARGV[1] == "quail2"
+      puts "Starting #{ARGV[1]} at #{NETWORK}.2.13 as a Salt minion with master=#{settings['bevymaster_url']}...\n."
+      end
+    quail_config.vm.network "public_network", bridge: interface_guesses
+    quail_config.vm.provider "virtualbox" do |v|
+        v.name = BEVY + '_mac13'  # ! N.O.T.E.: name must be unique
+        v.memory = 6000       # limit memory for the virtual box
+        v.cpus = 2
+        v.linked_clone = true # make a soft copy of the base Vagrant box
+        v.customize ["modifyvm", :id, "--natnet1", NETWORK + ".18.64/27"]  # do not use 10.0 network for NAT
+        v.customize ["modifyvm", :id, "--natdnshostresolver1", "on"]  # use host's DNS resolver
+    end
+    script = "mkdir -p /etc/salt/minion.d\n"
+    script += "chown -R vagrant:staff /etc/salt/minion.d\n"
+    script += "chmod -R 775 /etc/salt/minion.d\n"
+    quail_config.vm.provision "shell", inline: script
+    quail_config.vm.provision "file", source: settings['GUEST_MINION_CONFIG_FILE'], destination: "/etc/salt/minion.d/00_vagrant_boot.conf"
+    quail_config.vm.provision :salt do |salt|
+       salt.install_type = "stable 2018.3.2"
+       salt.verbose = true
+       salt.bootstrap_options = "-A #{settings['bevymaster_url']} -i mac13 -F -P "
+       #salt.run_highstate = true
+    end
+  end
+
 end

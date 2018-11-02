@@ -356,6 +356,7 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
  # . this machine installs Salt on a Windows 2016 Server and runs highstate.
   config.vm.define "win16", autostart: false do |quail_config|
     quail_config.vm.box = "gusztavvargadr/w16s" # Windows Server 2016 standard
+    quail_config.vm.box_version = "1808.0.0" # WARNING: 1809.0.0 does not have WinRM enabled
 
     quail_config.vm.network "public_network", bridge: interface_guesses
     quail_config.vm.network "private_network", ip: NETWORK + ".2.16"
@@ -375,10 +376,11 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
     quail_config.vm.guest = :windows
     quail_config.vm.boot_timeout = 300
     quail_config.vm.graceful_halt_timeout = 60
+    quail_config.vm.communicator = "winrm"
     script = "new-item C:\\salt\\conf\\minion.d -itemtype directory\r\n" # -ErrorAction silentlycontinue\r\n"
     script += "route add 10.0.0.0 mask 255.0.0.0 #{NETWORK}.17.226 -p\r\n"  # route 10. network through host NAT for VPN
-    #quail_config.vm.provision "shell", inline: script
-    #quail_config.vm.provision "file", source: settings['WINDOWS_GUEST_CONFIG_FILE'], destination: "c:/salt/conf/minion.d/00_vagrant_boot.conf"
+    quail_config.vm.provision "shell", inline: script
+    quail_config.vm.provision "file", source: settings['WINDOWS_GUEST_CONFIG_FILE'], destination: "c:/salt/conf/minion.d/00_vagrant_boot.conf"
     quail_config.vm.provision :salt do |salt|  # salt_cloud cannot push Windows salt
         salt.minion_id = "win16"
         salt.master_id = "#{settings['master_vagrant_ip']}"

@@ -923,7 +923,7 @@ if __name__ == '__main__':
             if affirmative(input('Will this be a new minion<-->master relationship? [y/N]:')):
                 print('Removing public key for master:"{}"'.format(master_pub))
                 master_pub.unlink()
-                print("/n** Remember to accept this machine's Minion key on its new Master. **/n")
+                print("\n** Remember to accept this machine's Minion key on its new Master. **\n")
     except FileNotFoundError:
         pass
     except PermissionError:

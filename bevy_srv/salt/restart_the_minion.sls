@@ -30,6 +30,8 @@ restart-the-minion:
     - shell: /bin/bash
     - require:
       - file: restart-the-minion_setup     #}
+    {% elif grains['os_family'] == 'MacOS' %}
+    - name: "salt-call service.restart com.saltstack.salt.minion"
     {% else %}
     - name: "salt-call service.restart salt{{ other_minion }}-minion"
     - shell: /bin/bash

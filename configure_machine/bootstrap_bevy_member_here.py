@@ -334,8 +334,9 @@ def salt_call_json(salt_command):
     try:
         ret = json.loads(out[left:right + 1])
         return ret
-    except json.decoder.JSONDecodeError:
+    except ValueError:  # Python 3.5+ --> json.decoder.JSONDecodeError:
         print("JSON error loading ==>", out)
+        return {}
 
 
 # noinspection PyShadowingNames
@@ -367,7 +368,7 @@ def salt_minion_version():
         out = salt_call_json("test.version")
         version = out['local'].split('.')
         version[1] = int(version[1])
-    except (IndexError, subprocess.CalledProcessError, TypeError):
+    except (IndexError, subprocess.CalledProcessError, TypeError, KeyError):
         print("salt-minion not installed or no output")
         version = ['', 0, '']
     else:
@@ -458,7 +459,7 @@ def request_bevy_username_and_password(user_name: str):
 
     :param user_name: system default user name
     """
-    bevy = my_linux_user = pub_key = ''
+    bevy = my_linux_user = pub_key = hash = ''
     loop = Ellipsis  # Python trivia: Ellipsis evaluates as True
     while loop:
         print()
@@ -474,17 +475,17 @@ def request_bevy_username_and_password(user_name: str):
         my_linux_user = normalize_literal_none(input('User Name:') or default_user)
         print()
 
+        hash = settings.get('linux_password_hash', '')
         if booleanize(my_linux_user):  # establish a password for the user
-            if pwd_hash.hashpath.exists() and loop is Ellipsis:
-                print('(using the password hash from {}'.format(pwd_hash.hashpath))
+            if hash != "" and loop is Ellipsis:  # only True the first time around
+                print('(using the password hash {}'.format(hash))
             else:
-                pwd_hash.make_file()  # asks your user to type a password, then stores the hash.
-                pwd_hash.hashpath.chmod(0o666)
+                hash = pwd_hash.make_hash()  # asks your user to type a password, then stores the hash.
         loop = not affirmative(
-            input('Use user name "{}" in bevy "{}"'
+            input('Use user name "{}" in bevy "{}" with that hash'
                   '? [Y/n]:'.format(my_linux_user, bevy)),
             default=True)  # stop looping if done
-    return bevy, my_linux_user
+    return bevy, my_linux_user, hash
 
 
 def request_windows_username_and_password(user_name: str):
@@ -684,14 +685,6 @@ def get_projects_directory():
             return resp
 
 
-def get_linux_password():
-    ''' retrieve stored bevy ssl password hash '''
-    # 3.5 linux_password = pwd_hash.hashpath.read_text().strip()
-    with pwd_hash.hashpath.open() as f:  # 3.4
-        linux_password = f.read().strip()  # 3.4
-    return linux_password
-
-
 def display_introductory_text():
     intro = """
 This program will take you step-by-step through the process of defining a new Bevy,
@@ -748,7 +741,7 @@ if __name__ == '__main__':
         if 'my_linux_user' not in settings or 'bevy' not in settings:
             raise RuntimeError('Expected settings[] entry was not found')
     else:  # this is the first run. We will call ourselves soon if needed...
-        settings['bevy'], settings['my_linux_user'] = request_bevy_username_and_password(user_name)
+        settings['bevy'], settings['my_linux_user'], settings['linux_password_hash'] = request_bevy_username_and_password(user_name)
         settings['my_windows_user'], settings['my_windows_password'] = request_windows_username_and_password(user_name)
     print('Setting up user "{}" for bevy "{}"'.format(settings['my_linux_user'], settings['bevy']))
 
@@ -940,8 +933,8 @@ if __name__ == '__main__':
         write_config_file(Path(GUEST_MINION_CONFIG_FILE), is_master=False, virtual=True, master_host=my_settings['master_host'])
         write_config_file(Path(WINDOWS_GUEST_CONFIG_FILE), is_master=False, virtual=True, windows=True, master_host=my_settings['master_host'])
 
-    settings.setdefault('force_linux_user_password', True)
-    settings['linux_password_hash'] = get_linux_password()
+    settings.setdefault('force_linux_user_password', True)  # insure that it is defined
+    settings.setdefault('linux_password_hash', '')
     write_bevy_settings_files()
 
     if my_settings['master']:

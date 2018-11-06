@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 import os, getpass, sys
-from pathlib import Path
 
 try:
     import passlib.hash as ph  # must use passlib module on Mac OS or Windows systems.
@@ -10,20 +9,12 @@ except ImportError:
     sha = None  # flag that passlib is not present
     import crypt  # will use built-in crypt (works okay on Linux)
 
-HASHFILE_NAME = 'bevy_linux_password.hash'  # Salt scripts will expect this name
 
-try:
-    hashdir = Path.home() / '.ssh'  # only works on Python 3.5+
-except AttributeError:  # older Python3
-    hashdir = Path('/home/') / getpass.getuser() / '.ssh'
-hashpath = hashdir / HASHFILE_NAME
-
-def make_file():
+def make_hash():
     dashline = 78 * '-'
     print(dashline)
     print()
-    print('This program will request a password, and send its Linux "Hash" to...')
-    print(' {}'.format(hashpath))
+    print('This program will request a password, and return its hash string.')
     print()
 
     while True:
@@ -49,12 +40,8 @@ def make_file():
             sys.exit(1)
         if (input("Use this password hash? [Y/n]:") or 'y').lower().startswith('y'):
             break
-
-    os.makedirs(str(hashdir), exist_ok=True)
-    with hashpath.open('w') as pf:
-        pf.write(pwhash + '\n')
-    print('File {} written.'.format(hashpath))
     print(dashline)
+    return pwhash
 
 if __name__ == "__main__":
-    make_file()
+    print('{"hash": "%s"}' % make_hash())  # output JSON, just in case me may want that someday.

@@ -197,18 +197,8 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
        salt.bootstrap_options = "-P -M -L "  # install salt-cloud and salt-master
        salt.masterless = true  # the provisioning script for the master is masterless
        salt.run_highstate = true
-       password_hash = ''
-       if File.exists?(hash_path)
-         File.foreach(hash_path, 'r') do |hashline|
-           hashline.strip!
-           if hashline.length > 0
-             password_hash += hashline
-           end
-         end
-       else
-         puts "NOTE: file #{hash_path} not found. No linux password will be supplied."
-       end
-       if settings
+       password_hash = settings['linux_password_hash']
+        if settings
          uid = settings['my_linux_uid']
          gid = settings['my_linux_gid']
        elsif info  # info is Null on Windows boxes
@@ -323,10 +313,10 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
       puts "NOTE: you may need to run \"vagrant up\" twice for this Windows minion."
       end
     quail_config.vm.provider "virtualbox" do |v|
-        v.name = BEVY + '_win10'  # ! N.O.T.E.: name must be unique
+        v.name = BEVY + '-win10'  # ! N.O.T.E.: name must be unique
         v.gui = true  # turn on the graphic window
         v.linked_clone = true
-        v.customize ["modifyvm", :id, "--vram", "27"]  # enough video memory for full screen
+        v.customize ["modifyvm", :id, "--vram", "33"]  # enough video memory for full screen
         v.memory = 4096
         v.cpus = 2
         v.customize ["modifyvm", :id, "--natnet1", NETWORK + ".17.192/27"]  # do not use 10.0 network for NAT

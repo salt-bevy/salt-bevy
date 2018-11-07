@@ -313,7 +313,7 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
       puts "NOTE: you may need to run \"vagrant up\" twice for this Windows minion."
       end
     quail_config.vm.provider "virtualbox" do |v|
-        v.name = BEVY + '-win10'  # ! N.O.T.E.: name must be unique
+        v.name = BEVY + '_win10'  # ! N.O.T.E.: name must be unique
         v.gui = true  # turn on the graphic window
         v.linked_clone = true
         v.customize ["modifyvm", :id, "--vram", "33"]  # enough video memory for full screen
@@ -463,7 +463,7 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
     quail_config.vm.box = "burinkhazad/macos-high-sierra"
     quail_config.vm.hostname = "mac13" # + DOMAIN
     quail_config.vm.network "private_network", ip: NETWORK + ".2.13"
-    if ARGV.length > 1 and ARGV[0] == "up" and ARGV[1] == "quail2"
+    if ARGV.length > 1 and ARGV[0] == "up" and ARGV[1] == "mac13"
       puts "Starting #{ARGV[1]} at #{NETWORK}.2.13 as a Salt minion with master=#{settings['bevymaster_url']}...\n."
       end
     quail_config.vm.network "public_network", bridge: interface_guesses

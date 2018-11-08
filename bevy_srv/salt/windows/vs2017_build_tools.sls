@@ -13,17 +13,16 @@ vs_2017_choc_bt:
 #    - name: dotnet4.0
 
 visualstudio2017buildtools:
-  chocolatey.installed:
-    - name: visualstudio2017buildtools
+  chocolatey.upgraded
 
 visualstudio2017-workload-vctools_bt:
-  chocolatey.installed:
+  chocolatey.upgraded:
     - name: visualstudio2017-workload-vctools
     - require:
       - visualstudio2017buildtools
 
 visualstudio2017-workload-netweb_bt:
-  chocolatey.installed:
+  chocolatey.upgraded:
     - name: visualstudio2017-workload-netweb
     - require:
       - visualstudio2017buildtools

@@ -7,14 +7,14 @@
 
 {% set bevy_root = salt['config.get']('bevy_root', '/projects/salt-bevy/bevy_srv') %}
 id: {{ salt['config.get']('node_name', salt['config.get']('id')) }}
-{% set is_master = salt['config.get']('id', '').startswith('bevymaster') or
-    salt['config.get']('bevy','') == 'local' %}
+{% set is_master = salt['config.get']('id').startswith('bevymaster') or
+    salt['config.get']('bevy') == 'local' %}
 
 {% if is_master %}master: localhost
 {% else %}
 master: {{ salt['config.get']('my_master_url', salt['config.get']('master')) }}
 {% endif %}
-{% set minion_number = salt['config.get']('additional_minion_tag', '') %}
+{% set minion_number = salt['config.get']('additional_minion_tag') or '' %}
 
 grains:
   datacenter: {{ salt['config.get']('datacenter', 'bevy') }}
@@ -22,7 +22,7 @@ grains:
   environment: dev
   stacks: {{ salt['config.get']('stacks', []) }}
 salt_config_directory: {{ salt['config.get']('salt_config_directory') }}  # remember where I am at
-additional_minion_tag: {{ salt['config.get']('additional_minion_tag', '') }}
+additional_minion_tag: '{{ minion_number }}'
 
 {% if is_master -%}
 {% if salt['pillar.get']('autosign_minion_ids', false) %}

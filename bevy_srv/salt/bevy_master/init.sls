@@ -5,13 +5,14 @@
 # ANOTHER NOTE: edit the vbox_settings.sls pillar definition when the version of VirtualBox changes
 #
 {% set my_username = salt['config.get']('my_linux_user') %}
-{% set other_minion = salt['config.get']('additional_minion_tag', "") %}
+{% set other_minion = salt['config.get']('additional_minion_tag') or '' %}
 
 bevy_master_grain:
   grains.list_present:
     - name: roles
     - value:
       - master
+    - order: 1
 update_the_grains:
   module.run:
     - name: saltutil.sync_grains
@@ -81,7 +82,7 @@ salt-master-config:
     - template: jinja
     - makedirs: true
 
-{% if salt['pillar.get']('autosign_minion_ids', '') %}
+{% if salt['pillar.get']('autosign_minion_ids') %}
 salt-master-autosign-file:
   file.managed:
     - name: {{ salt['config.get']('salt_config_directory') }}/pki/master/autosign.minions

@@ -12,6 +12,7 @@ include:
 ssh_public_key:
   file.managed:
     - name: 'C:/Users/{{ my_windows_user }}/.ssh/id_rsa.pub'
+    - makedirs: true
     - user: {{ my_windows_user }}
     - source: salt://ssh_keys/{{ my_user }}.pub
     - onlyif:  # do not attemt to create a directory if user is not yet initialized by Windows

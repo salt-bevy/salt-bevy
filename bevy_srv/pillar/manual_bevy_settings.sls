@@ -1,11 +1,12 @@
 ---
 # salt pillar file for common values for a bevy
 
-{% set bevymaster_url = salt['config.get']('bevymaster_url', '192.168.88.2') %}  {# main IP address of bevy master #}
+{% set master_vagrant_ip = salt['config.get']('master_external_ip', '192.168.88.2') %}  {# main IP address of bevy master #}
+{% set master_external_ip = salt['config.get']('master_external_ip', '192.168.88.2') %}  {# main IP address of bevy master #}
 {% set pxe_network_cidr = '192.168.88.0/24' %}  {# your private local network for PXE operation #}
 pxe_network_cidr: '{{ pxe_network_cidr }}'
-bevymaster_external_ip: {{ bevymaster_url }}
-bevymaster_vagrant_ip: {{ salt['config.get']('master_vagrant_ip', '172.17.2.2') }}  # vagrant host-only IP address of master
+bevymaster_external_ip: {{ master_external_ip }}
+bevymaster_vagrant_ip: {{ master_vagrant_ip }}  # vagrant host-only IP address of master
 
 {# define module functions which will each minion will run periodically to send data to Salt Mine #}
 mine_functions:
@@ -26,7 +27,7 @@ bevy_dir: '/projects/salt-bevy'  # path to salt-bevy directory tree
 autosign_minion_ids:
   - '# these id names are from pillar file "manual_bevy_settings.sls" entry "autosign_minion_ids".'
   - '# A minion (or wildcard) named in this list will be accepted automatically.  (Insecure!)'
-  - 'win1[026]' {# regular expression matches either win10, win12 or win16 #}
+  - 'win1[0269]' {# regular expression matches either win10, win12, win16 or win19 #}
   - 'quail2'
 
 dhcp_pxe_range: {{ pxe_network_cidr.split('/')[0] }}  # network for dnsmasq PXE server replies

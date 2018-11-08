@@ -12,14 +12,13 @@ include:
 # ANOTHER NOTE: edit the vbox_settings.sls pillar definition when the version of VirtualBox changes
 #
 {% set my_username = salt['config.get']('my_linux_user') %}
-{% set other_minion = salt['config.get']('additional_minion_tag', '') %}
-
+{% set other_minion = salt['config.get']('additional_minion_tag') or '' %}
 {% set message = pillar['salt_managed_message'] %}
 
-{% if salt['pillar.get']('server_role', '') != '' %}
+{% if salt['pillar.get']('server_role') != '' %}
 roles:
   grains.list_present:
-    - value: {{ salt['pillar.get']('server_role', '') }} {# from Vagrantfile or configure.py #}
+    - value: {{ salt['pillar.get']('server_role') }} {# from Vagrantfile or configure.py #}
 {% endif %}
 
 {% if salt['grains.get']('os_family') == 'MacOS' %}
@@ -87,7 +86,7 @@ virtualbox_install_package:
 
 {%- endif %} {# os_family #}
 
-{% set vagrant_version = salt['pillar.get']('vagrant_version', '') %}
+{% set vagrant_version = salt['pillar.get']('vagrant_version') %}
 {% if vagrant_version != '' %}
 {% set vagrant_url = 'https://releases.hashicorp.com/vagrant/' ~ vagrant_version ~ '/vagrant_' ~ vagrant_version ~ '_x86_64.deb' %}
 vagrant:
@@ -156,7 +155,7 @@ pyvmomi_module:
 {% if salt['grains.get']('os_family') == 'Windows' %}
   {% set my_salt_config = 'C:/salt/conf/minion.d/' %}
 {% else %}
-  {% set my_salt_config = '/etc/salt' + other_minion + '/minion.d/' %}
+  {% set my_salt_config = '/etc/salt' ~ other_minion ~ '/minion.d/' %}
 {% endif %}
 
 {{ my_salt_config }}01_bootstrap_bevy_member.conf:
@@ -230,7 +229,7 @@ add_salt{{ other_minion }}_command:
     - marker_end:   '# ^ ^ ^ ^ ^ ^  added by Salt  ^ ^ ^ ^ ^ ^ ( -- Do not edit or remove this line -- )'
     - append_if_not_found: True
     - content: |
-        alias salt{{ other_minion }}='sudo salt-call --config-dir=/etc/salt{{ other_minion }} $@'
+        alias salt{{ other_minion }}='sudo salt-call --config-dir=/etc/salt{{ other_minion }}'
         if [ ! -n "${ETC_BASH_BASHRC_INCLUDED}" ]
         then
         export ETC_BASH_BASHRC_INCLUDED=1

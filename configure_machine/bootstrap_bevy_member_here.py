@@ -974,7 +974,7 @@ if __name__ == '__main__':
                         if affirmative(input("Also use {} as master address for other Vagrant VMs? [Y/n]:"
                                              .format(my_master_url)), True):
                             settings['master_vagrant_ip'] = my_master_url
-                            write_bevy_settings_files()
+                    write_bevy_settings_files()
                     break  # it looks good -- exit the loop
             except (socket.error, IndexError) as e:
                 print('Sorry. That produced the error==>{}'.format(e))

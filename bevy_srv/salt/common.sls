@@ -12,7 +12,6 @@ windows_packages:
   pkg.installed:
     - pkgs:
       - npp
-      - git
 
 chocolaty_boot:
   module.run:
@@ -23,6 +22,10 @@ chocolaty_boot:
 windows_py3:
   chocolatey.installed:
     - name: python3
+
+windows_git:
+  chocolatey.installed:
+    - name: git.install
 
 windows_pygit2:
   pip.installed:

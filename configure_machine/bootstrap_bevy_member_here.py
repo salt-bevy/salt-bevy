@@ -594,6 +594,18 @@ def get_salt_master_url():
     return ans
 
 
+def get_salt_minion_id():
+    # get an existing id from Salt if possible
+    out = salt_call_json("config.get id")
+    try:
+        ans = out['local']
+        print('Detected minion ID (of first minion) as = "{}"'.format(ans))
+    except (KeyError, TypeError):
+        print("(Present minion ID was not detected.)")
+        ans = ""
+    return ans
+
+
 def choose_master_address(host_name):
     default = host_name
     if my_settings['master']:
@@ -773,10 +785,18 @@ if __name__ == '__main__':
                                                      my_settings['master_host'])
     get_additional_roots()
 
+    print()
+    first_id = get_salt_minion_id()
+
+
+    if my_settings['master']:
+        print('NOTE: The Salt Node ID of the Bevy Master on itself should by "bevymaster".')
+
     node_name = default = my_settings.get('id',  # determine machine ID
-                           'bevymaster' if my_settings['master'] else platform.node().split('.')[0])
+                           'bevymaster' if my_settings['master'] else
+                           first_id if "." not in first_id else platform.node().split('.')[0])
     while Ellipsis:
-        name = input("What will be the Salt Node Id for this machine (for the first or only minion)? [{}]:".format(default)) or default
+        name = input("What will be the Salt Node ID for this machine (for the first or only minion)? [{}]:".format(default)) or default
         if name == default or affirmative(input('Use node name "{}"? [Y/n]:'.format(name)), True):
             node_name = name
             break

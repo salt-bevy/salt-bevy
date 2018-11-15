@@ -261,7 +261,8 @@ grains:
     master_url = settings.get('master_vagrant_ip', '') \
         if master_host else settings.get('master_external_ip', '')
     master = 'localhost' if is_master else master_url
-    id = '' if virtual else 'id: {}'.format(my_settings['id'])
+    id2m = my_settings.get('second_minion_id', 'none')
+    id = '' if virtual else 'id: {}'.format(id2m if id2m.lower() != 'none' else my_settings['id'])
     mstr = '- master' if is_master else ''
 
     more_roots, more_pillars = format_additional_roots(settings, virtual)
@@ -482,7 +483,7 @@ def request_bevy_username_and_password(user_name: str):
             if hash != "" and loop is Ellipsis:  # only True the first time around
                 print('(using the password hash {}'.format(hash))
             else:
-                hash = pwd_hash.make_hash()  # asks your user to type a password, then stores the hash.
+                hash = pwd_hash.make_hash()  # asks your user to type a password.
         loop = not affirmative(
             input('Use user name "{}" in bevy "{}" with that hash'
                   '? [Y/n]:'.format(my_linux_user, bevy)),
@@ -615,6 +616,7 @@ def choose_master_address(host_name):
             if not ip['addr'].is_loopback and not ip['addr'].is_link_local:
                 print('{addr}/{prefix} - {name}'.format(**ip))
     try:
+        # noinspection PyArgumentList
         ip_ = socket.getaddrinfo(default, 4506, type=socket.SOCK_STREAM)
         print('The name {} translates to {}'.format(host_name, ip_[0][4][0]))
     except (socket.error, IndexError):
@@ -623,6 +625,7 @@ def choose_master_address(host_name):
         resp = input("What default url address for the master (for other minions)? [{}]:".format(default))
         choice = resp or default
         try:  # look up the address we have, and see if it appears good
+            # noinspection PyArgumentList
             ip_ = socket.getaddrinfo(choice, 4506, type=socket.SOCK_STREAM)
             addy = ip_[0][4][0]
             print("Okay, the bevy master's address returns as {}".format(addy))
@@ -758,6 +761,7 @@ if __name__ == '__main__':
         settings['bevy'], settings['my_linux_user'], settings['linux_password_hash'] = request_bevy_username_and_password(user_name)
         settings['my_windows_user'], settings['my_windows_password'] = request_windows_username_and_password(user_name)
     print('Setting up user "{}" for bevy "{}"'.format(settings['my_linux_user'], settings['bevy']))
+    write_bevy_settings_files()
 
     if sudo.already_elevated():
         print('Now running as Administrator...')
@@ -983,6 +987,7 @@ if __name__ == '__main__':
         while Ellipsis:  # loop until user says okay
             print('Checking {} for bevy master{} address validity...'.format(my_master_url, two))
             try:  # look up the address we have, and see if it appears good
+                # noinspection PyArgumentList
                 ip_ = socket.getaddrinfo(my_master_url, 4506, type=socket.SOCK_STREAM)
                 if my_settings['master_host']:
                     print("(Hint: your guest VM bevy master local address will be {})"

@@ -250,10 +250,6 @@ file_ignore_regex:
 
 fileserver_backend:
   - roots
-
-grains:
-  datacenter: bevy
-  environment: dev
   
 # log_level_logfile: debug  # uncomment this to get minion logs at debug level
 """
@@ -263,7 +259,6 @@ grains:
     master = 'localhost' if is_master else master_url
     id2m = my_settings.get('second_minion_id', 'none')
     id = '' if virtual else 'id: {}'.format(id2m if id2m.lower() != 'none' else my_settings['id'])
-    mstr = '- master' if is_master else ''
 
     more_roots, more_pillars = format_additional_roots(settings, virtual)
 

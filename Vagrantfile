@@ -37,8 +37,9 @@ bevy_mac = (BEVY.to_i(36) % 0x1000000).to_s(16)  # a MAC address based on hash o
 BEVYMASTER = "bevymaster"   # the name for your bevy master
 # .
 VAGRANT_HOST_NAME = Socket.gethostname
-login = Etc.getlogin    # get your own user information to use in the VM
+login = Etc.getlogin    # get your own user information
 my_linux_user = settings['my_linux_user']
+my_linux_user = login if my_linux_user.to_s.empty?  # use current value if settings gives blank.
 HASHFILE_NAME = 'bevy_linux_password.hash'  # filename for your Linux password hash
 hash_path = File.join(Dir.home, '.ssh', HASHFILE_NAME)  # where you store it ^ ^ ^
 #
@@ -55,13 +56,12 @@ if (RUBY_PLATFORM=~/darwin/i)  # on Mac OS, guess two frequently used ports
 else  # Windows or Linux
   interface_guesses = settings['vagrant_interface_guess']
 end
-if ARGV[0] == "up" or ARGV[0] == "reload"
+if vagrant_command == "up" or vagrant_command == "reload"
   puts "Running on host #{VAGRANT_HOST_NAME}"
   puts "Will try bridge network using interface(s): #{interface_guesses}"
 end
 
 Vagrant.configure(2) do |config|  # the literal "2" is required.
-  info = Etc.getpwnam(login)
 
   config.ssh.forward_agent = true
 
@@ -164,10 +164,10 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
         master_config.vm.synced_folder s[0], "/#{s[1]}", :owner => "vagrant", :group => "staff", :mount_options => ["umask=0002"]
       end
     end
-    if vagrant_command == "ssh"
-      master_config.ssh.username = my_linux_user  # if you type "vagrant ssh", use this username
-      master_config.ssh.private_key_path = Dir.home() + "/.ssh/id_rsa"
-    end
+    #if vagrant_command == "ssh"
+    #  master_config.ssh.username = my_linux_user  # if you type "vagrant ssh", use this username
+    #  master_config.ssh.private_key_path = Dir.home() + "/.ssh/id_rsa"
+    #end
     master_config.vm.provider "virtualbox" do |v|
         v.name = BEVY + '_bevymaster'  # ! N.O.T.E.: name must be unique
         v.memory = 1024       # limit memory for the virtual box
@@ -198,7 +198,8 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
        salt.masterless = true  # the provisioning script for the master is masterless
        salt.run_highstate = true
        password_hash = settings['linux_password_hash']
-        if settings
+       info = Etc.getpwnam(login)
+       if settings
          uid = settings['my_linux_uid']
          gid = settings['my_linux_gid']
        elsif info  # info is Null on Windows boxes
@@ -345,8 +346,9 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
  # . . . . . . . . . . . . Define machine win16 . . . . . . . . . . . . . .
  # . this machine installs Salt on a Windows 2016 Server and runs highstate.
   config.vm.define "win16", autostart: false do |quail_config|
-    quail_config.vm.box = "gusztavvargadr/w16s" # Windows Server 2016 standard
-    quail_config.vm.box_version = "1808.0.0" # WARNING: 1809.0.0 does not have WinRM enabled
+    quail_config.vm.box = "cdaf/WindowsServer" #gusztavvargadr/w16s" # Windows Server 2016 standard
+    # "jacqinthebox/windowsserver2016"
+    # quail_config.vm.box_version = "1808.0.0" # WARNING: 1809.0.0 does not have WinRM enabled
 
     quail_config.vm.network "public_network", bridge: interface_guesses
     quail_config.vm.network "private_network", ip: NETWORK + ".2.16"

@@ -70,8 +70,6 @@ GUEST_MASTER_CONFIG_FILE = '/srv/bevymaster_config/minion'
 GUEST_MINION_CONFIG_FILE = '/srv/guest_config/minion'
 WINDOWS_GUEST_CONFIG_FILE = '/srv/windows_config/minion'
 
-USER_SSH_KEY_FILE_NAME = SALT_SRV_ROOT + '/ssh_keys/{}.pub'
-
 DEFAULT_VAGRANT_PREFIX = '172.17'  # first two bytes of Vagrant private network
 DEFAULT_VAGRANT_NETWORK = '172.17.0.0/16'  #  Vagrant private network
 DEFAULT_FQDN_PATTERN = '{}.{}.test' # .test is ICANN reserved for test networks.
@@ -80,6 +78,7 @@ minimum_salt_version = MINIMUM_SALT_VERSION.split('.')
 # noinspection PyTypeChecker
 minimum_salt_version[1] = int(minimum_salt_version[1])  # use numeric compare of month field
 this_file = Path(__file__).resolve()  # the absolute path name of this program's source
+user_ssh_key_file_directory = this_file.parent.parent / 'bevy_srv/salt/ssh_keys'
 
 argv = [s.strip() for s in sys.argv]
 if '--help' in argv:
@@ -528,33 +527,33 @@ def request_windows_username_and_password(user_name: str):
 def write_ssh_key_file(my_linux_user):
     pub = None  # object to contain the user's ssh public key
     okay = 'n'
+    pub_key = ''
     try:
         user_home_pub = Path.home() / '.ssh' / 'id_rsa.pub'  # only works on Python 3.5+
-    except AttributeError:  # older Python3
+    except AttributeError:  # older Python3 (not seen on Windows os)
         user_home_pub = Path('/home/') / getpass.getuser() / '.ssh' / 'id_rsa.pub'
-    if my_settings['master_host']:
-        user_key_file = Path(SALT_SRV_ROOT) / 'ssh_keys' / (my_linux_user + '.pub')
-    else:
-        user_key_file = Path(USER_SSH_KEY_FILE_NAME.format(my_linux_user))
-    try:  # named user's default location on this machine?
-        print('trying file: "{}"'.format(user_home_pub))
-        pub = user_home_pub.open()
+
+    user_key_file = user_ssh_key_file_directory / (my_linux_user + '.pub')
+    try: # maybe it is already in our tree?
+        print('trying file: "{}"'.format(user_key_file))
+        pub = user_key_file.open()
     except OSError:
-        try:  # maybe it is already in the /srv tree?
-            user_home_pub = user_key_file
-            print('trying file: "{}"'.format(user_home_pub))
+        try:  # named user's default location on this machine?
+            print('Not found. trying file: "{}"'.format(user_home_pub))
             pub = user_home_pub.open()
         except OSError:
             print('No ssh public key found. You will have to supply it the hard way...')
     if pub:
         pub_key = pub.read()
-        okay = input(
-            '{} exists, and contains:"{}"\n  Use that on all minions? [Y/n]:'.format(
-                user_home_pub, pub_key))
+        if len(pub_key) < 64:
+            print('File too short to contain a good ssh key.')  # use default okay = 'n'
+        else:
+            okay = input(
+                'File exists, and contains:"{}"\n  Use that on all minions? [Y/n]:'.format(
+                    pub_key))
 
-    pub_key = ''
     while not affirmative(okay, default=True):
-        print('Next, cut the text of your ssh public key to transmit it to your new server.\n')
+        print('Now, cut the text of your ssh public key to transmit it to your new server.\n')
         print('  (or type "exit" to bypass ssh key uploads.)')
         print('You can usually get your ssh key by typing:\n')
         print('   cat ~/.ssh/id_rsa.pub\n')
@@ -571,11 +570,18 @@ def write_ssh_key_file(my_linux_user):
         if affirmative(okay) or okay.lower() == 'exit':
             break
     if affirmative(okay, default=True):
+        try:
+            if user_key_file.samefile(pub.name):
+                print('using existing {}'.format(str(user_key_file)))
+                return
+        except OSError:
+            pass
         # user_key_file.parent.mkdir(parents=True, exist_ok=True) # only works for Python3.5+
         os.makedirs(str(user_key_file.parent), exist_ok=True)  # 3.4
         # 3.5 user_key_file.write_text(pub_key)
         with user_key_file.open('w') as f:  # 3.4
             f.write(pub_key)  # 3.4
+            f.close()
             print('file {} written.'.format(str(user_key_file)))
 
 
@@ -655,7 +661,7 @@ def choose_bridge_interface():
             continue
         choices.append(ip)
     while Ellipsis:
-        print('This machine has the following possible external IP addresses:')
+        print('This machine has the following possible external IP interfaces:')
         i = 0
         for ip in choices:
             i += 1
@@ -667,7 +673,7 @@ def choose_bridge_interface():
             return choices[0]
         else:
             try:
-                choice = choices[int(input('Which network do you want to use for bridging?:')) - 1]
+                choice = choices[int(input('Which network interface do you want to use for bridging?:')) - 1]
                 return choice
             except (ValueError, IndexError, AttributeError):
                 print('Bad choice.')
@@ -681,7 +687,7 @@ def get_projects_directory():
             default = '/projects'
         print('We can set up a Vagrant share "/projects" to find all of your working directories.')
         print('Use "none" to disable this feature.')
-        resp = input('What is the root directory for your projects directories? [{}]'.format(default))
+        resp = input('What is the root directory for your projects directories? [{}]:'.format(default))
         resp = resp or default
         if os.path.isdir(resp) or resp.lower() == 'none':
             return resp
@@ -888,10 +894,10 @@ if __name__ == '__main__':
                                               NotImplemented if ask_second_minion else 'Not Appropriate')
     historic_second_minion = second_minion_id != 'Not Appropriate'
     if ask_second_minion or historic_second_minion:
-        print('Your Salt master URL was detected as: {}'.format(master_url))
+        print('Your primary Salt master URL was detected as: {}'.format(master_url))
         if settings.get('master_external_ip', None):
-            print("Your bevymaster's URL was: {}".format(settings['master_external_ip']))
-        print('You may continue to use that primary master, and also use a second master for your bevy.')
+            print("Your bevymaster's (external) URL was: {}".format(settings['master_external_ip']))
+        print('You may continue to use your primary master, and also use a second master to connect your bevy.')
         print('Your previously used minion ID was "{}" on your (optional) second master'.format(
             my_settings.get('second_minion_id', 'None')))
         while ...:
@@ -978,7 +984,7 @@ if __name__ == '__main__':
                     break  # it looks good -- exit the loop
             except (socket.error, IndexError) as e:
                 print('Sorry. That produced the error==>{}'.format(e))
-            my_master_url = input("Try again. Type the name or address of this machine's master{}?:".format(two))
+            my_master_url = input("Okay. Type the name or address for this machine's master{}?:".format(two))
 
         print('\n\n. . . . . . . . . .\n')
         salt_state_apply('configure_bevy_member',

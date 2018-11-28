@@ -11,8 +11,4 @@
 /srv/salt/win/repo-ng/npp.sls:
   file.managed:
     - source: salt://bevy_master/files/windows/npp.sls.source
-
-/srv/salt/win/repo-ng/git.sls:
-  file.managed:
-    - source: salt://bevy_master/files/windows/git.sls.source
 ...

@@ -1,5 +1,5 @@
 ---
-# salt state file to ensure user's priviledges on a virtual machine
+# salt state file to ensure user's privileges on a virtual machine
 
 {% set my_user = salt['pillar.get']('my_linux_user', 'None') %}
 {% set my_windows_user = salt['pillar.get']('my_windows_user', 'None') %}
@@ -40,10 +40,12 @@ ssh_public_key:
     - text: |
         {{ my_user }} ALL=(ALL) NOPASSWD: ALL
 
+ {% endif %}  {# my_user defined #}
+
 /etc/defaults/login:
   file.append:
     - text: "UMASK=002  # create files as group-readable by default ## added by Salt"
     - makedirs: true
- {% endif %}  {# my_user defined #}
+
 {% endif %} {# Windows not #}
 ...

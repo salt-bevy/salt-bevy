@@ -1,8 +1,8 @@
 ---
 # salt pillar file for common values for a bevy
 
-{% set master_vagrant_ip = salt['config.get']('master_external_ip', '192.168.88.2') %}  {# main IP address of bevy master #}
-{% set master_external_ip = salt['config.get']('master_external_ip', '192.168.88.2') %}  {# main IP address of bevy master #}
+{% set master_vagrant_ip = salt['config.get']('master_external_ip', '192.168.88.9') %}  {# main IP address of bevy master #}
+{% set master_external_ip = salt['config.get']('master_external_ip', '192.168.88.9') %}  {# main IP address of bevy master #}
 {% set pxe_network_cidr = '192.168.88.0/24' %}  {# your private local network for PXE operation #}
 pxe_network_cidr: '{{ pxe_network_cidr }}'
 bevymaster_external_ip: {{ master_external_ip }}

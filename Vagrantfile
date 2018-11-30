@@ -305,7 +305,7 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
  # . . . . . . . . . . . . Define machine win10 . . . . . . . . . . . . . .
  # . this Windows 10 machine bootstraps Salt and connects to bevy master.
   config.vm.define "win10", autostart: false do |quail_config|
-    quail_config.vm.box = "gusztavvargadr/w10e"  #"Microsoft/EdgeOnWindows10"
+    quail_config.vm.box = "StefanScherer/windows_10"  #"Microsoft/EdgeOnWindows10"
     quail_config.vm.hostname = 'win10'
     quail_config.vm.network "public_network", bridge: interface_guesses
     quail_config.vm.network "private_network", ip: NETWORK + ".2.10"
@@ -429,6 +429,7 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
       quail_config.vm.network "private_network", ip: NETWORK + ".2.19"
       if ARGV.length > 1 and ARGV[0] == "up" and ARGV[1] == "win19"
         puts "Starting #{ARGV[1]} as a Salt minion of #{settings['master_vagrant_ip']}."
+        puts "NOTE: you may need to hit <Ctrl C> after starting this Windows minion."
         end
       quail_config.vm.provider "virtualbox" do |v|
           v.name = BEVY + '_win19'  # ! N.O.T.E.: name must be unique
@@ -454,7 +455,7 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
           salt.version = "2018.3.3"  # TODO: remove this when this becomes default. Needed for chocolatey
           salt.verbose = true
           salt.colorize = true
-          salt.run_highstate = true
+          salt.run_highstate = false  # Vagrant may stall trying to run Highstate for this minion.
       end
     end
 

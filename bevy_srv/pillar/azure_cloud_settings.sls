@@ -1,8 +1,9 @@
 ---
-# salt pillar file for Azere cloud settings
+# salt pillar file for Azure cloud settings
 
 azure:
-  subscription_id: 'a0933dde-d634-4707-a3f1-70a2edd29fbf'
+  enabled: False
+  subscription_id: 'a0933dde-d634-4707-a3f1-70a2edd29fbf' # look on the "overview" page for your VM
   # https://apps.dev.microsoft.com/#/appList
   username: kf7xm@msn.com  # Microsoft Live Login info
   password: aPassWordGoesHere  # TODO: put in your genuine subscription information

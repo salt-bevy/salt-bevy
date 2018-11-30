@@ -909,9 +909,8 @@ if __name__ == '__main__':
                 exit(1)
         ask_second_minion = master_url not in ['localhost', 'salt', '127.0.0.1'] and \
                             platform.system() != 'Windows'  # TODO: figure out how to run 2nd minion on Windows
-    second_minion_id = my_settings.setdefault('second_minion_id',
-                                              NotImplemented if ask_second_minion else 'Not Appropriate')
-    historic_second_minion = second_minion_id != 'Not Appropriate'
+    second_minion_id = my_settings.setdefault('second_minion_id', 'None')
+    historic_second_minion = second_minion_id != 'None'
     if ask_second_minion or historic_second_minion:
         print('Your primary Salt master URL was detected as: {}'.format(master_url))
         if settings.get('master_external_ip', None):
@@ -923,7 +922,7 @@ if __name__ == '__main__':
             default = my_settings.get('second_minion_id', 'bevymaster' if my_settings['master'] else node_name)
             print('Enter "None" to use the primary Salt Master only.')
             response = normalize_literal_none(input(
-                'What ID do you want to use for this node on your second master? [{}]'.format(default))) or default
+                'What ID do you want to use for this node on your second master? [{}]:'.format(default))) or default
             if response == 'None' or affirmative(input('Use "{}"?: [Y/n]:'.format(response)), True):
                 my_settings['second_minion_id'] = response
                 break
@@ -1026,3 +1025,4 @@ if __name__ == '__main__':
     print()
     if platform.system() == 'Windows':
         input('Hit <Enter> to close this window:')
+        print('and ... if you see this message, you may need to hit <Ctrl C>, too.')

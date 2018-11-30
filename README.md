@@ -1,6 +1,3 @@
-#WARNING:
-_I fouled something up by editing the "master" branch.  Until I get this fixed, please use the "checkpoint" branch for any serious work.  I will set the master branch to require pull requests as soon as I clean up my mess._
-
 # salt-bevy
 
 ### Using salt-cloud to learn (or use) SaltStack basics

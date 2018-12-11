@@ -12,13 +12,15 @@ require "ipaddr"
 # under the DRY principle, the most important setting are stored
 # in a Salt 'pillar' file. Vagrant has to look them up there...
 #
+vagrant_command = ARGV[0]
+vagrant_object = ARGV.length > 1 ? ARGV[1] : ""  # the name (if any) of the vagrant VM for this command
 # . v . v . retrieve stored bevy settings . v . v . v . v . v . v .
 BEVY_SETTINGS_FILE_NAME = '/srv/pillar/01_bevy_settings.sls'
 if File.exists?(BEVY_SETTINGS_FILE_NAME)
   settings = YAML.load_file(BEVY_SETTINGS_FILE_NAME)  # get your local settings
 else
   settings = {"bevy" => "xxxx", "vagrant_prefix" => '172.17'} # only here so you can do "destroy" without SETTINGS
-  if ARGV[0] == "up"
+  if vagrant_command == "up"
     puts "You must run 'configure_machine/bootstrap_bevy_member_here.py' before running 'vagrant up'"
     abort "Unable to read settings file #{BEVY_SETTINGS_FILE_NAME}."
     end
@@ -29,7 +31,7 @@ BEVY = settings["bevy"]  # the name of your bevy
 NETWORK = "#{settings['vagrant_prefix']}"
 # ^ ^ each VM below will have a NAT network in NETWORK.17.x/27.
 puts "Your bevy name:#{BEVY} using local network #{NETWORK}.x.x"
-puts "This computer will be at #{NETWORK}.2.1" if ARGV[1] == "up"
+puts "This computer will be at #{NETWORK}.2.1" if vagrant_command == "up"
 bevy_mac = (BEVY.to_i(36) % 0x1000000).to_s(16)  # a MAC address based on hash of BEVY
 # in Python that would be: bevy_mac = format(int(BEVY, base=36) % 0x1000000, 'x')
 #
@@ -37,16 +39,14 @@ bevy_mac = (BEVY.to_i(36) % 0x1000000).to_s(16)  # a MAC address based on hash o
 BEVYMASTER = "bevymaster"   # the name for your bevy master
 # .
 VAGRANT_HOST_NAME = Socket.gethostname
-login = Etc.getlogin    # get your own user information to use in the VM
+login = Etc.getlogin    # get your own user information
 my_linux_user = settings['my_linux_user']
+my_linux_user = login if my_linux_user.to_s.empty?  # use current value if settings gives blank.
 HASHFILE_NAME = 'bevy_linux_password.hash'  # filename for your Linux password hash
 hash_path = File.join(Dir.home, '.ssh', HASHFILE_NAME)  # where you store it ^ ^ ^
 #
 # . v . v . the program starts here . v . v . v . v . v . v . v . v . v .
 #
-vagrant_command = ARGV[0]
-vagrant_object = ARGV.length > 1 ? ARGV[1] : ""  # the name (if any) of the vagrant VM for this command
-
 # Bridged networks make the machine appear as another physical device on your network.
 # We must supply a list of names to avoid Vagrant asking for interactive input
 #
@@ -55,17 +55,16 @@ if (RUBY_PLATFORM=~/darwin/i)  # on Mac OS, guess two frequently used ports
 else  # Windows or Linux
   interface_guesses = settings['vagrant_interface_guess']
 end
-if ARGV[0] == "up" or ARGV[0] == "reload"
+if vagrant_command == "up" or vagrant_command == "reload"
   puts "Running on host #{VAGRANT_HOST_NAME}"
   puts "Will try bridge network using interface(s): #{interface_guesses}"
 end
 
 Vagrant.configure(2) do |config|  # the literal "2" is required.
-  info = Etc.getpwnam(login)
 
   config.ssh.forward_agent = true
 
-  if ARGV.length > 2 and not ARGV[2].start_with? 'win'
+  if vagrant_object.start_with? 'win'
     config.vm.provision "shell", inline: "ip address", run: "always"  # what did we get?
   end
 
@@ -87,7 +86,7 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
     quail_config.vm.box = "boxesio/xenial64-standard"  # a public VMware & Virtualbox box
     quail_config.vm.hostname = "quail1" # + DOMAIN
     quail_config.vm.network "private_network", ip: NETWORK + ".2.8"  # needed so saltify_profiles.conf can find this unit
-    if ARGV[0] == "up" and (ARGV.length == 1 or (ARGV.length > 1 and ARGV[1] == "quail1"))
+    if vagrant_command == "up" and (ARGV.length == 1 or (vagrant_object == "quail1"))
       puts "Starting 'quail1' at #{NETWORK}.2.8..."
       end
     quail_config.vm.network "public_network", bridge: interface_guesses
@@ -113,8 +112,8 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
     quail_config.vm.box = "boxesio/xenial64-standard"  # a public VMware & Virtualbox box
     quail_config.vm.hostname = "quail2" # + DOMAIN
     quail_config.vm.network "private_network", ip: NETWORK + ".2.5"
-    if ARGV.length > 1 and ARGV[0] == "up" and ARGV[1] == "quail2"
-      puts "Starting #{ARGV[1]} at #{NETWORK}.2.5 as a Salt minion with master=#{settings['master_vagrant_ip']}...\n."
+    if vagrant_command == "up" and vagrant_object == "quail2"
+      puts "Starting #{vagrant_object} at #{NETWORK}.2.5 as a Salt minion with master=#{settings['master_vagrant_ip']}...\n."
       end
     quail_config.vm.network "public_network", bridge: interface_guesses
     quail_config.vm.provider "virtualbox" do |v|
@@ -149,12 +148,12 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
     master_config.vm.box = "ubuntu/bionic64" #"boxesio/xenial64-standard"
     master_config.vm.hostname = "bevymaster"
     master_config.vm.network "private_network", ip: NETWORK + ".2.2"
-    if ARGV.length > 1 and ARGV[0] == "up" and ARGV[1] == "bevymaster"
+    if vagrant_command == "up" and vagrant_object == "bevymaster"
       if settings['master_vagrant_ip'] != NETWORK + ".2.2"
         # prevent running a Vagrant bevy master if another is in use.
         abort "Sorry. Your master_vagrant_ip setting of '#{settings['master_vagrant_ip']}' suggests that your Bevy Master is not expected to be Virtual here."
         end
-      puts "Starting #{ARGV[1]} at #{NETWORK}.2.2..."
+      puts "Starting #{vagrant_object} at #{NETWORK}.2.2..."
       end
     master_config.vm.network "public_network", bridge: interface_guesses, mac: "be0000" + bevy_mac
     master_config.vm.synced_folder ".", "/vagrant", :owner => "vagrant", :group => "staff", :mount_options => ["umask=0002"]
@@ -164,10 +163,10 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
         master_config.vm.synced_folder s[0], "/#{s[1]}", :owner => "vagrant", :group => "staff", :mount_options => ["umask=0002"]
       end
     end
-    if vagrant_command == "ssh"
-      master_config.ssh.username = my_linux_user  # if you type "vagrant ssh", use this username
-      master_config.ssh.private_key_path = Dir.home() + "/.ssh/id_rsa"
-    end
+    #if vagrant_command == "ssh"
+    #  master_config.ssh.username = my_linux_user  # if you type "vagrant ssh", use this username
+    #  master_config.ssh.private_key_path = Dir.home() + "/.ssh/id_rsa"
+    #end
     master_config.vm.provider "virtualbox" do |v|
         v.name = BEVY + '_bevymaster'  # ! N.O.T.E.: name must be unique
         v.memory = 1024       # limit memory for the virtual box
@@ -198,7 +197,8 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
        salt.masterless = true  # the provisioning script for the master is masterless
        salt.run_highstate = true
        password_hash = settings['linux_password_hash']
-        if settings
+       info = Etc.getpwnam(login)
+       if settings
          uid = settings['my_linux_uid']
          gid = settings['my_linux_gid']
        elsif info  # info is Null on Windows boxes
@@ -235,8 +235,8 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
     quail_config.vm.box = "ubuntu/bionic64"
     quail_config.vm.hostname = "quail18" # + DOMAIN
     quail_config.vm.network "private_network", ip: NETWORK + ".2.18"
-    if ARGV.length > 1 and ARGV[0] == "up" and ARGV[1] == "quail18"
-      puts "Starting #{ARGV[1]} at #{NETWORK}.2.18..."
+    if vagrant_command == "up" and vagrant_object == "quail18"
+      puts "Starting #{vagrant_object} at #{NETWORK}.2.18..."
       end
     quail_config.vm.network "public_network", bridge: interface_guesses
     quail_config.vm.provider "virtualbox" do |v|
@@ -259,8 +259,8 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
     quail_config.vm.box = "boxesio/xenial64-standard"  # a public VMware & Virtualbox box
     quail_config.vm.hostname = "quail16" # + DOMAIN
     quail_config.vm.network "private_network", ip: NETWORK + ".2.3"
-    if ARGV.length > 1 and ARGV[0] == "up" and ARGV[1] == "quail16"
-      puts "Starting #{ARGV[1]} at #{NETWORK}.2.3..."
+    if vagrant_command == "up" and vagrant_object == "quail16"
+      puts "Starting #{vagrant_object} at #{NETWORK}.2.3..."
       end
     quail_config.vm.network "public_network", bridge: interface_guesses
     quail_config.vm.provider "virtualbox" do |v|
@@ -283,8 +283,8 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
     quail_config.vm.box = "boxesio/trusty64-standard"  # a public VMware & Virtualbox box
     quail_config.vm.hostname = "quail14" # + DOMAIN
     quail_config.vm.network "private_network", ip: NETWORK + ".2.4"
-    if ARGV.length > 1 and ARGV[0] == "up" and ARGV[1] == "quail14"
-      puts "Starting #{ARGV[1]} at #{NETWORK}.2.4..."
+    if vagrant_command == "up" and vagrant_object == "quail14"
+      puts "Starting #{vagrant_object} at #{NETWORK}.2.4..."
       end
     quail_config.vm.network "public_network", bridge: interface_guesses
     quail_config.vm.provider "virtualbox" do |v|
@@ -304,12 +304,12 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
  # . . . . . . . . . . . . Define machine win10 . . . . . . . . . . . . . .
  # . this Windows 10 machine bootstraps Salt and connects to bevy master.
   config.vm.define "win10", autostart: false do |quail_config|
-    quail_config.vm.box = "gusztavvargadr/w10e"  #"Microsoft/EdgeOnWindows10"
+    quail_config.vm.box = "StefanScherer/windows_10"  #"Microsoft/EdgeOnWindows10"
     quail_config.vm.hostname = 'win10'
     quail_config.vm.network "public_network", bridge: interface_guesses
     quail_config.vm.network "private_network", ip: NETWORK + ".2.10"
-    if ARGV.length > 1 and ARGV[0] == "up" and ARGV[1] == "win10"
-      puts "Starting #{ARGV[1]} as a Salt minion of #{settings['master_vagrant_ip']}."
+    if vagrant_command == "up" and vagrant_object == "win10"
+      puts "Starting #{vagrant_object} as a Salt minion of #{settings['master_vagrant_ip']}."
       puts "NOTE: you may need to run \"vagrant up\" twice for this Windows minion."
       end
     quail_config.vm.provider "virtualbox" do |v|
@@ -345,13 +345,11 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
  # . . . . . . . . . . . . Define machine win16 . . . . . . . . . . . . . .
  # . this machine installs Salt on a Windows 2016 Server and runs highstate.
   config.vm.define "win16", autostart: false do |quail_config|
-    quail_config.vm.box = "gusztavvargadr/w16s" # Windows Server 2016 standard
-    quail_config.vm.box_version = "1808.0.0" # WARNING: 1809.0.0 does not have WinRM enabled
-
+    quail_config.vm.box = "cdaf/WindowsServer" #gusztavvargadr/w16s" # Windows Server 2016 standard
     quail_config.vm.network "public_network", bridge: interface_guesses
     quail_config.vm.network "private_network", ip: NETWORK + ".2.16"
-    if ARGV.length > 1 and ARGV[0] == "up" and ARGV[1] == "win16"
-      puts "Starting #{ARGV[1]} as a Salt minion of #{settings['master_vagrant_ip']}."
+    if vagrant_command == "up" and vagrant_object == "win16"
+      puts "Starting #{vagrant_object} as a Salt minion of #{settings['master_vagrant_ip']}."
       end
     quail_config.vm.provider "virtualbox" do |v|
         v.name = BEVY + '_win16'  # ! N.O.T.E.: name must be unique
@@ -388,8 +386,8 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
     quail_config.vm.box = "devopsguys/Windows2012R2Eval"
     quail_config.vm.network "public_network", bridge: interface_guesses
     quail_config.vm.network "private_network", ip: NETWORK + ".2.12"
-    if ARGV.length > 1 and ARGV[0] == "up" and ARGV[1] == "win12"
-      puts "Starting #{ARGV[1]} as a Salt minion of #{settings['master_vagrant_ip']}."
+    if vagrant_command == "up" and vagrant_object == "win12"
+      puts "Starting #{vagrant_object} as a Salt minion of #{settings['master_vagrant_ip']}."
       end
     quail_config.vm.provider "virtualbox" do |v|
         v.name = BEVY + '_win12'  # ! N.O.T.E.: name must be unique
@@ -425,8 +423,9 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
       quail_config.vm.box = "StefanScherer/windows_2019"
       quail_config.vm.network "public_network", bridge: interface_guesses
       quail_config.vm.network "private_network", ip: NETWORK + ".2.19"
-      if ARGV.length > 1 and ARGV[0] == "up" and ARGV[1] == "win19"
-        puts "Starting #{ARGV[1]} as a Salt minion of #{settings['master_vagrant_ip']}."
+      if vagrant_command == "up" and vagrant_object == "win19"
+        puts "Starting #{vagrant_object} as a Salt minion of #{settings['master_vagrant_ip']}."
+        puts "NOTE: you may need to hit <Ctrl C> after starting this Windows minion."
         end
       quail_config.vm.provider "virtualbox" do |v|
           v.name = BEVY + '_win19'  # ! N.O.T.E.: name must be unique
@@ -452,7 +451,7 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
           salt.version = "2018.3.3"  # TODO: remove this when this becomes default. Needed for chocolatey
           salt.verbose = true
           salt.colorize = true
-          salt.run_highstate = true
+          salt.run_highstate = false  # Vagrant may stall trying to run Highstate for this minion.
       end
     end
 
@@ -463,8 +462,8 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
     quail_config.vm.box = "burinkhazad/macos-high-sierra"
     quail_config.vm.hostname = "mac13" # + DOMAIN
     quail_config.vm.network "private_network", ip: NETWORK + ".2.13"
-    if ARGV.length > 1 and ARGV[0] == "up" and ARGV[1] == "mac13"
-      puts "Starting #{ARGV[1]} at #{NETWORK}.2.13 as a Salt minion with master=#{settings['bevymaster_url']}...\n."
+    if vagrant_command == "up" and vagrant_object == "mac13"
+      puts "Starting #{vagrant_object} at #{NETWORK}.2.13 as a Salt minion with master=#{settings['bevymaster_url']}...\n."
       end
     quail_config.vm.network "public_network", bridge: interface_guesses
     quail_config.vm.provider "virtualbox" do |v|

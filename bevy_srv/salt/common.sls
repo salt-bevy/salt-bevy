@@ -8,10 +8,11 @@ pkg.refresh_db:
   - require_in:
     - pkg: windows_packages
 windows_packages:
-{# Assumes that you ran bevy_master.local_windows_repository on the Master #}
+{# Assumes that you ran salt_master.local_windows_repository on the Master #}
   pkg.installed:
     - pkgs:
       - npp
+      - git
 
 chocolaty_boot:
   module.run:
@@ -23,24 +24,9 @@ windows_py3:
   chocolatey.installed:
     - name: python3
 
-windows_git:
-  chocolatey.installed:
-    - name: git.install
-
-windows_pygit2:
-  pip.installed:
-    - name: pygit2
-    - cwd: 'c:\salt\bin\Scripts\'
-    - bin_env: '.\pip.exe'
-    - reload_modules: True
-    - onfail_in:
-      - windows_pygit2_failure_workaround
-
 windows_pygit2_failure_workaround:
    cmd.run:
      - name: 'c:\salt\bin\python -m pip install pygit2'
-     #- onfail:
-     #  - pip: windows_pygit2
 
 {# Note: .sls files are interpreted on the Minion, so the environment variables are local to it #}
 {{ salt['environ.get']('SystemRoot') }}/edit.bat:  {# very dirty way to create an "edit" command for all users #}
@@ -54,9 +40,9 @@ windows_pygit2_failure_workaround:
     - contents: |
         @ECHO OFF
         IF "%1"=="-f" (
-        powershell get-content "%2" -tail 10 -wait
+        powershell get-content "%2" -tail 20 -wait
         ) ELSE (
-        start /b powershell get-content "%1" -tail 10
+        start /b powershell get-content "%1" -tail 20
         )
     - unless:  {# do not install this if there is an existing "tail" command #}
       - where tail

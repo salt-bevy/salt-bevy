@@ -100,10 +100,11 @@ ENV
 # mypy
 .mypy_cache/
 
-# PyCharm, etc.
+# PyCharm, Visual Studio, MacOS, etc.
 .idea/
 vs_*
 *.sln
+.DS_Store
 
 # project
 .vagrant

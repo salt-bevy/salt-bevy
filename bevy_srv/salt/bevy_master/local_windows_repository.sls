@@ -15,4 +15,8 @@
 /srv/salt/win/repo-ng/git.sls:
   file.managed:
     - source: salt://bevy_master/files/windows/git.sls.source
+
+/srv/salt/win/repo-ng/VCforPython27.sls:
+  file.managed:
+    - source: salt://bevy_master/files/windows/VCforPython27.sls.source
 ...

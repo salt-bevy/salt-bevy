@@ -7,6 +7,8 @@ remove_the_competition:  # these take a lot of virtual memory.
   chocolatey.uninstalled:
     - name: chef-client
     - order: last  {# wait for chocolatey to be installed #}
+  {% elif grains['os'] == 'MacOS' %}
+  test.nop
   {% else %}
   pkg.removed:
     - names:

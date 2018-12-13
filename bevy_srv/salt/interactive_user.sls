@@ -23,11 +23,15 @@ staff:
   - present
 
 {{ my_user }}:
+{% if grains['os'] == 'MacOS' %}
+  group:
+    - present
+{% endif %}
   user:
     - present
     - groups:
     {% if grains['os'] == 'Windows' %}
-      - Administrators {% else %}
+      - Administrators {% elif grains['os'] != 'MacOS' %}
       - sudo{% endif %}
     - optional_groups:
       - {{ users_group }}

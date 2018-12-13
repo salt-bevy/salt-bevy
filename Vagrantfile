@@ -64,7 +64,7 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
 
   config.ssh.forward_agent = true
 
-  if vagrant_object.start_with? 'win'
+  unless vagrant_object.start_with? 'win'
     config.vm.provision "shell", inline: "ip address", run: "always"  # what did we get?
   end
 
@@ -467,6 +467,7 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
       end
     quail_config.vm.network "public_network", bridge: interface_guesses
     quail_config.vm.provider "virtualbox" do |v|
+        v.gui = true
         v.name = BEVY + '_mac13'  # ! N.O.T.E.: name must be unique
         v.memory = 6000       # limit memory for the virtual box
         v.cpus = 2

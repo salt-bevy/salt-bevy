@@ -1,11 +1,8 @@
 ---
 # Salt state for installing Visual Studio 2017 Professional
 #
-vs_2017_choc0:
-  module.run:
-    - name: chocolatey.bootstrap
-    - require_in:
-      - visualstudio2017community
+include:
+  - windows.install_chocolatey
 
 visualstudio2017community:
   chocolatey.installed:

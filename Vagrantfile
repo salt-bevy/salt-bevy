@@ -19,11 +19,14 @@ BEVY_SETTINGS_FILE_NAME = '/srv/pillar/01_bevy_settings.sls'
 if File.exists?(BEVY_SETTINGS_FILE_NAME)
   settings = YAML.load_file(BEVY_SETTINGS_FILE_NAME)  # get your local settings
 else
-  settings = {"bevy" => "xxxx", "vagrant_prefix" => '172.17'} # only here so you can do "destroy" without SETTINGS
-  if vagrant_command == "up"
-    puts "You must run 'configure_machine/bootstrap_bevy_member_here.py' before running 'vagrant up'"
-    abort "Unable to read settings file #{BEVY_SETTINGS_FILE_NAME}."
+  if ARGV[0] == "up"
+    puts "You should run 'configure_machine/bootstrap_bevy_member_here.py' before running 'vagrant up'"
+    puts "Unable to read settings file #{BEVY_SETTINGS_FILE_NAME}."
+    puts "WARNING: Using default bevy settings for MASTERLESS Salt operation."
     end
+  settings = {"bevy" => "local", "vagrant_prefix" => '172.17',
+  "vagrant_interface_guess" => "eth0", "master_vagrant_ip" => '127.0.0.1',
+  }
 end
 # .
 BEVY = settings["bevy"]  # the name of your bevy
@@ -31,13 +34,10 @@ BEVY = settings["bevy"]  # the name of your bevy
 NETWORK = "#{settings['vagrant_prefix']}"
 # ^ ^ each VM below will have a NAT network in NETWORK.17.x/27.
 puts "Your bevy name:#{BEVY} using local network #{NETWORK}.x.x"
-puts "This computer will be at #{NETWORK}.2.1" if vagrant_command == "up"
+puts "This (the VM host) computer will be at #{NETWORK}.2.1" if ARGV[1] == "up"
 bevy_mac = (BEVY.to_i(36) % 0x1000000).to_s(16)  # a MAC address based on hash of BEVY
 # in Python that would be: bevy_mac = format(int(BEVY, base=36) % 0x1000000, 'x')
 #
-# .
-BEVYMASTER = "bevymaster"   # the name for your bevy master
-# .
 VAGRANT_HOST_NAME = Socket.gethostname
 login = Etc.getlogin    # get your own user information
 my_linux_user = settings['my_linux_user']
@@ -65,7 +65,7 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
   config.ssh.forward_agent = true
 
   unless vagrant_object.start_with? 'win'
-    config.vm.provision "shell", inline: "ip address", run: "always"  # what did we get?
+    config.vm.provision "shell", inline: "ifconfig", run: "always"  # what did we get?
   end
 
   # Now ... just in case our user is running some flavor of VMWare, we will
@@ -462,6 +462,10 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
     quail_config.vm.box = "burinkhazad/macos-high-sierra"
     quail_config.vm.hostname = "mac13" # + DOMAIN
     quail_config.vm.network "private_network", ip: NETWORK + ".2.13"
+    if settings.has_key?('projects_root') and settings['projects_root'] != 'none'
+      quail_config.vm.synced_folder settings['projects_root'], "/projects", disabled: true # shared folders do not work
+      end
+    quail_config.vm.synced_folder ".", "/vagrant", disabled: true
     if vagrant_command == "up" and vagrant_object == "mac13"
       puts "Starting #{vagrant_object} at #{NETWORK}.2.13 as a Salt minion with master=#{settings['bevymaster_url']}...\n."
       end
@@ -475,17 +479,9 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
         v.customize ["modifyvm", :id, "--natnet1", NETWORK + ".18.64/27"]  # do not use 10.0 network for NAT
         v.customize ["modifyvm", :id, "--natdnshostresolver1", "on"]  # use host's DNS resolver
     end
-    script = "mkdir -p /etc/salt/minion.d\n"
-    script += "chown -R vagrant:staff /etc/salt/minion.d\n"
-    script += "chmod -R 775 /etc/salt/minion.d\n"
-    quail_config.vm.provision "shell", inline: script
+    quail_config.vm.provision "shell", path: "configure_machine/macos_unprotect_dirs.sh"
     quail_config.vm.provision "file", source: settings['GUEST_MINION_CONFIG_FILE'], destination: "/etc/salt/minion.d/00_vagrant_boot.conf"
-    quail_config.vm.provision :salt do |salt|
-       salt.install_type = "stable 2018.3.2"
-       salt.verbose = true
-       salt.bootstrap_options = "-A #{settings['bevymaster_url']} -i mac13 -F -P "
-       #salt.run_highstate = true
-    end
+    quail_config.vm.provision "shell", path: "configure_machine/macos_install_P3_salt.sh"
   end
 
 end

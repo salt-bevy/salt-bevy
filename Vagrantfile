@@ -60,6 +60,9 @@ if vagrant_command == "up" or vagrant_command == "reload"
   puts "Will try bridge network using interface(s): #{interface_guesses}"
 end
 
+max_cpus = Etc.nprocessors - 2
+max_cpus = 1 if max_cpus < 1
+
 Vagrant.configure(2) do |config|  # the literal "2" is required.
 
   config.ssh.forward_agent = true
@@ -119,7 +122,7 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
     quail_config.vm.provider "virtualbox" do |v|
         v.name = BEVY + '_quail2'  # ! N.O.T.E.: name must be unique
         v.memory = 4000       # limit memory for the virtual box
-        v.cpus = 2
+        v.cpus = max_cpus
         v.linked_clone = true # make a soft copy of the base Vagrant box
         v.customize ["modifyvm", :id, "--natnet1", NETWORK + ".17.160/27"]  # do not use 10.0 network for NAT
         v.customize ["modifyvm", :id, "--natdnshostresolver1", "on"]  # use host's DNS resolver
@@ -318,7 +321,7 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
         v.linked_clone = true
         v.customize ["modifyvm", :id, "--vram", "33"]  # enough video memory for full screen
         v.memory = 4096
-        v.cpus = 2
+        v.cpus = max_cpus
         v.customize ["modifyvm", :id, "--natnet1", NETWORK + ".17.192/27"]  # do not use 10.0 network for NAT
         v.customize ["modifyvm", :id, "--natdnshostresolver1", "on"]  # use host's DNS resolver
         v.customize ["storageattach", :id, "--storagectl", "IDE Controller", "--port", "1", "--device", "0", "--type", "dvddrive", "--medium", "emptydrive"]
@@ -395,7 +398,7 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
         v.linked_clone = true
         v.customize ["modifyvm", :id, "--vram", "27"]  # enough video memory for full screen
         v.memory = 4096
-        v.cpus = 2
+        v.cpus = max_cpus
         v.customize ["modifyvm", :id, "--natnet1", NETWORK + ".17.128/27"]  # do not use 10.0 network for NAT
         v.customize ["modifyvm", :id, "--natdnshostresolver1", "on"]  # use host's DNS resolver
     end
@@ -433,7 +436,7 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
           v.linked_clone = true
           v.customize ["modifyvm", :id, "--vram", "27"]  # enough video memory for full screen
           v.memory = 4096
-          v.cpus = 2
+          v.cpus = max_cpus
           v.customize ["modifyvm", :id, "--natnet1", NETWORK + ".18.32/27"]  # do not use 10.0 network for NAT
           v.customize ["modifyvm", :id, "--natdnshostresolver1", "on"]  # use host's DNS resolver
       end
@@ -474,7 +477,7 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
         v.gui = true
         v.name = BEVY + '_mac13'  # ! N.O.T.E.: name must be unique
         v.memory = 6000       # limit memory for the virtual box
-        v.cpus = 2
+        v.cpus = max_cpus
         v.linked_clone = true # make a soft copy of the base Vagrant box
         v.customize ["modifyvm", :id, "--natnet1", NETWORK + ".18.64/27"]  # do not use 10.0 network for NAT
         v.customize ["modifyvm", :id, "--natdnshostresolver1", "on"]  # use host's DNS resolver

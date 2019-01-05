@@ -20,12 +20,13 @@ if File.exists?(BEVY_SETTINGS_FILE_NAME)
   settings = YAML.load_file(BEVY_SETTINGS_FILE_NAME)  # get your local settings
 else
   if ARGV[0] == "up"
-    puts "You should run 'configure_machine/bootstrap_bevy_member_here.py' before running 'vagrant up'"
-    puts "Unable to read settings file #{BEVY_SETTINGS_FILE_NAME}."
-    puts "WARNING: Using default bevy settings for MASTERLESS Salt operation."
+    puts "\n*  ERROR:  Unable to read settings file #{BEVY_SETTINGS_FILE_NAME}."
+    puts "*  NOTICE: Using default bevy settings for MASTERLESS Salt operation."
+    puts "*  NOTICE: Some features will be missing."
+    puts "*  SUGGESTION: You should run 'configure_machine/bootstrap_bevy_member_here.py' before running 'vagrant up'.\n"
     end
   settings = {"bevy" => "local", "vagrant_prefix" => '172.17',
-  "vagrant_interface_guess" => "eth0", "master_vagrant_ip" => '127.0.0.1',
+  "vagrant_interface_guess" => "eth0", "master_vagrant_ip" => 'localhost',
   }
 end
 # .
@@ -135,9 +136,11 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
     script += "chown -R vagrant:staff /etc/salt/minion.d\n"
     script += "chmod -R 775 /etc/salt/minion.d\n"
     quail_config.vm.provision "shell", inline: script
-    quail_config.vm.provision "file", source: settings['GUEST_MINION_CONFIG_FILE'], destination: "/etc/salt/minion.d/00_vagrant_boot.conf"
+    if settings.has_key?('GUEST_MINION_CONFIG_FILE')
+      quail_config.vm.provision "file", source: settings['GUEST_MINION_CONFIG_FILE'], destination: "/etc/salt/minion.d/00_vagrant_boot.conf"
+      end
     quail_config.vm.provision :salt do |salt|
-       # salt.install_type = "stable 2018.3.1"
+       # salt.install_type = "stable 2018.3.3"
        salt.verbose = false
        salt.bootstrap_options = "-A #{settings['master_vagrant_ip']} -i quail2 -F -P "
        salt.run_highstate = true
@@ -148,7 +151,7 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
 # This is the Vagrant version of a Bevy Salt-master.
 # You cannot run it if you are using an external bevymaster.
   config.vm.define "bevymaster", autostart: false do |master_config|
-    master_config.vm.box = "ubuntu/bionic64" #"boxesio/xenial64-standard"
+    master_config.vm.box = "ubuntu/bionic64"
     master_config.vm.hostname = "bevymaster"
     master_config.vm.network "private_network", ip: NETWORK + ".2.2"
     if vagrant_command == "up" and vagrant_object == "bevymaster"
@@ -192,7 +195,7 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
     master_config.vm.provision "file", source: settings['GUEST_MASTER_CONFIG_FILE'], destination: "/etc/salt/minion.d/00_vagrant_boot.conf"
     master_config.vm.provision "file", source: BEVY_SETTINGS_FILE_NAME, destination: BEVY_SETTINGS_FILE_NAME
     master_config.vm.provision :salt do |salt|
-       # salt.install_type = "stable 2018.3.1"
+       # salt.install_type = "stable 2018.3.3"
        salt.verbose = true
        salt.log_level = "info"
        salt.colorize = true
@@ -333,7 +336,9 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
     #quail_config.winrm.username = "IEUser"
     script = "new-item C:\\salt\\conf\\minion.d -itemtype directory -ErrorAction silentlycontinue\r\n"
     quail_config.vm.provision "shell", inline: script
-    quail_config.vm.provision "file", source: settings['WINDOWS_GUEST_CONFIG_FILE'], destination: "c:/salt/conf/minion.d/00_vagrant_boot.conf"
+    if settings.has_key?('WINDOWS_GUEST_CONFIG_FILE')
+      quail_config.vm.provision "file", source: settings['WINDOWS_GUEST_CONFIG_FILE'], destination: "c:/salt/conf/minion.d/00_vagrant_boot.conf"
+      end
     quail_config.vm.provision :salt do |salt|  # salt_cloud cannot push Windows salt
         salt.minion_id = "win10"
         salt.master_id = "#{settings['master_vagrant_ip']}"
@@ -371,7 +376,9 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
     script = "new-item C:\\salt\\conf\\minion.d -itemtype directory\r\n" # -ErrorAction silentlycontinue\r\n"
     script += "route add 10.0.0.0 mask 255.0.0.0 #{NETWORK}.17.226 -p\r\n"  # route 10. network through host NAT for VPN
     quail_config.vm.provision "shell", inline: script
-    quail_config.vm.provision "file", source: settings['WINDOWS_GUEST_CONFIG_FILE'], destination: "c:/salt/conf/minion.d/00_vagrant_boot.conf"
+    if settings.has_key?('WINDOWS_GUEST_CONFIG_FILE')
+      quail_config.vm.provision "file", source: settings['WINDOWS_GUEST_CONFIG_FILE'], destination: "c:/salt/conf/minion.d/00_vagrant_boot.conf"
+      end
     quail_config.vm.provision :salt do |salt|  # salt_cloud cannot push Windows salt
         salt.minion_id = "win16"
         salt.master_id = "#{settings['master_vagrant_ip']}"
@@ -408,7 +415,9 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
     script = "new-item C:\\salt\\conf\\minion.d -itemtype directory -ErrorAction silentlycontinue\r\n"
     script += "route add 10.0.0.0 mask 255.0.0.0 #{NETWORK}.17.130 -p\r\n"  # route 10. network through host NAT for VPN
     quail_config.vm.provision "shell", inline: script
-    quail_config.vm.provision "file", source: settings['WINDOWS_GUEST_CONFIG_FILE'], destination: "c:/salt/conf/minion.d/00_vagrant_boot.conf"
+    if settings.has_key?('WINDOWS_GUEST_CONFIG_FILE')
+      quail_config.vm.provision "file", source: settings['WINDOWS_GUEST_CONFIG_FILE'], destination: "c:/salt/conf/minion.d/00_vagrant_boot.conf"
+      end
     quail_config.vm.provision :salt do |salt|  # salt_cloud cannot push Windows salt
         salt.minion_id = "win12"
         salt.master_id = "#{settings['master_vagrant_ip']}"
@@ -443,10 +452,12 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
       quail_config.vm.guest = :windows
       quail_config.vm.boot_timeout = 300
       quail_config.vm.graceful_halt_timeout = 60
-      #script = "new-item C:\\salt\\conf\\minion.d -itemtype directory -ErrorAction silentlycontinue\r\n"
-      #script += "route add 10.0.0.0 mask 255.0.0.0 #{NETWORK}.18.34 -p\r\n"  # route 10. network through host NAT for VPN
-      #quail_config.vm.provision "shell", inline: script
-      quail_config.vm.provision "file", source: settings['WINDOWS_GUEST_CONFIG_FILE'], destination: "c:/salt/conf/minion.d/00_vagrant_boot.conf"
+      script = "new-item C:\\salt\\conf\\minion.d -itemtype directory -ErrorAction silentlycontinue\r\n"
+      script += "route add 10.0.0.0 mask 255.0.0.0 #{NETWORK}.18.34 -p\r\n"  # route 10. network through host NAT for VPN
+      quail_config.vm.provision "shell", inline: script
+      if settings.has_key?('WINDOWS_GUEST_CONFIG_FILE')
+        quail_config.vm.provision "file", source: settings['WINDOWS_GUEST_CONFIG_FILE'], destination: "c:/salt/conf/minion.d/00_vagrant_boot.conf"
+        end
       quail_config.vm.provision :salt do |salt|  # salt_cloud cannot push Windows salt
           salt.minion_id = "win19"
           salt.master_id = "#{settings['master_vagrant_ip']}"
@@ -483,7 +494,9 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
         v.customize ["modifyvm", :id, "--natdnshostresolver1", "on"]  # use host's DNS resolver
     end
     quail_config.vm.provision "shell", path: "configure_machine/macos_unprotect_dirs.sh"
-    quail_config.vm.provision "file", source: settings['GUEST_MINION_CONFIG_FILE'], destination: "/etc/salt/minion.d/00_vagrant_boot.conf"
+    if settings.has_key?('GUEST_MINION_CONFIG_FILE')
+      quail_config.vm.provision "file", source: settings['GUEST_MINION_CONFIG_FILE'], destination: "/etc/salt/minion.d/00_vagrant_boot.conf"
+      end
     quail_config.vm.provision "shell", path: "configure_machine/macos_install_P3_salt.sh"
   end
 

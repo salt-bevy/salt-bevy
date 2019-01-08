@@ -18,16 +18,22 @@ vagrant_object = ARGV.length > 1 ? ARGV[1] : ""  # the name (if any) of the vagr
 BEVY_SETTINGS_FILE_NAME = '/srv/pillar/01_bevy_settings.sls'
 if File.exists?(BEVY_SETTINGS_FILE_NAME)
   settings = YAML.load_file(BEVY_SETTINGS_FILE_NAME)  # get your local settings
+  default_run_highstate = true
 else
   if ARGV[0] == "up"
     puts "\n*  ERROR:  Unable to read settings file #{BEVY_SETTINGS_FILE_NAME}."
     puts "*  NOTICE: Using default bevy settings for MASTERLESS Salt operation."
     puts "*  NOTICE: Some features will be missing."
-    puts "*  SUGGESTION: You should run 'configure_machine/bootstrap_bevy_member_here.py' before running 'vagrant up'.\n"
+    puts "*  SUGGESTION: You should run 'configure_machine/bootstrap_bevy_member_here.py' before running 'vagrant up'.\n\n"
     end
-  settings = {"bevy" => "local", "vagrant_prefix" => '172.17',
-  "vagrant_interface_guess" => "eth0", "master_vagrant_ip" => 'localhost',
-  }
+  settings = {"bevy" => "local", "vagrant_prefix" => '172.17', "vagrant_interface_guess" => "eth0",
+   "master_vagrant_ip" => 'localhost', "my_linux_user" => 'vagrant', "my_windows_user" => 'vagrant',
+   "my_windows_password" => 'vagrant', "fqdn_pattern" => '{}.{}.test', "force_linux_user_password" => false,
+   "linux_password_hash" => '$6$1cd1ac861859996c$Qk4jvU/HL/0bm0MMuLtFnyGeZIIxXb8VSVSr3170eGGB4LH9aXAtp980YFDohi2wE/jQZeqWLbXi1l.yZCchz1',
+   "GUEST_MINION_CONFIG_FILE" => 'configure_machine/masterless_minion.conf',
+   "WINDOWS_GUEST_CONFIG_FILE" => 'configure_machine/masterless_minion.conf',
+   }
+  default_run_highstate = false
 end
 # .
 BEVY = settings["bevy"]  # the name of your bevy
@@ -51,8 +57,8 @@ hash_path = File.join(Dir.home, '.ssh', HASHFILE_NAME)  # where you store it ^ ^
 # Bridged networks make the machine appear as another physical device on your network.
 # We must supply a list of names to avoid Vagrant asking for interactive input
 #
-if (RUBY_PLATFORM=~/darwin/i)  # on Mac OS, guess two frequently used ports
-  interface_guesses = ['en0: Ethernet', 'en1: Wi-Fi (AirPort)']
+if (RUBY_PLATFORM=~/darwin/i)  # on Mac OS, guess some frequently used ports
+  interface_guesses = ['en0: Ethernet', 'en1: Wi-Fi (AirPort)',  'en0: Wi-Fi (Wireless)']
 else  # Windows or Linux
   interface_guesses = settings['vagrant_interface_guess']
 end
@@ -61,7 +67,7 @@ if vagrant_command == "up" or vagrant_command == "reload"
   puts "Will try bridge network using interface(s): #{interface_guesses}"
 end
 
-max_cpus = Etc.nprocessors - 2
+max_cpus = Etc.nprocessors / 2 - 1
 max_cpus = 1 if max_cpus < 1
 
 Vagrant.configure(2) do |config|  # the literal "2" is required.
@@ -143,7 +149,7 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
        # salt.install_type = "stable 2018.3.3"
        salt.verbose = false
        salt.bootstrap_options = "-A #{settings['master_vagrant_ip']} -i quail2 -F -P "
-       salt.run_highstate = true
+       salt.run_highstate = default_run_highstate
     end
   end
 
@@ -349,7 +355,7 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
         #salt.log_level = "info"
         salt.verbose = false
         salt.colorize = true
-        salt.run_highstate = true
+        salt.run_highstate = default_run_highstate
         salt.version = "2018.3.3"  # TODO: remove this when this becomes default. Needed for chocolatey
     end
   end
@@ -390,7 +396,7 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
         salt.version = "2018.3.3"  # TODO: remove this when this becomes default. Needed for chocolatey
         salt.verbose = true
         salt.colorize = true
-        salt.run_highstate = true
+        salt.run_highstate = default_run_highstate
     end
   end
 
@@ -429,7 +435,7 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
         salt.verbose = false
         salt.colorize = true
         salt.version = "2018.3.3"  # TODO: remove this when this becomes default. Needed for chocolatey
-        #salt.run_highstate = true
+        #salt.run_highstate = default_run_highstate
     end
   end
 

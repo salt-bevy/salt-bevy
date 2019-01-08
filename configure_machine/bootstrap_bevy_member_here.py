@@ -129,11 +129,9 @@ def write_bevy_settings_files():
                 if store_additional:
                     f.write('# settings for Vagrant to read...\n')  # NOTE: names are in UPPER_CASE
                     #... f'strings' are only available in Python 3.5+ ! ...#
-                    # f.write(f"SALTCALL_CONFIG_FILE: '{SALTCALL_CONFIG_FILE}'\n")
                     # f.write(f"GUEST_MASTER_CONFIG_FILE: '{GUEST_MASTER_CONFIG_FILE}'\n")
                     # f.write(f"GUEST_MINION_CONFIG_FILE: '{GUEST_MINION_CONFIG_FILE}'\n")
                     # f.write(f"WINDOWS_GUEST_CONFIG_FILE: '{WINDOWS_GUEST_CONFIG_FILE}'\n")
-                    f.write("SALTCALL_CONFIG_FILE: '{}'\n".format(SALTCALL_CONFIG_FILE))
                     f.write("GUEST_MASTER_CONFIG_FILE: '{}'\n".format(GUEST_MASTER_CONFIG_FILE))
                     f.write("GUEST_MINION_CONFIG_FILE: '{}'\n".format(GUEST_MINION_CONFIG_FILE))
                     f.write("WINDOWS_GUEST_CONFIG_FILE: '{}'\n".format(WINDOWS_GUEST_CONFIG_FILE))
@@ -954,7 +952,6 @@ if __name__ == '__main__':
     else:
         settings['master_vagrant_ip'] = 'None'
 
-    write_config_file(Path(SALTCALL_CONFIG_FILE), my_settings['master'], virtual=False, windows=platform.system()=='Windows', master_host=my_settings['master_host'])
     if my_settings['vm_host']:
         write_config_file(Path(GUEST_MINION_CONFIG_FILE), is_master=False, virtual=True, master_host=my_settings['master_host'])
         write_config_file(Path(WINDOWS_GUEST_CONFIG_FILE), is_master=False, virtual=True, windows=True, master_host=my_settings['master_host'])

@@ -29,6 +29,7 @@ except ImportError:
         print('Try something like: "sudo -H pip3 install pyyaml ifaddr passlib"')
     else:  # Linux
         print('Try something like: "sudo pip3 install pyyaml ifaddr"')
+        print('If you are using Ubuntu (Debian, etc), you may need to "sudo apt install python3-pip" first.')
     print('Then re-run this command.')
     sys.exit(10)  # Windows ERROR_BAD_ENVIRONMENT
 
@@ -129,9 +130,11 @@ def write_bevy_settings_files():
                 if store_additional:
                     f.write('# settings for Vagrant to read...\n')  # NOTE: names are in UPPER_CASE
                     #... f'strings' are only available in Python 3.5+ ! ...#
+                    # f.write(f"SALTCALL_CONFIG_FILE: '{SALTCALL_CONFIG_FILE}'\n")
                     # f.write(f"GUEST_MASTER_CONFIG_FILE: '{GUEST_MASTER_CONFIG_FILE}'\n")
                     # f.write(f"GUEST_MINION_CONFIG_FILE: '{GUEST_MINION_CONFIG_FILE}'\n")
                     # f.write(f"WINDOWS_GUEST_CONFIG_FILE: '{WINDOWS_GUEST_CONFIG_FILE}'\n")
+                    f.write("SALTCALL_CONFIG_FILE: '{}'\n".format(SALTCALL_CONFIG_FILE))
                     f.write("GUEST_MASTER_CONFIG_FILE: '{}'\n".format(GUEST_MASTER_CONFIG_FILE))
                     f.write("GUEST_MINION_CONFIG_FILE: '{}'\n".format(GUEST_MINION_CONFIG_FILE))
                     f.write("WINDOWS_GUEST_CONFIG_FILE: '{}'\n".format(WINDOWS_GUEST_CONFIG_FILE))
@@ -234,6 +237,7 @@ def write_config_file(config_file_name, is_master: bool, virtual=True, windows=F
 #
 master: {2}
 {5}
+{6}
 file_roots:    # states are searched in the given order -- first found wins
   base: {3!r}
 top_file_merging_strategy: same  # do not merge the top.sls file from srv/salt, just use it
@@ -256,6 +260,7 @@ fileserver_backend:
     master = 'localhost' if is_master else master_url
     id2m = my_settings.get('second_minion_id', 'none')
     id = '' if virtual else 'id: {}'.format(id2m if id2m.lower() != 'none' else my_settings['id'])
+    local = 'file_client: local' if is_master else ''
 
     more_roots, more_pillars = format_additional_roots(settings, virtual)
 
@@ -267,7 +272,7 @@ fileserver_backend:
     newline = '\r\n' if windows else '\n'
     try:
         with config_file_name.open('w', newline=newline) as config_file:
-            config_file.write(template.format(config_file_name, this_file, master, file_roots, pillar_roots, id))
+            config_file.write(template.format(config_file_name, this_file, master, file_roots, pillar_roots, id, local))
             print('file {} written'.format(str(config_file_name)))
     except PermissionError:
         print('Sorry. Permission error when trying to write {}'.format(str(config_file_name)))
@@ -459,6 +464,7 @@ def request_bevy_username_and_password(user_name: str):
     while loop:
         print()
         my_bevy = settings.get('bevy', 'bevy01')
+        print('\nUse "local" as your bevy name for masterless operation of Salt...')
         bevy = input("Name your bevy: [{}]:".format(my_bevy)) or my_bevy
         print()
         print('Salt will create a personal interactive user for you on each machine in the bevy.')
@@ -775,28 +781,31 @@ if __name__ == '__main__':
         sudo.run_elevated(context=names)  # Run this script using Administrator privileges
 
     my_settings.setdefault('master_host',  False)  # assume this machine is NOT the VM host for the Master
-    print('\n\nThis program can make this machine a simple workstation to join the bevy')
-    if platform.system() != 'Windows':
-        print('or a bevy salt-master (including cloud-master),')
-    if on_a_workstation:
-        print('or a Vagrant host, possibly hosting a bevy master.')
-    my_settings.setdefault('master', False)
-    if platform.system() != 'Windows':
-        my_settings['master'] = get_affirmation('Should this machine BE the master?', my_settings['master'])
-    if not my_settings['master'] and on_a_workstation:
-        my_settings['master_host'] = get_affirmation('Will the Bevy Master be a VM guest of this machine?',
-                                                     my_settings['master_host'])
+    if settings['bevy'] == "local":
+        my_settings['master'] = True  # a masterless system is a master to itself
+    else:
+        print('\n\nThis program can make this machine a simple workstation to join the bevy')
+        if platform.system() != 'Windows':
+            print('or a bevy salt-master (including cloud-master),')
+        if on_a_workstation:
+            print('or a Vagrant host, possibly hosting a bevy master.')
+        my_settings.setdefault('master', False)
+        if platform.system() != 'Windows':
+            my_settings['master'] = get_affirmation('Should this machine BE the master?', my_settings['master'])
+        if not my_settings['master'] and on_a_workstation:
+            my_settings['master_host'] = get_affirmation('Will the Bevy Master be a VM guest of this machine?',
+                                                         my_settings['master_host'])
     get_additional_roots()
 
     print()
     first_id = get_salt_minion_id()
 
 
-    if my_settings['master']:
+    if my_settings['master'] and not settings['bevy'] == "local":
         print('NOTE: The Salt Node ID of the Bevy Master on itself should by "bevymaster".')
 
     node_name = default = my_settings.get('id',  # determine machine ID
-                           'bevymaster' if my_settings['master'] else
+                           'bevymaster' if my_settings['master'] and not settings['bevy'] == "local" else
                            first_id if "." not in first_id else platform.node().split('.')[0])
     while Ellipsis:
         name = input("What will be the Salt Node ID for this machine (for the first or only minion)? [{}]:".format(default)) or default
@@ -827,7 +836,7 @@ if __name__ == '__main__':
             vagrant_present = rtn == 0
             settings['vagranthost'] = node_name
             vbox_install = False if vagrant_present else affirmative(input(
-                'Do you wish to install VirtualBox and Vagrant? [y/N]:'))
+                'Do you wish help to install VirtualBox and Vagrant? [y/N]:'))
             if vbox_install:
                 import webbrowser
                 debian = False
@@ -928,8 +937,11 @@ if __name__ == '__main__':
     two = my_settings.get('additional_minion_tag') or '2' if ask_second_minion else ''
     my_settings['additional_minion_tag'] = two
 
-    master_address = choose_master_address(settings.get('master_external_ip', master_url))
-    settings['master_external_ip'] = master_address
+    if settings['bevy'] == "local":
+        master_address = 'localhost'
+    else:
+        master_address = choose_master_address(settings.get('master_external_ip', master_url))
+        settings['master_external_ip'] = master_address
 
     if platform.system() == 'Windows':
         master_pub = Path(r'C:\salt{}\conf\pki\minion\minion_master.pub'.format(two))
@@ -937,7 +949,8 @@ if __name__ == '__main__':
         master_pub = Path('/etc/salt{}/pki/minion/minion_master.pub'.format(two))
     try:
         if master_pub.exists():
-            if affirmative(input('Will this be a new minion<-->master relationship? [y/N]:')):
+            if settings['bevy'] == "local" \
+                    or affirmative(input('Will this be a new minion<-->master relationship? [y/N]:')):
                 print('Removing public key for master:"{}"'.format(master_pub))
                 master_pub.unlink()
                 print("\n** Remember to accept this machine's Minion key on its new Master. **\n")
@@ -952,6 +965,7 @@ if __name__ == '__main__':
     else:
         settings['master_vagrant_ip'] = 'None'
 
+    write_config_file(Path(SALTCALL_CONFIG_FILE), my_settings['master'], virtual=False, windows=platform.system()=='Windows', master_host=my_settings['master_host'])
     if my_settings['vm_host']:
         write_config_file(Path(GUEST_MINION_CONFIG_FILE), is_master=False, virtual=True, master_host=my_settings['master_host'])
         write_config_file(Path(WINDOWS_GUEST_CONFIG_FILE), is_master=False, virtual=True, windows=True, master_host=my_settings['master_host'])

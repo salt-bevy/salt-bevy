@@ -483,8 +483,12 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
 # . this machine bootstraps Salt but no states are run or defined.
 # . Its master is "bevymaster".
   config.vm.define "mac13", autostart: false do |quail_config|
-    quail_config.vm.box = "burinkhazad/macos-high-sierra"
-    quail_config.vm.hostname = "mac13" # + DOMAIN
+    if (RUBY_PLATFORM=~/darwin/i)  # different VMs boot correctly on MacOS vs others
+      quail_config.vm.box = "thealanberman/macos-10.13.4"
+    else  # Windows or Linux
+      quail_config.vm.box = "mcandre/palindrome-buildbot-macos"
+    end
+    quail_config.vm.hostname = "mac13"
     quail_config.vm.network "private_network", ip: NETWORK + ".2.13"
     if settings.has_key?('projects_root') and settings['projects_root'] != 'none'
       quail_config.vm.synced_folder settings['projects_root'], "/projects", disabled: true # shared folders do not work
@@ -507,6 +511,12 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
     if settings.has_key?('GUEST_MINION_CONFIG_FILE') and File.exist?(settings['GUEST_MINION_CONFIG_FILE'])
       quail_config.vm.provision "file", source: settings['GUEST_MINION_CONFIG_FILE'], destination: "/etc/salt/minion.d/00_vagrant_boot.conf"
       end
+    # no shared directory on MacOS, so we will make a copy of the bevy settings...
+    if File.exist?(BEVY_SETTINGS_FILE_NAME)
+      master_config.vm.provision "file", source: BEVY_SETTINGS_FILE_NAME, destination: BEVY_SETTINGS_FILE_NAME
+      end
+    script = "echo mac13 > /etc/salt/minion_id"
+    quail_config.vm.provision "shell", inline: script
     quail_config.vm.provision "shell", path: "configure_machine/macos_install_P3_salt.sh"
   end
 

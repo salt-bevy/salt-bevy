@@ -201,7 +201,7 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
     if settings.has_key?('GUEST_MASTER_CONFIG_FILE') and File.exist?(settings['GUEST_MASTER_CONFIG_FILE'])
       master_config.vm.provision "file", source: settings['GUEST_MASTER_CONFIG_FILE'], destination: "/etc/salt/minion.d/00_vagrant_boot.conf"
       end
-    if settings.has_key?('BEVY_SETTINGS_FILE_NAME') and File.exist?(settings['BEVY_SETTINGS_FILE_NAME'])
+    if File.exists?(BEVY_SETTINGS_FILE_NAME)
       master_config.vm.provision "file", source: BEVY_SETTINGS_FILE_NAME, destination: BEVY_SETTINGS_FILE_NAME
       end
     master_config.vm.provision :salt do |salt|
@@ -513,7 +513,7 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
       end
     # no shared directory on MacOS, so we will make a copy of the bevy settings...
     if File.exist?(BEVY_SETTINGS_FILE_NAME)
-      master_config.vm.provision "file", source: BEVY_SETTINGS_FILE_NAME, destination: BEVY_SETTINGS_FILE_NAME
+      quail_config.vm.provision "file", source: BEVY_SETTINGS_FILE_NAME, destination: BEVY_SETTINGS_FILE_NAME
       end
     script = "echo mac13 > /etc/salt/minion_id"
     quail_config.vm.provision "shell", inline: script

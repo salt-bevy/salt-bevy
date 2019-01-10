@@ -16,13 +16,11 @@ master: {{ salt['config.get']('my_master_url', salt['config.get']('master')) }}
 {% endif %}
 {% set minion_number = salt['config.get']('additional_minion_tag') or '' %}
 
-grains:
-  datacenter: {{ salt['config.get']('datacenter', 'bevy') }}
-  bevy: {{ salt['config.get']('bevy') }}
-  environment: dev
-  stacks: {{ salt['config.get']('stacks', []) }}
 salt_config_directory: {{ salt['config.get']('salt_config_directory') }}  # remember where I am at
 additional_minion_tag: '{{ minion_number }}'
+
+use_superseded:  # feature flags
+  - module.run   # permit use of the new syntax for module.run states
 
 {% if is_master -%}
 {% if salt['pillar.get']('autosign_minion_ids', false) %}

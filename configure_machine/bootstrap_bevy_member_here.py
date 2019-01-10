@@ -249,6 +249,9 @@ pillar_source_merging_strategy: recurse
 file_ignore_regex:
   - '/\.git($|/)'
 
+use_superseded:  # feature flags
+  - module.run 
+
 fileserver_backend:
   - roots
   
@@ -471,7 +474,7 @@ def request_bevy_username_and_password(user_name: str):
         print('If you do not wish to have a user created for you, enter "None" as the user name.')
         print()
         default_user = settings.get('my_linux_user') or user_name
-        print('Please supply your desired user name to be used on non-Windows minions.')
+        print('Please supply your desired user name to be used on Linux minions.')
         print('(Hit <enter> to use "{}")'.format(default_user))
         my_linux_user = normalize_literal_none(input('User Name:') or default_user)
         print()
@@ -505,20 +508,20 @@ def request_windows_username_and_password(user_name: str):
     while loop:
         print()
         default_user = settings.get('my_windows_user', 'None') or user_name
-        print('Please supply your desired user name to be used on any Windows minions.')
+        print('Please supply your desired user name to be used on any Windows and MacOS minions.')
         print('Enter "None" to skip...')
         my_windows_user = normalize_literal_none(input(
             'Windows User Name [{}]:'.format(default_user)) or default_user)
         print()
         if booleanize(my_windows_user):
-            print('CAUTION: Windows passwords are stored in plain text.')
+            print('CAUTION: Windows and MacOS passwords are stored in plain text.')
             print('Do not use a valuable password here...')
             default_wpwd = settings.get('my_windows_password', '')
-            my_windows_password = input('Windows insecure password: [{}]:'.format(default_wpwd)) or default_wpwd
+            my_windows_password = input('Windows/MacOS insecure password: [{}]:'.format(default_wpwd)) or default_wpwd
         else:
             my_windows_password = ''
         loop = not affirmative(
-            input('Use Windows user name "{}" with password "{}"'
+            input('Use Windows/MacOS user name "{}" with password "{}"'
                   '? [Y/n]:'.format(my_windows_user, my_windows_password)),
             default=True)  # stop looping if done
     return my_windows_user, my_windows_password

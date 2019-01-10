@@ -93,11 +93,11 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
   # . . . . . . . . . . . . Define machine QUAIL1 . . . . . . . . . . . . . .
   # This machine has no Salt provisioning at all. Salt-cloud can provision it.
   config.vm.define "quail1", primary: true do |quail_config|  # this will be the default machine
-    quail_config.vm.box = "boxesio/xenial64-standard"  # a public VMware & Virtualbox box
+    quail_config.vm.box = "ubuntu/bionic64"
     quail_config.vm.hostname = "quail1" # + DOMAIN
-    quail_config.vm.network "private_network", ip: NETWORK + ".2.8"  # needed so saltify_profiles.conf can find this unit
+    quail_config.vm.network "private_network", ip: NETWORK + ".2.201"  # needed so saltify_profiles.conf can find this unit
     if vagrant_command == "up" and (ARGV.length == 1 or (vagrant_object == "quail1"))
-      puts "Starting 'quail1' at #{NETWORK}.2.8..."
+      puts "Starting 'quail1' at #{NETWORK}.2.201..."
       end
     quail_config.vm.network "public_network", bridge: interface_guesses
     quail_config.vm.provider "virtualbox" do |v|  # only for VirtualBox boxes
@@ -119,11 +119,11 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
 # . this machine bootstraps Salt but no states are run or defined.
 # . Its master is "bevymaster".
   config.vm.define "quail2", autostart: false do |quail_config|
-    quail_config.vm.box = "boxesio/xenial64-standard"  # a public VMware & Virtualbox box
+    quail_config.vm.box = "ubuntu/bionic64"
     quail_config.vm.hostname = "quail2" # + DOMAIN
-    quail_config.vm.network "private_network", ip: NETWORK + ".2.5"
+    quail_config.vm.network "private_network", ip: NETWORK + ".2.202"
     if vagrant_command == "up" and vagrant_object == "quail2"
-      puts "Starting #{vagrant_object} at #{NETWORK}.2.5 as a Salt minion with master=#{settings['master_vagrant_ip']}...\n."
+      puts "Starting #{vagrant_object} at #{NETWORK}.2.202 as a Salt minion with master=#{settings['master_vagrant_ip']}...\n."
       end
     quail_config.vm.network "public_network", bridge: interface_guesses
     quail_config.vm.provider "virtualbox" do |v|
@@ -146,7 +146,6 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
       quail_config.vm.provision "file", source: settings['GUEST_MINION_CONFIG_FILE'], destination: "/etc/salt/minion.d/00_vagrant_boot.conf"
       end
     quail_config.vm.provision :salt do |salt|
-       # salt.install_type = "stable 2018.3.3"
        salt.verbose = false
        salt.bootstrap_options = "-A #{settings['master_vagrant_ip']} -i quail2 -F -P "
        salt.run_highstate = default_run_highstate
@@ -250,9 +249,9 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
   config.vm.define "quail18", autostart: false do |quail_config|
     quail_config.vm.box = "ubuntu/bionic64"
     quail_config.vm.hostname = "quail18" # + DOMAIN
-    quail_config.vm.network "private_network", ip: NETWORK + ".2.18"
+    quail_config.vm.network "private_network", ip: NETWORK + ".2.218"
     if vagrant_command == "up" and vagrant_object == "quail18"
-      puts "Starting #{vagrant_object} at #{NETWORK}.2.18..."
+      puts "Starting #{vagrant_object} at #{NETWORK}.2.218..."
       end
     quail_config.vm.network "public_network", bridge: interface_guesses
     quail_config.vm.provider "virtualbox" do |v|
@@ -274,9 +273,9 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
   config.vm.define "quail16", autostart: false do |quail_config|
     quail_config.vm.box = "boxesio/xenial64-standard"  # a public VMware & Virtualbox box
     quail_config.vm.hostname = "quail16" # + DOMAIN
-    quail_config.vm.network "private_network", ip: NETWORK + ".2.3"
+    quail_config.vm.network "private_network", ip: NETWORK + ".2.216"
     if vagrant_command == "up" and vagrant_object == "quail16"
-      puts "Starting #{vagrant_object} at #{NETWORK}.2.3..."
+      puts "Starting #{vagrant_object} at #{NETWORK}.2.216..."
       end
     quail_config.vm.network "public_network", bridge: interface_guesses
     quail_config.vm.provider "virtualbox" do |v|
@@ -298,9 +297,9 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
   config.vm.define "quail14", autostart: false do |quail_config|
     quail_config.vm.box = "boxesio/trusty64-standard"  # a public VMware & Virtualbox box
     quail_config.vm.hostname = "quail14" # + DOMAIN
-    quail_config.vm.network "private_network", ip: NETWORK + ".2.4"
+    quail_config.vm.network "private_network", ip: NETWORK + ".2.214"
     if vagrant_command == "up" and vagrant_object == "quail14"
-      puts "Starting #{vagrant_object} at #{NETWORK}.2.4..."
+      puts "Starting #{vagrant_object} at #{NETWORK}.2.214..."
       end
     quail_config.vm.network "public_network", bridge: interface_guesses
     quail_config.vm.provider "virtualbox" do |v|
@@ -318,15 +317,17 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
   end
 
  # . . . . . . . . . . . . Define machine win10 . . . . . . . . . . . . . .
- # . this Windows 10 machine bootstraps Salt and connects to bevy master.
+ # . this Windows 10 machine bootstraps Salt.
   config.vm.define "win10", autostart: false do |quail_config|
     quail_config.vm.box = "StefanScherer/windows_10"  #"Microsoft/EdgeOnWindows10"
-    quail_config.vm.hostname = 'win10'
+    # <#this causes Windows to restart#> # quail_config.vm.hostname = 'win10'
     quail_config.vm.network "public_network", bridge: interface_guesses
     quail_config.vm.network "private_network", ip: NETWORK + ".2.10"
     if vagrant_command == "up" and vagrant_object == "win10"
       puts "Starting #{vagrant_object} as a Salt minion of #{settings['master_vagrant_ip']}."
+      puts ""
       puts "NOTE: you may need to run \"vagrant up\" twice for this Windows minion."
+      puts ""
       end
     quail_config.vm.provider "virtualbox" do |v|
         v.name = BEVY + '_win10'  # ! N.O.T.E.: name must be unique
@@ -361,7 +362,7 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
   end
 
  # . . . . . . . . . . . . Define machine win16 . . . . . . . . . . . . . .
- # . this machine installs Salt on a Windows 2016 Server and runs highstate.
+ # . this machine installs Salt on a Windows 2016 Server.
   config.vm.define "win16", autostart: false do |quail_config|
     quail_config.vm.box = "cdaf/WindowsServer" #gusztavvargadr/w16s" # Windows Server 2016 standard
     quail_config.vm.network "public_network", bridge: interface_guesses
@@ -440,7 +441,7 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
   end
 
    # . . . . . . . . . . . . Define machine win19 . . . . . . . . . . . . . .
-   # . this machine installs Salt on a Windows 2019 Server and runs highstate.
+   # . this machine installs Salt on a Windows 2019 Server.
     config.vm.define "win19", autostart: false do |quail_config|
       quail_config.vm.box = "StefanScherer/windows_2019"
       quail_config.vm.network "public_network", bridge: interface_guesses
@@ -481,7 +482,6 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
 
 # . . . . . . .  Define MacOS mac13 with Salt minion installed . . . . . . . . . . . . . .
 # . this machine bootstraps Salt but no states are run or defined.
-# . Its master is "bevymaster".
   config.vm.define "mac13", autostart: false do |quail_config|
     if (RUBY_PLATFORM=~/darwin/i)  # different VMs boot correctly on MacOS vs others
       quail_config.vm.box = "thealanberman/macos-10.13.4"

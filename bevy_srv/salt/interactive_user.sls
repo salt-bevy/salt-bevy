@@ -31,9 +31,13 @@ staff:
     - present
     - groups:
     {% if grains['os'] == 'Windows' %}
-      - Administrators {% elif grains['os'] == 'MacOS' %}
+      - Administrators
+    {% elif grains['os'] == 'MacOS' %}
       - admin
-      - wheel{% else %}- sudo{% endif %}
+      - wheel
+    {% else %}
+      - sudo
+    {% endif %}
     - optional_groups:
       - {{ users_group }}
       - www-data

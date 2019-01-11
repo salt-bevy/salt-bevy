@@ -9,10 +9,8 @@ include:
 
 # NOTE:  this state is intended to be run using "sudo salt-call ..." on the machine which will be the member
 #
-# ANOTHER NOTE: edit the vbox_settings.sls pillar definition when the version of VirtualBox changes
-#
 {% set my_username = salt['config.get']('my_linux_user') %}
-{% set other_minion = salt['config.get']('additional_minion_tag') or '' %}
+{% set other_minion = salt['config.get']('additional_minion_tag', '') %}
 {% set message = pillar['salt_managed_message'] %}
 
 {% if salt['pillar.get']('server_role') != '' %}

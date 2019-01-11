@@ -1,11 +1,8 @@
 ---
 # Salt state for installing Visual Studio C++ non-GUI compiler
 #
-vs_2017_choc_bt:
-  module.run:
-    - name: chocolatey.bootstrap
-    - require_in:
-      - visualstudio2017buildtools
+include:
+  - windows.install_chocolatey
 
 {# NOTE: there is a bug in old Salt-Minions. You may need to hand install 2018.3.0 for chocolatey to work.  #}
 #dotnet4.0:
@@ -13,7 +10,9 @@ vs_2017_choc_bt:
 #    - name: dotnet4.0
 
 visualstudio2017buildtools:
-  chocolatey.upgraded
+  chocolatey.upgraded:
+    - require:
+      - install_chocolatey
 
 visualstudio2017-workload-vctools_bt:
   chocolatey.upgraded:

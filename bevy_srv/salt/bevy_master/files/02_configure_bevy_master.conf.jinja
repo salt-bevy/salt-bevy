@@ -12,10 +12,6 @@ interface: '::' #}
 
 master: {{ salt['config.get']('my_master_url', salt['config.get']('master')) }}
 
-grains:
-  datacenter: bevy
-  bevy: {{ salt['config.get']('bevy') }}
-  environment: dev
 salt_config_directory: {{ salt['config.get']('salt_config_directory') }}  # remember where I am at
 
 {% if salt['pillar.get']('autosign_minion_ids', false) %}

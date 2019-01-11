@@ -8,8 +8,8 @@
   {% set make_uid = -3 %}
   {% set make_gid = -3 %}
 {% endif %}
-{% if grains['os'] == 'Windows' %}
-  {% set my_user = salt['pillar.get']('my_windows_user', 'None') %}
+{% if grains['os'] in ['Windows', 'MacOS'] %}
+  {% set my_user = salt['pillar.get']('my_windows_user', 'None') %}  {# NOTE: Windows and MacOS are the same here #}
 {% else %}
   {% set my_user = salt['pillar.get']('my_linux_user', 'None') %}
 {% endif %}
@@ -23,12 +23,17 @@ staff:
   - present
 
 {{ my_user }}:
+{% if grains['os'] == 'MacOS' %}
+  group:
+    - present
+{% endif %}
   user:
     - present
     - groups:
     {% if grains['os'] == 'Windows' %}
-      - Administrators {% else %}
-      - sudo{% endif %}
+      - Administrators {% elif grains['os'] == 'MacOS' %}
+      - admin
+      - wheel{% else %}- sudo{% endif %}
     - optional_groups:
       - {{ users_group }}
       - www-data
@@ -39,13 +44,19 @@ staff:
     {% if grains['os'] == 'Windows' %}
     - password: {{ salt['pillar.get']('my_windows_password') }}
     - win_profile: C:/Users/{{ my_user }}
-    {% else %}
+    {% elif grains['os'] != 'MacOS' %}
     - shell: /bin/bash
     - password: "{{ salt['pillar.get']('linux_password_hash') }}"
     - enforce_password: {{ salt['config.get']('force_linux_user_password', false) }}
     {% if make_uid > 0 %}- uid: {{ make_uid }} {% endif %}
     {% endif %}
 
+  {% if grains['os'] == 'MacOS' and salt['pillar.get']('my_windows_password', '') != '' %}
+shadow.set_password:
+  module.run:
+    - name: {{ my_user }}
+    - password: {{ salt['pillar.get']('my_windows_password') }}
+  {% endif %}
 
 {{ home }}{{ my_user }}:
   file.directory:

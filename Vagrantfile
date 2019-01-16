@@ -379,7 +379,7 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
         v.linked_clone = true
         v.customize ["modifyvm", :id, "--vram", "27"]  # enough video memory for full screen
         v.memory = 4096
-        v.cpus = 2
+        v.cpus = max_cpus
         v.customize ["modifyvm", :id, "--natnet1", NETWORK + ".17.224/27"]  # do not use 10.0 network for NAT
         v.customize ["modifyvm", :id, "--natdnshostresolver1", "on"]  # use host's DNS resolver
     end

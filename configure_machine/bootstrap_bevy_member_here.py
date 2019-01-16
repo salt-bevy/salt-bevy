@@ -625,12 +625,15 @@ def choose_master_address(host_name):
         for ip in choices:
             if not ip['addr'].is_loopback and not ip['addr'].is_link_local:
                 print('{addr}/{prefix} - {name}'.format(**ip))
-    try:
-        # noinspection PyArgumentList
-        ip_ = socket.getaddrinfo(default, 4506, type=socket.SOCK_STREAM)
-        print('The name {} translates to {}'.format(host_name, ip_[0][4][0]))
-    except (socket.error, IndexError):
-        pass
+    if my_settings['master_host'] and default == "salt":
+        default = settings['vagrant_prefix'] + '.2.2'  # TODO: this will not work for IPv6
+    else:
+        try:
+            # noinspection PyArgumentList
+            ip_ = socket.getaddrinfo(default, 4506, type=socket.SOCK_STREAM)
+            print('The name {} translates to {}'.format(host_name, ip_[0][4][0]))
+        except (socket.error, IndexError):
+            pass
     while Ellipsis:  # repeat until user types a valid entry
         resp = input("What default url address for the master (for other minions)? [{}]:".format(default))
         choice = resp or default

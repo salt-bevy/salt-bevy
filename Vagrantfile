@@ -8,19 +8,22 @@
 require "etc"
 require "yaml"
 require "ipaddr"
+
+SALT_BOOTSTRAP_ARGUMENTS = "" # "git v2019.2.0rc1"  # (usually leave blank for latest production Salt version)
+
+vagrant_command = ARGV[0]
+vagrant_object = ARGV.length > 1 ? ARGV[1] : ""  # the name (if any) of the vagrant VM for this command
 #
 # under the DRY principle, the most important setting are stored
 # in a Salt 'pillar' file. Vagrant has to look them up there...
 #
-vagrant_command = ARGV[0]
-vagrant_object = ARGV.length > 1 ? ARGV[1] : ""  # the name (if any) of the vagrant VM for this command
 # . v . v . retrieve stored bevy settings . v . v . v . v . v . v .
 BEVY_SETTINGS_FILE_NAME = '/srv/pillar/01_bevy_settings.sls'
 if File.exists?(BEVY_SETTINGS_FILE_NAME)
   settings = YAML.load_file(BEVY_SETTINGS_FILE_NAME)  # get your local settings
   default_run_highstate = true
 else
-  if ARGV[0] == "up"
+  if vagrant_command == "up"
     puts "\n*  ERROR:  Unable to read settings file #{BEVY_SETTINGS_FILE_NAME}."
     puts "*  NOTICE: Using default bevy settings for MASTERLESS Salt operation."
     puts "*  NOTICE: Some features will be missing."
@@ -147,7 +150,7 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
       end
     quail_config.vm.provision :salt do |salt|
        salt.verbose = false
-       salt.bootstrap_options = "-A #{settings['master_vagrant_ip']} -i quail2 -F -P "
+       salt.bootstrap_options = "-A #{settings['master_vagrant_ip']} -i quail2 -F -P #{SALT_BOOTSTRAP_ARGUMENTS}"
        salt.run_highstate = default_run_highstate
     end
   end
@@ -208,7 +211,7 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
        salt.verbose = true
        salt.log_level = "info"
        salt.colorize = true
-       salt.bootstrap_options = "-P -M -L "  # install salt-cloud and salt-master
+       salt.bootstrap_options = "-P -M -L #{SALT_BOOTSTRAP_ARGUMENTS}"  # install salt-cloud and salt-master
        salt.masterless = true  # the provisioning script for the master is masterless
        salt.run_highstate = true
        password_hash = settings['linux_password_hash']

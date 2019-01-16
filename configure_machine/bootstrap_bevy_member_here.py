@@ -494,7 +494,9 @@ def request_bevy_username_and_password(user_name: str):
 
 def request_windows_username_and_password(user_name: str):
     """
-    get user's information so that we can build a user for her on each minion
+    get user's information so that we can build a user for her on each minion.
+    Windows and MacOS do not have a well-defined method for deploying a password hash,
+    so we are stuck with storing a plain text password.
 
     :param user_name: system default user name
     """
@@ -511,7 +513,7 @@ def request_windows_username_and_password(user_name: str):
         print('Please supply your desired user name to be used on any Windows and MacOS minions.')
         print('Enter "None" to skip...')
         my_windows_user = normalize_literal_none(input(
-            'Windows User Name [{}]:'.format(default_user)) or default_user)
+            'Windows/MacOS User Name [{}]:'.format(default_user)) or default_user)
         print()
         if booleanize(my_windows_user):
             print('CAUTION: Windows and MacOS passwords are stored in plain text.')

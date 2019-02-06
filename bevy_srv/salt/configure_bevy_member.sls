@@ -13,10 +13,10 @@ include:
 {% set other_minion = salt['config.get']('additional_minion_tag', '') %}
 {% set message = pillar['salt_managed_message'] %}
 
-{% if salt['pillar.get']('server_role') != '' %}
-roles:
+{% if salt['config.get']('server_role') != '' %}
+roles:   {# make permanant grains from Vagrant passed pillar or config script #}
   grains.list_present:
-    - value: {{ salt['pillar.get']('server_role') }} {# from Vagrantfile or configure.py #}
+    - value: {{ salt['config.get']('server_role') }}
 {% endif %}
 
 {% if salt['grains.get']('os_family') == 'MacOS' %}

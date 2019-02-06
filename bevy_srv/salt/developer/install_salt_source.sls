@@ -1,7 +1,8 @@
 ---
 # Salt state for installing a development copy of Salt
 #
-{% set projects_root = salt['config.get']('projects_root', '/opt') %}
+{% set projects_root = salt['config.get']('projects_root', 'none') %}
+{% set projects_root = '/opt' if projects_root == "none" %}
 
 ensure_{{ projects_root }}_exists:
   file.directory:

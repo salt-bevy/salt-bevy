@@ -263,7 +263,9 @@ fileserver_backend:
     master = 'localhost' if is_master else master_url
     id2m = my_settings.get('second_minion_id', 'none')
     id = '' if virtual else 'id: {}'.format(id2m if id2m.lower() != 'none' else my_settings['id'])
-    local = 'file_client: local' if is_master else ''
+    other = 'file_client: local\n' if is_master else ''
+    projects_root = my_settings.get('projects_root', 'none')
+    other += 'projects_root: "{}"'.format(projects_root)
 
     more_roots, more_pillars = format_additional_roots(settings, virtual)
 
@@ -275,7 +277,7 @@ fileserver_backend:
     newline = '\r\n' if windows else '\n'
     try:
         with config_file_name.open('w', newline=newline) as config_file:
-            config_file.write(template.format(config_file_name, this_file, master, file_roots, pillar_roots, id, local))
+            config_file.write(template.format(config_file_name, this_file, master, file_roots, pillar_roots, id, other))
             print('file {} written'.format(str(config_file_name)))
     except PermissionError:
         print('Sorry. Permission error when trying to write {}'.format(str(config_file_name)))
@@ -704,15 +706,17 @@ def choose_bridge_interface():
 def get_projects_directory():
     while Ellipsis:
         try:
-            default = settings.get('projects_root', str(this_file.parents[2]))
+            default = my_settings.get('projects_root', str(this_file.parents[2]))
         except (IndexError, AttributeError):
             default = '/projects'
         print('We can set up a Vagrant share "/projects" to find all of your working directories.')
         print('Use "none" to disable this feature.')
         resp = input('What is the root directory for your projects directories? [{}]:'.format(default))
         resp = resp or default
-        if os.path.isdir(resp) or resp.lower() == 'none':
-            return resp
+        if resp.lower() == 'none':
+            resp = 'none'
+        if os.path.isdir(resp) or resp == 'none':
+            return resp  # continue to loop until user enters a valid directory or "none"
 
 
 def display_introductory_text():
@@ -905,7 +909,7 @@ if __name__ == '__main__':
         settings['vagrant_prefix'], settings['vagrant_network'] = choose_vagrant_network()
         choice = choose_bridge_interface()
         settings['vagrant_interface_guess'] = choice['name']
-        settings['projects_root'] = get_projects_directory()
+        my_settings['projects_root'] = get_projects_directory()
 
     settings.setdefault('fqdn_pattern',  DEFAULT_FQDN_PATTERN)
 

@@ -16,7 +16,7 @@ See [the Lesson index](lessons/index.md).
 
 * Install [git](https://git-scm.com/downloads). If on Linux, use your package manager. 
 If on Windows, please select the option to 
-"`Use Git and optional Unix tools from the Windows Command Prompt`". It will make your life
+"`Use Git and optional Unix tools from the Windows----- Command Prompt`". It will make your life
 easier. Many lessons assume that these utilities are present, and the conflicts with similarly
 named DOS commands are rare.  Also select the option to "checkout as-is, commit as-is" so that
 git does not foul up any Windows-friendly file's line endings. Python (and Salt) do not care.

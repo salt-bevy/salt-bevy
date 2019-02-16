@@ -7,24 +7,22 @@
 #
 # Python3 update by: Vernon Cole 2018
 
-import sys, os, traceback, time, json
-import warnings, subprocess
+import sys, os, traceback, time, json, subprocess
 
-ELEVATION_FLAG = "--context"
+ELEVATION_FLAG = "--_context"  # internal use only. Should never be passed on a user command line
 
 
-def already_elevated():  # we-were-here flag has been set
+def has_context():  # we-were-here flag has been set
     return any(arg.startswith(ELEVATION_FLAG) for arg in sys.argv)
 
 
 def isUserAdmin():
-    if already_elevated():
+    if has_context():
         return True
     if os.name == 'nt':
-        import ctypes
-        # WARNING: requires Windows XP SP2 or higher!
+        from win32com.shell import shell
         try:
-            return ctypes.windll.shell32.IsUserAnAdmin()
+            return shell.IsUserAnAdmin()
         except Exception as e:
             traceback.print_exc()
             print("Admin check failed, assuming not an admin.")
@@ -36,18 +34,23 @@ def isUserAdmin():
         raise RuntimeError("Unsupported operating system for this module: {}".format(os.name))
 
 
-def runAsAdmin(commandLine=None, context=None, wait=True):
+def runAsAdmin(commandLine=None, context=None, python_shell=False, wait=True):
     if commandLine is None:
-        python_exe = sys.executable
-        cmdLine = [python_exe] + sys.argv  # run the present Python command with elevation.
+        cmdLine = []
+    elif isinstance(commandLine, str):
+        cmdLine = commandLine.split()
     else:
         if not isinstance(commandLine, (tuple, list)):
-            raise ValueError("commandLine is not a sequence.")
+            raise ValueError("commandLine must be a sequence or a string.")
         cmdLine = list(commandLine)  # make a local copy
+
+    if python_shell:
+        python_exe = sys.executable
+        cmdLine.insert(0, python_exe) # run the Python command with elevation.
 
     if isinstance(context, dict):
         ctx = json.dumps(context)
-        cmdLine.append("{}='{}'".format(ELEVATION_FLAG, ctx))
+        cmdLine.append(ELEVATION_FLAG + "=" + ctx)
     elif context:
         cmdLine.append(ELEVATION_FLAG)
 
@@ -65,10 +68,21 @@ def runAsAdmin(commandLine=None, context=None, wait=True):
         from win32com.shell.shell import ShellExecuteEx
         # noinspection PyUnresolvedReferences
         from win32com.shell import shellcon
+        try:
+            # noinspection PyUnresolvedReferences
+            from helpers.argv_quote import quote
+        except (ModuleNotFoundError, ImportError):
+            from argv_quote import quote
 
         showCmd = win32con.SW_SHOWNORMAL
-        cmd = '"{}"'.format(cmdLine[0])
-        params = " ".join(['"{}"'.format(x) for x in cmdLine[1:]])
+        try:
+            params = quote(*cmdLine[1:])
+        except IndexError:
+            params = ""
+        try:
+            cmd = quote(cmdLine[0])
+        except IndexError:
+            cmd = "_No_command_was_supplied_"
         lpVerb = 'runas'  # causes UAC elevation prompt.
         print()
         print("This window is waiting while a child window is run as an Administrator...")
@@ -76,8 +90,8 @@ def runAsAdmin(commandLine=None, context=None, wait=True):
         procInfo = ShellExecuteEx(nShow=showCmd,
                                   fMask=shellcon.SEE_MASK_NOCLOSEPROCESS,
                                   lpVerb=lpVerb,
-                                  lpFile=cmd,
-                                  lpParameters=params)
+                                  lpParameters=params,
+                                  lpFile=cmd)
         if wait:
             procHandle = procInfo['hProcess']
             if procHandle is None:
@@ -94,19 +108,12 @@ def runAsAdmin(commandLine=None, context=None, wait=True):
         raise RuntimeError("Unsupported operating system for this module: {}".format(os.name))
     return rc
 
-
-def run_elevated(command=None, context=None):
-    if not isUserAdmin():
-        rc = runAsAdmin(command, context)
-        time.sleep(3)
-        sys.exit(rc)
-
-
 def get_context():
     for arg in sys.argv:
         if arg.startswith(ELEVATION_FLAG):
             try:
-                return json.loads(arg.split('=')[1])
+                ret = json.loads(arg.split('=')[1])
+                return ret
             except (IndexError, json.JSONDecodeError) as e:
                 print("Decode Error in Context=>{}".format(e))
                 return {}
@@ -129,8 +136,7 @@ def set_env_variables_permanently_win(key_value_pairs: dict, whole_machine: bool
     if os.name != 'nt':
         raise ModuleNotFoundError('Attempting Windows operation on non-Windows')
 
-    import winreg
-    import win32gui, win32con
+    import winreg, win32gui, win32con
 
     path = r'SYSTEM\CurrentControlSet\Control\Session Manager\Environment' if whole_machine else r'Environment'
 
@@ -166,6 +172,7 @@ def set_env_variables_permanently_win(key_value_pairs: dict, whole_machine: bool
                 except FileNotFoundError:
                     pass  # ignore if already deleted
 
+    # tell all the world that a change has been made
     win32gui.SendMessageTimeout(win32con.HWND_BROADCAST, win32con.WM_SETTINGCHANGE, 0, 'Environment',
                                 win32con.SMTO_ABORTIFHUNG, 1000)
 
@@ -179,7 +186,8 @@ def test(command=None):
         print("You ARE an admin. You are running PID={} with command-->{}".format(os.getpid(), command))
         if len(sys.argv) > 1:
             import subprocess
-            rc = subprocess.call(sys.argv[1:], shell=True)
+            import argv_quote
+            rc = subprocess.call(argv_quote.quote(sys.argv[1:]), shell=True)
         else:
             rc = 0
         time.sleep(2)
@@ -190,7 +198,7 @@ def test(command=None):
 if __name__ == "__main__":
     if "--test" in sys.argv:
         print('......testing with no arguments.......')
-        test()
+        test("")
         if not isUserAdmin():
             print('....... NEXT, a real useful example ... editing the "etc/hosts" file ........')
             if os.name == 'nt':
@@ -212,4 +220,4 @@ if __name__ == "__main__":
     elif len(sys.argv) == 1:
         print('usage: sudo <command> <arguments>  # will run with elevated priviledges')
     else:
-        run_elevated(sys.argv[1:])
+        runAsAdmin(sys.argv[1:])

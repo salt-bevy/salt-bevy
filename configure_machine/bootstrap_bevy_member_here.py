@@ -18,9 +18,9 @@ from pathlib import Path, PurePosixPath
 from urllib.request import urlopen
 
 try:
-    import yaml
+    import yaml  # actually imports the PyYAML module
     import ifaddr
-    if platform.system != 'Linux':
+    if platform.system() != 'Linux':
         import passlib
 except ImportError:
     print('\nERROR: Python3 setup incomplete. You are missing required prerequisite modules.')
@@ -610,7 +610,7 @@ def write_ssh_key_file(my_linux_user):
             if user_key_file.samefile(pub.name):
                 print('using existing {}'.format(str(user_key_file)))
                 return
-        except OSError:
+        except (OSError, AttributeError):
             pass
         # user_key_file.parent.mkdir(parents=True, exist_ok=True) # only works for Python3.5+
         os.makedirs(str(user_key_file.parent), exist_ok=True)  # 3.4

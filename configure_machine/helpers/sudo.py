@@ -35,6 +35,12 @@ def isUserAdmin():
 
 
 def runAsAdmin(commandLine=None, context=None, python_shell=False, wait=True):
+    try:
+        # noinspection PyUnresolvedReferences
+        from helpers.argv_quote import quote
+    except (ModuleNotFoundError, ImportError):
+        from argv_quote import quote
+
     if commandLine is None:
         cmdLine = []
     elif isinstance(commandLine, str):
@@ -46,7 +52,7 @@ def runAsAdmin(commandLine=None, context=None, python_shell=False, wait=True):
 
     if python_shell:
         python_exe = sys.executable
-        cmdLine.insert(0, python_exe) # run the Python command with elevation.
+        cmdLine.insert(0, python_exe)  # run the Python command with elevation.
 
     if isinstance(context, dict):
         ctx = json.dumps(context)
@@ -55,7 +61,8 @@ def runAsAdmin(commandLine=None, context=None, python_shell=False, wait=True):
         cmdLine.append(ELEVATION_FLAG)
 
     if os.name == 'posix':
-        cmd = "sudo " + ' '.join(cmdLine)
+        cmdLine.insert(0, "sudo")
+        cmd = quote(*cmdLine)
         print('Running command-->', cmd)
         rc = subprocess.call(cmd, shell=True)
 
@@ -68,11 +75,6 @@ def runAsAdmin(commandLine=None, context=None, python_shell=False, wait=True):
         from win32com.shell.shell import ShellExecuteEx
         # noinspection PyUnresolvedReferences
         from win32com.shell import shellcon
-        try:
-            # noinspection PyUnresolvedReferences
-            from helpers.argv_quote import quote
-        except (ModuleNotFoundError, ImportError):
-            from argv_quote import quote
 
         showCmd = win32con.SW_SHOWNORMAL
         try:
@@ -116,6 +118,7 @@ def get_context():
                 return ret
             except (IndexError, json.JSONDecodeError) as e:
                 print("Decode Error in Context=>{}".format(e))
+                print("sys.argv-->", sys.argv)
                 return {}
     return {}
 

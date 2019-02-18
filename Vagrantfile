@@ -171,12 +171,12 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
       end
     master_config.vm.network "public_network", bridge: interface_guesses, mac: "be0000" + bevy_mac
     master_config.vm.synced_folder ".", "/vagrant", :owner => "vagrant", :group => "staff", :mount_options => ["umask=0002"]
-    if settings.has_key?('application_roots')  # additional shares for optional applications directories
-      settings['application_roots'].each do |share|  # formatted real-path=share-path
-        s = share.split('=')
-        master_config.vm.synced_folder s[0], "/#{s[1]}", :owner => "vagrant", :group => "staff", :mount_options => ["umask=0002"]
-      end
-    end
+    #if settings.has_key?('application_roots')  # additional shares for optional applications directories
+    #  settings['application_roots'].each do |share|  # formatted real-path=share-path
+    #    s = share.split('=')
+    #    master_config.vm.synced_folder s[0], "/#{s[1]}", :owner => "vagrant", :group => "staff", :mount_options => ["umask=0002"]
+    #  end
+    #end
     #if vagrant_command == "ssh"
     #  master_config.ssh.username = my_linux_user  # if you type "vagrant ssh", use this username
     #  master_config.ssh.private_key_path = Dir.home() + "/.ssh/id_rsa"
@@ -201,7 +201,8 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
     script += "chmod -R 775 #{File.dirname(BEVY_SETTINGS_FILE_NAME)}\n"
     master_config.vm.provision "shell", inline: script
     if settings.has_key?('GUEST_MASTER_CONFIG_FILE') and File.exist?(settings['GUEST_MASTER_CONFIG_FILE'])
-      master_config.vm.provision "file", source: settings['GUEST_MASTER_CONFIG_FILE'], destination: "/etc/salt/minion.d/00_vagrant_boot.conf"
+      master_config.vm.provision "file", source: settings['GUEST_MASTER_CONFIG_FILE'],
+                                destination: "/etc/salt/minion.d/00_vagrant_boot.conf"
       end
     if File.exists?(BEVY_SETTINGS_FILE_NAME)
       master_config.vm.provision "file", source: BEVY_SETTINGS_FILE_NAME, destination: BEVY_SETTINGS_FILE_NAME
@@ -239,7 +240,6 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
          "vagranthost" => VAGRANT_HOST_NAME,
          "runas" => login,
          "cwd" => Dir.pwd,
-         "vbox_install" => false,
          "server_role" => 'master',
          "doing_bootstrap" => true,  # flag for Salt state system
          })

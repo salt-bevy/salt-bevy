@@ -11,6 +11,8 @@ include:
 #
 {% set my_username = salt['config.get']('my_linux_user') %}
 {% set other_minion = salt['config.get']('additional_minion_tag', '') %}
+{% set other_minion = "" if other_minion in ["None", None, "none"] else other_minion %}
+
 {% set message = pillar['salt_managed_message'] %}
 
 {% if salt['config.get']('server_role') != '' %}
@@ -44,92 +46,7 @@ make-dirs-visible:
           table: sdb
           create_table: True
 
-{% if salt['config.get']('vbox_install', false) == true %}
-{% if grains.os_family == 'Debian' %}
-
-virtualbox_repo:
-  pkgrepo.managed:
-  - human_name: virtualbox
-  - name: deb http://download.virtualbox.org/virtualbox/debian {{ grains.oscodename }} contrib
-  - file: /etc/apt/sources.list.d/virtualbox.list
-  - key_url: https://www.virtualbox.org/download/oracle_vbox.asc
-
-virtualbox_packages:
-  pkg.installed:
-  - names:
-    - build-essential
-    - dkms
-    - linux-headers-{{ grains.kernelrelease }}
-    - virtualbox-{{ salt['config.get']('vbox_minor_version') }}
-  - skip_verify: true
-  - require:
-    - pkgrepo: virtualbox_repo
-
-virtualbox_setup_kernel_drivers:
-  cmd.wait:
-  - name: /etc/init.d/vboxdrv setup
-  - cwd: /root
-  - watch:
-    - pkg: virtualbox_packages
-
-{%- elif grains.os_family == "RedHat" %}
-
-{# TODO #}
-
-{%- elif grains.os_family == "Windows" %}
-
-virtualbox_install_package:
-  pkg.installed:
-  - name: virtualbox_x64_en
-
-{%- endif %} {# os_family #}
-
-{% set vagrant_version = salt['pillar.get']('vagrant_version') %}
-{% if vagrant_version != '' %}
-{% set vagrant_url = 'https://releases.hashicorp.com/vagrant/' ~ vagrant_version ~ '/vagrant_' ~ vagrant_version ~ '_x86_64.deb' %}
-vagrant:
-  pkg.installed:
-    - sources:
-      - vagrant: {{ vagrant_url }}
-
-{% for plugin in salt['pillar.get']('vagrant:plugins', []) %}
-vagrant-plugin-{{ plugin }}:
-  cmd.run:
-    - name: "vagrant plugin install '{{ plugin }}'"
-    - unless: "vagrant plugin list | grep '{{ plugin }}'"
-{% endfor %}
-{% endif %}   {# vagrant_version #}
-{%- endif %}  {# vbox_install #}
-
-{% if salt['config.get']('vbox_api_install', false) %}
-vbox_sdk:
-  archive:
-    - extracted
-    - name: /opt/virtualbox/{{ pillar['vbox_version'] }}
-    - source: {{ pillar['vbox_sdk_url'] }}
-    - skip_verify: true
-    - archive_format: zip
-    - user: {{ my_username }}
-    - group: staff
-    - trim_output: 5
-    - if_missing: /opt/virtualbox/{{ pillar['vbox_version'] }}/sdk/installer
-
-install-vbox-sdk:
-  cmd.run:
-    - name: python vboxapisetup.py install
-    - cwd: /opt/virtualbox/{{ pillar['vbox_version'] }}/sdk/installer
-    - env:
-{% if salt['grains.get']('os_family') == 'MacOS' %}
-      - VBOX_INSTALL_PATH: /usr/local/bin/virtualbox
-{% elif salt['grains.get']('os_family') == 'Debian' %}
-      - VBOX_INSTALL_PATH: /usr/bin/virtualbox
-{% endif %}
-      - VBOX_VERSION: '{{ pillar['vbox_version'] }}'
-    - require:
-      - archive: vbox-sdk
-    - unless:
-      - python -c "import vboxapi"
-
+{% if false %}  {# TODO: this needs to be reexamined #}
 {% if salt['grains.get']('os_family') == 'Debian' %}
 python-pip:
   pkg.installed:
@@ -172,7 +89,6 @@ pyvmomi_module:
     - template: jinja
     - makedirs: true
 
-{% set other_minion = "" if other_minion in ["None", None, "none"] %}
   {% if other_minion == "" %}
 # ... using the stock salt-minion instance #
 {{ salt['config.get']('salt_config_directory') }}/minion:

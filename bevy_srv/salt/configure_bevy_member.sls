@@ -172,8 +172,8 @@ pyvmomi_module:
     - template: jinja
     - makedirs: true
 
-
-{% if other_minion == "" %}
+{% set other_minion = "" if other_minion in ["None", None, "none"] %}
+  {% if other_minion == "" %}
 # ... using the stock salt-minion instance #
 {{ salt['config.get']('salt_config_directory') }}/minion:
   file.managed:
@@ -188,6 +188,10 @@ pyvmomi_module:
     - replace: false
 {% else %}  {# other_minion is non-blank #}
 # v v v installing a second minion instance to talk with Bevy Master #
+alternate_minion_configuration:
+  test.nop:
+    - name: Configuring second minion {{ other_minion }}
+
 {{ salt['config.get']('salt_config_directory') }}{{ other_minion }}/minion:
   file.managed:
     - contents: |
@@ -269,6 +273,7 @@ install-mac-minion-service:
     - name: launchctl load /Library/LaunchAgents/{{ salt_minion_service_name }}.plist
 
 {% else %}
+
 start-salt{{ other_minion }}-minion:
   service.running:
     - name: salt{{ other_minion }}-minion

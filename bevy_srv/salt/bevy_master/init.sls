@@ -11,7 +11,7 @@ bevy_master_grain:
   grains.list_present:
     - name: roles
     - value:
-      - master
+      - saltmaster
     - order: 1
 update_the_grains:
   module.run:

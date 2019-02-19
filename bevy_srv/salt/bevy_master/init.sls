@@ -60,11 +60,15 @@ clean_up_own_pki:
       - accept-own-key
 {% endif %} {# pki_cache exists not #}
 {% endif %} {# doing_bootstrap #}
-pip2-installed:  # TODO: what about pip3?
+
+pip-n-installed:
   pkg.installed:
     - names:
+{%  if grains['pythonversion'][0] == 2 %}
       - python-pip
-
+{% else %}
+      - python3-pip
+{% endif %}
 salt-master:
   pkg.installed:
     - unless:  # see if salt-master is already installed

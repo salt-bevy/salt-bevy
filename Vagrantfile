@@ -93,6 +93,8 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
     config.vm.synced_folder settings['projects_root'], "/projects", :owner => "vagrant", :group => "staff", :mount_options => ["umask=0002"]
     end
 
+  config.vm.synced_folder '/srv/pillar', "/srv/pillar", :owner => "vagrant", :group => "staff", :mount_options => ["umask=0002"]
+
   # . . . . . . . . . . . . Define machine QUAIL1 . . . . . . . . . . . . . .
   # This machine has no Salt provisioning at all. Salt-cloud can provision it.
   config.vm.define "quail1", primary: true do |quail_config|  # this will be the default machine

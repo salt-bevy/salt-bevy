@@ -18,8 +18,7 @@ UTC:
 
 Z_24_Hour:
     cmd.run:
-      - name: $culture = Get-Culture; $culture.DateTimeFormat.ShortTimePattern = 'HH:mm:ss'; $culture.DateTimeFormat.LongTimePattern = 'HH:mm:ss.ff'; Set-Culture $culture
+      - name: $culture = Get-Culture; $culture.DateTimeFormat.ShortTimePattern = 'HH:mm:ss'; $culture.DateTimeFormat.LongTimePattern = 'HH:mm:ss'; Set-Culture $culture
       - shell: powershell
 {% endif %}
 ...
-

@@ -7,3 +7,4 @@ install_chocolatey:
     - name: salt-call chocolatey.bootstrap
 
 {# NOTE: there is a bug in old Salt-Minions. You may need to hand install 2018.3+ for chocolatey to work.  #}
+...

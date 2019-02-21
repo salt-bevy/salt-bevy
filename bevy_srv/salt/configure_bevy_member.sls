@@ -16,7 +16,7 @@ include:
 {% set message = pillar['salt_managed_message'] %}
 
 {% if salt['config.get']('server_role') != '' %}
-roles:   {# make permanant grains from Vagrant passed pillar or config script #}
+roles:   {# make permanent grains from Vagrant passed pillar or config script #}
   grains.list_present:
     - value: {{ salt['config.get']('server_role') }}
 {% endif %}

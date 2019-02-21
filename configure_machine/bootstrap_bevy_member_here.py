@@ -170,7 +170,7 @@ def read_bevy_settings_files(context=None) -> str:
                 continue
 
         else:  # was defined on command line or context{bevy:}
-            print('  using bevy name {} from contex or command line'.format(arg_bevy_name))
+            print('  using bevy name {} from context or command line'.format(arg_bevy_name))
             new_bevy = arg_bevy_name
         print()
 
@@ -181,7 +181,7 @@ def read_bevy_settings_files(context=None) -> str:
         new_settings = read_settings_file(BEVY_SETTINGS_FILE_NAME + '.' + new_bevy, "archived shared")
         my_new_settings = read_settings_file(MY_SETTINGS_FILE_NAME + '.' + new_bevy, "archived local ")
         if new_settings == {}:
-            ok_create = affirmative(input('Create a new bevy named "{}"? [y/N]:'.format(new_bevy)))
+            ok_create = affirmative(input('Create a (connection to a) new bevy named "{}"? [y/N]:'.format(new_bevy)))
             if not ok_create:
                 print('Please try another bevy name...')
                 print_names_of_other_bevy_files()
@@ -212,7 +212,7 @@ def read_bevy_settings_files(context=None) -> str:
 def write_bevy_settings_files(bevy_extension=''):
 
     def write_bevy_settings_file(bevy_settings_file_name, store_settings: dict, store_additional=False):
-#       global user_name
+        global user_name
         try:
             # python 3.4
             os.makedirs(str(bevy_settings_file_name.parent), exist_ok=True)

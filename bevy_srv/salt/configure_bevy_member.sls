@@ -102,6 +102,7 @@ pyvmomi_module:
     - makedirs: true
     - show_changes: false
     - replace: false
+
 {% else %}  {# other_minion is non-blank #}
 # v v v installing a second minion instance to talk with Bevy Master #
 alternate_minion_configuration:

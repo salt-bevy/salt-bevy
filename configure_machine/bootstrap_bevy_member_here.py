@@ -918,6 +918,7 @@ if __name__ == '__main__':
     my_settings.setdefault('master_host',  False)  # assume this machine is NOT the VM host for the Master
     if settings['bevy'] == "local":
         my_settings['master'] = True  # a masterless system is a master to itself
+        default = my_settings.get('id', platform.node().split('.')[0])
     elif interactive:
         print('\n\nThis program can make this machine a simple workstation to join the bevy')
         if platform.system() != 'Windows':

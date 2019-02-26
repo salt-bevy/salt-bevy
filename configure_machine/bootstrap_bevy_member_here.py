@@ -325,7 +325,7 @@ def format_additional_roots(settings, virtual):
                 print('WARNING: cannot find application directory "{}"'.format(dir))
         return some_roots
 
-    more_parents = settings['application_roots']
+    more_parents = settings.get('application_roots', [])
     more_roots = make_the_list(more_parents, 'salt')
     more_pillars = make_the_list(more_parents, 'pillar')
     return more_roots, more_pillars
@@ -918,6 +918,7 @@ if __name__ == '__main__':
     my_settings.setdefault('master_host',  False)  # assume this machine is NOT the VM host for the Master
     if settings['bevy'] == "local":
         my_settings['master'] = True  # a masterless system is a master to itself
+        get_additional_roots()
         default = my_settings.get('id', platform.node().split('.')[0])
     elif interactive:
         print('\n\nThis program can make this machine a simple workstation to join the bevy')

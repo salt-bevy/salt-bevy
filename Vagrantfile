@@ -9,7 +9,7 @@ require "etc"
 require "yaml"
 require "ipaddr"
 
-SALT_BOOTSTRAP_ARGUMENTS = "" # "git v2019.2.0rc1"  # (usually leave blank for latest production Salt version)
+SALT_BOOTSTRAP_ARGUMENTS = "" # for example "git v2019.2.0rc1"  # (usually leave blank for latest production Salt version)
 
 vagrant_command = ARGV[0]
 vagrant_object = ARGV.length > 1 ? ARGV[1] : ""  # the name (if any) of the vagrant VM for this command
@@ -18,9 +18,10 @@ vagrant_object = ARGV.length > 1 ? ARGV[1] : ""  # the name (if any) of the vagr
 # in a Salt 'pillar' file. Vagrant has to look them up there...
 #
 # . v . v . retrieve stored bevy settings . v . v . v . v . v . v .
-BEVY_SETTINGS_FILE_NAME = '/srv/pillar/01_bevy_settings.sls'
+BEVY_SETTINGS_FILE_NAME = '/srv/pillar/01_bevy_settings.sls'  # settings for the entire bevy
+MY_SETTINGS_FILE_NAME = '/etc/salt-bevy/my_settings.conf'  # settings specific to the current host machine
 if File.exists?(BEVY_SETTINGS_FILE_NAME)
-  settings = YAML.load_file(BEVY_SETTINGS_FILE_NAME)  # get your local settings
+  settings = YAML.load_file(BEVY_SETTINGS_FILE_NAME)  # get your bevy-wide settings
   default_run_highstate = true
 else
   if vagrant_command == "up"
@@ -37,6 +38,12 @@ else
    "WINDOWS_GUEST_CONFIG_FILE" => 'configure_machine/masterless_minion.conf',
    }
   default_run_highstate = false
+end
+if File.exists?(MY_SETTINGS_FILE_NAME)
+  my_settings = YAML.load_file(MY_SETTINGS_FILE_NAME)  # get your local settings
+  settings.merge!(my_settings)  # local settings override the bevy settings.
+else
+  puts "  NOTICE: Unable to read local settings file #{MY_SETTINGS_FILE_NAME}."
 end
 # .
 BEVY = settings["bevy"]  # the name of your bevy
@@ -362,7 +369,6 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
         salt.verbose = false
         salt.colorize = true
         salt.run_highstate = default_run_highstate
-        salt.version = "2018.3.3"  # TODO: remove this when this becomes default. Needed for chocolatey
     end
   end
 
@@ -399,7 +405,6 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
         salt.minion_id = "win16"
         salt.master_id = "#{settings['master_vagrant_ip']}"
         salt.log_level = "info"
-        salt.version = "2018.3.3"  # TODO: remove this when this becomes default. Needed for chocolatey
         salt.verbose = true
         salt.colorize = true
         salt.run_highstate = default_run_highstate
@@ -440,7 +445,7 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
         #salt.log_level = "info"
         salt.verbose = false
         salt.colorize = true
-        salt.version = "2018.3.3"  # TODO: remove this when this becomes default. Needed for chocolatey
+        #salt.version = "2018.3.3"  # Example: minimum version needed for chocolatey
         #salt.run_highstate = default_run_highstate
     end
   end
@@ -468,9 +473,9 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
       quail_config.vm.guest = :windows
       quail_config.vm.boot_timeout = 300
       quail_config.vm.graceful_halt_timeout = 60
-      script = "new-item C:\\salt\\conf\\minion.d -itemtype directory -ErrorAction silentlycontinue\r\n"
-      script += "route add 10.0.0.0 mask 255.0.0.0 #{NETWORK}.18.34 -p\r\n"  # route 10. network through host NAT for VPN
-      quail_config.vm.provision "shell", inline: script
+      #script = "new-item C:\\salt\\conf\\minion.d -itemtype directory -ErrorAction silentlycontinue\r\n"
+      #script += "route add 10.0.0.0 mask 255.0.0.0 #{NETWORK}.18.34 -p\r\n"  # route 10. network through host NAT for VPN
+      #quail_config.vm.provision "shell", inline: script
       if settings.has_key?('WINDOWS_GUEST_CONFIG_FILE') and File.exist?(settings['WINDOWS_GUEST_CONFIG_FILE'])
         quail_config.vm.provision "file", source: settings['WINDOWS_GUEST_CONFIG_FILE'], destination: "c:\\salt\\conf\\minion.d\\00_vagrant_boot.conf"
         end
@@ -478,7 +483,6 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
           salt.minion_id = "win19"
           salt.master_id = "#{settings['master_vagrant_ip']}"
           salt.log_level = "info"
-          salt.version = "2018.3.3"  # TODO: remove this when this becomes default. Needed for chocolatey
           salt.verbose = true
           salt.colorize = true
           salt.run_highstate = false  # Vagrant may stall trying to run Highstate for this minion.

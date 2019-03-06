@@ -2,7 +2,8 @@
 # Salt state for installing a development copy of Salt
 #
 {% set projects_root = salt['config.get']('projects_root', 'none') %}
-{% set projects_root = '/opt' if projects_root == "none" %}
+{% set projects_root = '/opt' if projects_root == "none" else projects_root %}
+{% set project_python = salt['config.get']('pythonexecutable', '/usr/bin/python') %}
 
 ensure_{{ projects_root }}_exists:
   file.directory:
@@ -32,16 +33,16 @@ salt_dev_env:  # install the salt dependencies
     - shell: powershell
     - name: './build_env_2.ps1'
     - cwd: {{ projects_root }}/salt/pkg/windows
+    - bin_env: {{ project_python }}
     - require_in:
       - dev_env_salt
 
-  {% set project_python = 'C:\\salt\\bin\\python.exe' %}
 {% else %}  {# not Windows #}
 
   {# TODO: convert this to virtualenv.managed #}
-  {% set project_python = '/usr/bin/python' %}
   pip.installed:
     - cwd: {{ projects_root }}/salt
+    - bin_env: {{ project_python }}
     - editable: True
     - name: '.'
 {% endif %} {# else not Windows #}

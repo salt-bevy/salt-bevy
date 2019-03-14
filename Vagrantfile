@@ -49,8 +49,8 @@ end
 BEVY = settings["bevy"]  # the name of your bevy
 # the first two bytes of your Vagrant host-only network IP ("192.168.x.x")
 NETWORK = "#{settings['vagrant_prefix']}"
-# ^ ^ each VM below will have a NAT network in NETWORK.17.x/27.
-puts "Your bevy name:#{BEVY} using local network #{NETWORK}.x.x"
+# ^ ^ each VM below will have a NAT network in NETWORK.17.x/27 or NETWORK.18.x/27
+puts "Your bevy name:#{BEVY} with host-only network #{NETWORK}.x.x"
 puts "This (the VM host) computer will be at #{NETWORK}.2.1" if ARGV[1] == "up"
 bevy_mac = (BEVY.to_i(36) % 0x1000000).to_s(16)  # a MAC address based on hash of BEVY
 # in Python that would be: bevy_mac = format(int(BEVY, base=36) % 0x1000000, 'x')
@@ -65,7 +65,7 @@ hash_path = File.join(Dir.home, '.ssh', HASHFILE_NAME)  # where you store it ^ ^
 # . v . v . the program starts here . v . v . v . v . v . v . v . v . v .
 #
 # Bridged networks make the machine appear as another physical device on your network.
-# We must supply a list of names to avoid Vagrant asking for interactive input
+# We try to supply a list of names to avoid Vagrant asking for interactive input
 #
 if (RUBY_PLATFORM=~/darwin/i)  # on Mac OS, guess some frequently used ports
   interface_guesses = ['en0: Ethernet', 'en1: Wi-Fi (AirPort)',  'en0: Wi-Fi (Wireless)']

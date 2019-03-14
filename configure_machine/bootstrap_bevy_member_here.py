@@ -71,7 +71,6 @@ WINDOWS_GUEST_CONFIG_FILE = '/srv/windows_config/minion'
 
 DEFAULT_VAGRANT_PREFIX = '172.17'  # first two bytes of Vagrant private network
 DEFAULT_VAGRANT_NETWORK = '172.17.0.0/16'  #  Vagrant private network
-DEFAULT_FQDN_PATTERN = '{}.{}.test' # .test is ICANN reserved for test networks.
 
 minimum_salt_version = MINIMUM_SALT_VERSION.split('.')
 # noinspection PyTypeChecker
@@ -739,6 +738,8 @@ def choose_vagrant_network():
 
 
 def choose_bridge_interface():
+    if platform.system() == 'Darwin':
+        return {'name': ''}  # MacOS will be guessed by Vagrant itself
     try:
         host_network = ipaddress.ip_network(settings.get('vagrant_network'))
         choices = []
@@ -1059,8 +1060,6 @@ if __name__ == '__main__':
         choice = choose_bridge_interface()
         settings['vagrant_interface_guess'] = choice['name']
         my_settings['projects_root'] = get_projects_directory()
-
-    settings.setdefault('fqdn_pattern',  DEFAULT_FQDN_PATTERN)
 
     master_url = get_salt_master_url()
     if interactive:

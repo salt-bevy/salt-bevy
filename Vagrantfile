@@ -34,8 +34,8 @@ else
    "master_vagrant_ip" => 'localhost', "my_linux_user" => 'vagrant', "my_windows_user" => 'vagrant',
    "my_windows_password" => 'vagrant', "fqdn_pattern" => '{}.{}.test', "force_linux_user_password" => false,
    "linux_password_hash" => '$6$1cd1ac861859996c$Qk4jvU/HL/0bm0MMuLtFnyGeZIIxXb8VSVSr3170eGGB4LH9aXAtp980YFDohi2wE/jQZeqWLbXi1l.yZCchz1',
-   "GUEST_MINION_CONFIG_FILE" => 'configure_machine/masterless_minion.conf',
-   "WINDOWS_GUEST_CONFIG_FILE" => 'configure_machine/masterless_minion.conf',
+   "GUEST_MINION_CONFIG_FILE" => __dir__ + '/configure_machine/masterless_minion.conf',
+   "WINDOWS_GUEST_CONFIG_FILE" => __dir__ + '/configure_machine/masterless_minion.conf',
    }
   default_run_highstate = false
 end
@@ -164,6 +164,56 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
     end
   end
 
+# . . . . . . .  Define a generic machine with Salt minion installed . . . . . . . . . . . . . .
+# . Its name will be what ever name was typed on the command line.
+# . created by a command like:
+# . generic=t ./vgr up somename
+# . Define the network address and VM memory size like:
+# . GENERIC=True NODE_ADDRESS=.2.203 NODE_MEMORY=10000 NODE_BOX=boxesio/xenial64-standard ./vgr up somename
+#
+  generic = ENV["GENERIC"] || ENV['generic']
+  if generic and generic.downcase.chars.first == "t" then
+    if vagrant_object == "" and vagrant_command == "up" then
+      puts "ERROR: You must specify a machine id when environment variable GENERIC=True."
+      raise "Command Line Error triggered."
+    end
+    node_id = vagrant_object
+    node_address = ENV["NODE_ADDRESS"] || ".2.200"
+    node_memory = ENV["NODE_MEMORY"] || 5000
+    node_box = ENV["NODE_BOX"] || "ubuntu/bionic64"
+    config.vm.define node_id, autostart: false do |quail_config|
+      quail_config.vm.box = node_box
+      quail_config.vm.hostname = node_id # + DOMAIN
+      quail_config.vm.network "private_network", ip: NETWORK + node_address
+      if vagrant_command == "up"
+        puts "Starting #{node_id} at #{NETWORK}#{node_address} as a Salt minion with master=#{settings['master_vagrant_ip']}...\n."
+        end
+      quail_config.vm.network "public_network", bridge: interface_guesses
+      quail_config.vm.provider "virtualbox" do |v|
+          v.name = BEVY + '_' + node_id  # ! N.O.T.E.: name must be unique
+          v.memory = node_memory.to_i    # memory size for the virtual box
+          v.cpus = max_cpus
+          v.linked_clone = true # make a soft copy of the base Vagrant box
+          v.customize ["modifyvm", :id, "--natnet1", NETWORK + ".17.0/27"]  # do not use 10.0 network for NAT
+          v.customize ["modifyvm", :id, "--natdnshostresolver1", "on"]  # use host's DNS resolver
+      end
+      script = "mkdir -p /etc/salt/minion.d\n"
+      script += "chown -R vagrant:staff /etc/salt/minion.d\n"
+      script += "chmod -R 775 /etc/salt/minion.d\n"
+      quail_config.vm.provision "shell", inline: script
+      if settings.has_key?('GUEST_MINION_CONFIG_FILE') and File.exist?(settings['GUEST_MINION_CONFIG_FILE'])
+        quail_config.vm.provision "file", source: settings['GUEST_MINION_CONFIG_FILE'], destination: "/etc/salt/minion.d/00_vagrant_boot.conf"
+      else
+        quail_config.vm.provision "file", source: __dir__ + '/configure_machine/masterless_minion.conf', destination: "/etc/salt/minion.d/00_vagrant_boot.conf"
+      end
+      quail_config.vm.provision :salt do |salt|
+         salt.verbose = false
+         salt.bootstrap_options = "-A #{settings['master_vagrant_ip']} -i #{node_id} -F -P #{SALT_BOOTSTRAP_ARGUMENTS}"
+         salt.run_highstate = false #default_run_highstate
+      end
+    end
+  end
+
 # . . . . . . .  Define the BEVYMASTER . . . . . . . . . . . . . . . .
 # This is the Vagrant version of a Bevy Salt-master.
 # You cannot run it if you are using an external bevymaster.
@@ -180,12 +230,6 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
       end
     master_config.vm.network "public_network", bridge: interface_guesses, mac: "be0000" + bevy_mac
     master_config.vm.synced_folder ".", "/vagrant", :owner => "vagrant", :group => "staff", :mount_options => ["umask=0002"]
-    #if settings.has_key?('application_roots')  # additional shares for optional applications directories
-    #  settings['application_roots'].each do |share|  # formatted real-path=share-path
-    #    s = share.split('=')
-    #    master_config.vm.synced_folder s[0], "/#{s[1]}", :owner => "vagrant", :group => "staff", :mount_options => ["umask=0002"]
-    #  end
-    #end
     #if vagrant_command == "ssh"
     #  master_config.ssh.username = my_linux_user  # if you type "vagrant ssh", use this username
     #  master_config.ssh.private_key_path = Dir.home() + "/.ssh/id_rsa"

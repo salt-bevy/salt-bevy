@@ -121,8 +121,8 @@ def set_file_owned_by(filename, username):
     if sys.platform != 'win32':  # not on Windows
         if sudo.isUserAdmin():   # must have elevated privileges
             try:
-                shutil.chown(filename, username, 'staff')
-                shutil.chown(filename.parent, username, 'staff')
+                shutil.chown(str(filename), username, 'staff')
+                shutil.chown(str(filename.parent), username, 'staff')
             except (OSError, AttributeError):
                 pass
 
@@ -406,10 +406,11 @@ fileserver_backend:
     file_roots = ['/srv/salt'] + more_roots + [str(bevy_srv_path / 'bevy_srv/salt')]
     pillar_roots = ['/srv/pillar'] + more_pillars + [str(bevy_srv_path / 'bevy_srv/pillar')]
 
-    os.makedirs(str(config_file_name.parent), exist_ok=True)  # old Python 3.4 method
-    # config_file_name.parent.mkdir(parents=True, exist_ok=True)  # 3.5+
     newline = '\r\n' if windows else '\n'
     try:
+        os.makedirs(str(config_file_name.parent), exist_ok=True)  # old Python 3.4 method
+        # config_file_name.parent.mkdir(parents=True, exist_ok=True)  # 3.5+
+
         with config_file_name.open('w', newline=newline) as config_file:
             config_file.write(template.format(config_file_name, this_file, master, file_roots, pillar_roots, id, other))
             print('file {} written'.format(str(config_file_name)))

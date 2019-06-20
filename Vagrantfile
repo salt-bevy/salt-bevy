@@ -98,7 +98,7 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
 
   if settings.has_key?('projects_root') and settings['projects_root'] != 'none'
     config.vm.synced_folder settings['projects_root'], "/projects", :owner => "vagrant", :group => "staff", :mount_options => ["umask=0002"]
-    end
+  end
 
   config.vm.synced_folder '/srv/pillar', "/srv/pillar", :owner => "vagrant", :group => "staff", :mount_options => ["umask=0002"]
 
@@ -110,7 +110,7 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
     quail_config.vm.network "private_network", ip: NETWORK + ".2.201"  # needed so saltify_profiles.conf can find this unit
     if vagrant_command == "up" and (ARGV.length == 1 or (vagrant_object == "quail1"))
       puts "Starting 'quail1' at #{NETWORK}.2.201..."
-      end
+    end
     quail_config.vm.network "public_network", bridge: interface_guesses
     quail_config.vm.provider "virtualbox" do |v|  # only for VirtualBox boxes
         v.name = BEVY + '_quail1'  # ! N.O.T.E.: name must be unique
@@ -124,7 +124,7 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
     quail_config.vm.provider vmware do |v|  # only for VMware boxes
         v.vmx["memsize"] = "1024"
         v.vmx["numvcpus"] = "1"
-	end
+	  end
   end
 
 # . . . . . . .  Define quail2 with Salt minion installed . . . . . . . . . . . . . .
@@ -136,7 +136,7 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
     quail_config.vm.network "private_network", ip: NETWORK + ".2.202"
     if vagrant_command == "up" and vagrant_object == "quail2"
       puts "Starting #{vagrant_object} at #{NETWORK}.2.202 as a Salt minion with master=#{settings['master_vagrant_ip']}...\n."
-      end
+    end
     quail_config.vm.network "public_network", bridge: interface_guesses
     quail_config.vm.provider "virtualbox" do |v|
         v.name = BEVY + '_quail2'  # ! N.O.T.E.: name must be unique
@@ -156,7 +156,7 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
     quail_config.vm.provision "shell", inline: script
     if settings.has_key?('GUEST_MINION_CONFIG_FILE') and File.exist?(settings['GUEST_MINION_CONFIG_FILE'])
       quail_config.vm.provision "file", source: settings['GUEST_MINION_CONFIG_FILE'], destination: "/etc/salt/minion.d/00_vagrant_boot.conf"
-      end
+    end
     quail_config.vm.provision :salt do |salt|
        salt.verbose = false
        salt.bootstrap_options = "-A #{settings['master_vagrant_ip']} -i quail2 -F -P #{SALT_BOOTSTRAP_ARGUMENTS}"
@@ -187,7 +187,7 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
       quail_config.vm.network "private_network", ip: NETWORK + node_address
       if vagrant_command == "up"
         puts "Starting #{node_id} at #{NETWORK}#{node_address} as a Salt minion with master=#{settings['master_vagrant_ip']}...\n."
-        end
+      end
       quail_config.vm.network "public_network", bridge: interface_guesses
       quail_config.vm.provider "virtualbox" do |v|
           v.name = BEVY + '_' + node_id  # ! N.O.T.E.: name must be unique
@@ -225,9 +225,9 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
       if settings['master_vagrant_ip'] != NETWORK + ".2.2"
         # prevent running a Vagrant bevy master if another is in use.
         abort "Sorry. Your master_vagrant_ip setting of '#{settings['master_vagrant_ip']}' suggests that your Bevy Master is not expected to be Virtual here."
-        end
-      puts "Starting #{vagrant_object} at #{NETWORK}.2.2..."
       end
+      puts "Starting #{vagrant_object} at #{NETWORK}.2.2..."
+    end
     master_config.vm.network "public_network", bridge: interface_guesses, mac: "be0000" + bevy_mac
     master_config.vm.synced_folder ".", "/vagrant", :owner => "vagrant", :group => "staff", :mount_options => ["umask=0002"]
     #if vagrant_command == "ssh"
@@ -245,7 +245,7 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
     master_config.vm.provider vmware do |v|
         v.vmx["memsize"] = "1024"
         v.vmx["numvcpus"] = "1"
-	end
+	  end
     script = "mkdir -p /etc/salt/minion.d\n"
     script += "chown -R vagrant:staff /etc/salt/minion.d\n"
     script += "chmod -R 775 /etc/salt/minion.d\n"
@@ -256,10 +256,10 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
     if settings.has_key?('GUEST_MASTER_CONFIG_FILE') and File.exist?(settings['GUEST_MASTER_CONFIG_FILE'])
       master_config.vm.provision "file", source: settings['GUEST_MASTER_CONFIG_FILE'],
                                 destination: "/etc/salt/minion.d/00_vagrant_boot.conf"
-      end
+    end
     if File.exists?(BEVY_SETTINGS_FILE_NAME)
       master_config.vm.provision "file", source: BEVY_SETTINGS_FILE_NAME, destination: BEVY_SETTINGS_FILE_NAME
-      end
+    end
     master_config.vm.provision :salt do |salt|
        # salt.install_type = "stable 2018.3.3"
        salt.verbose = true
@@ -296,7 +296,7 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
          "server_role" => 'master',
          "doing_bootstrap" => true,  # flag for Salt state system
          })
-       end
+    end
   end
 
 
@@ -308,7 +308,7 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
     quail_config.vm.network "private_network", ip: NETWORK + ".2.218"
     if vagrant_command == "up" and vagrant_object == "quail18"
       puts "Starting #{vagrant_object} at #{NETWORK}.2.218..."
-      end
+    end
     quail_config.vm.network "public_network", bridge: interface_guesses
     quail_config.vm.provider "virtualbox" do |v|
         v.name = BEVY + '_quai18'  # ! N.O.T.E.: name must be unique
@@ -317,11 +317,11 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
         v.linked_clone = true # make a soft copy of the base Vagrant box
         v.customize ["modifyvm", :id, "--natnet1", NETWORK + ".18.0/27"]  # do not use 10.0 network for NAT
         v.customize ["modifyvm", :id, "--natdnshostresolver1", "on"]  # use host's DNS resolver
-	end
+	  end
     quail_config.vm.provider vmware do |v|
         v.vmx["memsize"] = "1024"
         v.vmx["numvcpus"] = "1"
-	end
+	  end
   end
 
   # . . . . . . . . . . . . Define machine QUAIL16 . . . . . . . . . . . . . .
@@ -332,20 +332,20 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
     quail_config.vm.network "private_network", ip: NETWORK + ".2.216"
     if vagrant_command == "up" and vagrant_object == "quail16"
       puts "Starting #{vagrant_object} at #{NETWORK}.2.216..."
-      end
+    end
     quail_config.vm.network "public_network", bridge: interface_guesses
     quail_config.vm.provider "virtualbox" do |v|
-        v.name = BEVY + '_quai16'  # ! N.O.T.E.: name must be unique
-        v.memory = 1024       # limit memory for the virtual box
-        v.cpus = 1
+        v.name = BEVY + '_quail16'  # ! N.O.T.E.: name must be unique
+        v.memory = 3072       # limit memory for the virtual box
+        v.cpus = 2
         v.linked_clone = true # make a soft copy of the base Vagrant box
         v.customize ["modifyvm", :id, "--natnet1", NETWORK + ".17.64/27"]  # do not use 10.0 network for NAT
         v.customize ["modifyvm", :id, "--natdnshostresolver1", "on"]  # use host's DNS resolver
-	end
+	  end
     quail_config.vm.provider vmware do |v|
-        v.vmx["memsize"] = "1024"
-        v.vmx["numvcpus"] = "1"
-	end
+        v.vmx["memsize"] = "3072"
+        v.vmx["numvcpus"] = "2"
+	  end
   end
 
 # . . . . . . . . . . . . Define machine QUAIL14 . . . . . . . . . . . . . .
@@ -356,7 +356,7 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
     quail_config.vm.network "private_network", ip: NETWORK + ".2.214"
     if vagrant_command == "up" and vagrant_object == "quail14"
       puts "Starting #{vagrant_object} at #{NETWORK}.2.214..."
-      end
+    end
     quail_config.vm.network "public_network", bridge: interface_guesses
     quail_config.vm.provider "virtualbox" do |v|
         v.name = BEVY + '_quail14'  # ! N.O.T.E.: name must be unique
@@ -369,7 +369,7 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
     quail_config.vm.provider vmware do |v|
         v.vmx["memsize"] = "1024"
         v.vmx["numvcpus"] = "1"
-	end
+	  end
   end
 
  # . . . . . . . . . . . . Define machine win10 . . . . . . . . . . . . . .
@@ -384,7 +384,7 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
       puts ""
       puts "NOTE: you may need to run \"vagrant up\" twice for this Windows minion."
       puts ""
-      end
+    end
     quail_config.vm.provider "virtualbox" do |v|
         v.name = BEVY + '_win10'  # ! N.O.T.E.: name must be unique
         v.gui = true  # turn on the graphic window
@@ -405,7 +405,7 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
     quail_config.vm.provision "shell", inline: script
     if settings.has_key?('WINDOWS_GUEST_CONFIG_FILE') and File.exist?(settings['WINDOWS_GUEST_CONFIG_FILE'])
       quail_config.vm.provision "file", source: settings['WINDOWS_GUEST_CONFIG_FILE'], destination: "c:\\salt\\conf\\minion.d\\00_vagrant_boot.conf"
-      end
+    end
     quail_config.vm.provision :salt do |salt|  # salt_cloud cannot push Windows salt
         salt.minion_id = "win10"
         salt.master_id = "#{settings['master_vagrant_ip']}"
@@ -424,7 +424,7 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
     quail_config.vm.network "private_network", ip: NETWORK + ".2.16"
     if vagrant_command == "up" and vagrant_object == "win16"
       puts "Starting #{vagrant_object} as a Salt minion of #{settings['master_vagrant_ip']}."
-      end
+    end
     quail_config.vm.provider "virtualbox" do |v|
         v.name = BEVY + '_win16'  # ! N.O.T.E.: name must be unique
         v.gui = true  # turn on the graphic window
@@ -444,7 +444,7 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
     quail_config.vm.provision "shell", inline: script
     if settings.has_key?('WINDOWS_GUEST_CONFIG_FILE') and File.exist?(settings['WINDOWS_GUEST_CONFIG_FILE'])
       quail_config.vm.provision "file", source: settings['WINDOWS_GUEST_CONFIG_FILE'], destination: "c:\\salt\\conf\\minion.d\\00_vagrant_boot.conf"
-      end
+    end
     quail_config.vm.provision :salt do |salt|  # salt_cloud cannot push Windows salt
         salt.minion_id = "win16"
         salt.master_id = "#{settings['master_vagrant_ip']}"
@@ -463,7 +463,7 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
     quail_config.vm.network "private_network", ip: NETWORK + ".2.12"
     if vagrant_command == "up" and vagrant_object == "win12"
       puts "Starting #{vagrant_object} as a Salt minion of #{settings['master_vagrant_ip']}."
-      end
+    end
     quail_config.vm.provider "virtualbox" do |v|
         v.name = BEVY + '_win12'  # ! N.O.T.E.: name must be unique
         v.gui = true  # turn on the graphic window
@@ -482,7 +482,7 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
     quail_config.vm.provision "shell", inline: script
     if settings.has_key?('WINDOWS_GUEST_CONFIG_FILE') and File.exist?(settings['WINDOWS_GUEST_CONFIG_FILE'])
       quail_config.vm.provision "file", source: settings['WINDOWS_GUEST_CONFIG_FILE'], destination: "c:\\salt\\conf\\minion.d\\00_vagrant_boot.conf"
-      end
+    end
     quail_config.vm.provision :salt do |salt|  # salt_cloud cannot push Windows salt
         salt.minion_id = "win12"
         salt.master_id = "#{settings['master_vagrant_ip']}"
@@ -503,7 +503,7 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
       if vagrant_command == "up" and vagrant_object == "win19"
         puts "Starting #{vagrant_object} as a Salt minion of #{settings['master_vagrant_ip']}."
         puts "NOTE: you may need to hit <Ctrl C> after starting this Windows minion."
-        end
+      end
       quail_config.vm.provider "virtualbox" do |v|
           v.name = BEVY + '_win19'  # ! N.O.T.E.: name must be unique
           v.gui = true  # turn on the graphic window
@@ -522,7 +522,7 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
       #quail_config.vm.provision "shell", inline: script
       if settings.has_key?('WINDOWS_GUEST_CONFIG_FILE') and File.exist?(settings['WINDOWS_GUEST_CONFIG_FILE'])
         quail_config.vm.provision "file", source: settings['WINDOWS_GUEST_CONFIG_FILE'], destination: "c:\\salt\\conf\\minion.d\\00_vagrant_boot.conf"
-        end
+      end
       quail_config.vm.provision :salt do |salt|  # salt_cloud cannot push Windows salt
           salt.minion_id = "win19"
           salt.master_id = "#{settings['master_vagrant_ip']}"
@@ -545,11 +545,11 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
     quail_config.vm.network "private_network", ip: NETWORK + ".2.13"
     if settings.has_key?('projects_root') and settings['projects_root'] != 'none'
       quail_config.vm.synced_folder settings['projects_root'], "/projects", disabled: true # shared folders do not work
-      end
+    end
     quail_config.vm.synced_folder ".", "/vagrant", disabled: true
     if vagrant_command == "up" and vagrant_object == "mac13"
       puts "Starting #{vagrant_object} at #{NETWORK}.2.13 as a Salt minion with master=#{settings['bevymaster_url']}...\n."
-      end
+    end
     quail_config.vm.network "public_network", bridge: interface_guesses
     quail_config.vm.provider "virtualbox" do |v|
         v.gui = true
@@ -563,11 +563,11 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
     quail_config.vm.provision "shell", path: "configure_machine/macos_unprotect_dirs.sh"
     if settings.has_key?('GUEST_MINION_CONFIG_FILE') and File.exist?(settings['GUEST_MINION_CONFIG_FILE'])
       quail_config.vm.provision "file", source: settings['GUEST_MINION_CONFIG_FILE'], destination: "/etc/salt/minion.d/00_vagrant_boot.conf"
-      end
+    end
     # no shared directory on MacOS, so we will make a copy of the bevy settings...
     if File.exist?(BEVY_SETTINGS_FILE_NAME)
       quail_config.vm.provision "file", source: BEVY_SETTINGS_FILE_NAME, destination: BEVY_SETTINGS_FILE_NAME
-      end
+    end
     script = "echo mac13 > /etc/salt/minion_id"
     quail_config.vm.provision "shell", inline: script
     quail_config.vm.provision "shell", path: "configure_machine/macos_install_P3_salt.sh"

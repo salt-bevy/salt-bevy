@@ -96,6 +96,9 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
     vmware = "vmware_workstation"
   end
 
+  if ENV.key?("VAGRANT_PWD")
+    config.vm.synced_folder ENV["VAGRANT_PWD"], "/vagrant", :owner => "vagrant", :group => "staff", :mount_options => ["umask=0002"]
+  end
   if settings.has_key?('projects_root') and settings['projects_root'] != 'none'
     config.vm.synced_folder settings['projects_root'], "/projects", :owner => "vagrant", :group => "staff", :mount_options => ["umask=0002"]
   end

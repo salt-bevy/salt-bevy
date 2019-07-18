@@ -5,7 +5,7 @@
 # (C) COPYRIGHT © Preston Landers 2010
 # Released under the same license as Python 2.6.5
 #
-# Python3 update by: Vernon Cole 2018
+# Python3 update and extensive changes by: Vernon Cole 2018, 2019
 
 import sys, os, traceback, time, json, subprocess
 
@@ -13,10 +13,18 @@ ELEVATION_FLAG = "--_context"  # internal use only. Should never be passed on a 
 
 
 def has_context():  # we-were-here flag has been set
+    '''
+    Do command line arguments include one beginning with "--_context"?
+    :return: bool, context flag was present in argv
+    '''
     return any(arg.startswith(ELEVATION_FLAG) for arg in sys.argv)
 
 
 def isUserAdmin():
+    '''
+    Checks for "--_context" argument or OS opinion of whether current process is elevated
+    :return: bool, process has administrator privileges.
+    '''
     if has_context():
         return True
     if os.name == 'nt':
@@ -35,6 +43,15 @@ def isUserAdmin():
 
 
 def runAsAdmin(commandLine=None, context=None, python_shell=False, wait=True):
+    '''
+    Run a command with elevated system privileges.
+
+    :param commandLine: str . a string, or sequence of strings, of the command line
+    :param context: dic or bool. additional context to pass to the elevated program. Adds CLI argument "--_context={}"
+    :param python_shell: bool, the command is a Python script.
+    :param wait: bool, wait for command completion. If False, will run the command asynchronously.
+    :return: int, the return code from the execution. Will be None for async, 89 for some Windows error conditions.
+    '''
     try:
         # noinspection PyUnresolvedReferences
         from helpers.argv_quote import quote
@@ -51,7 +68,7 @@ def runAsAdmin(commandLine=None, context=None, python_shell=False, wait=True):
         cmdLine = list(commandLine)  # make a local copy
 
     if python_shell:
-        python_exe = sys.executable
+        python_exe = sys.executable  # the path to the running Python image file
         cmdLine.insert(0, python_exe)  # run the Python command with elevation.
 
     if isinstance(context, dict):
@@ -61,13 +78,14 @@ def runAsAdmin(commandLine=None, context=None, python_shell=False, wait=True):
         cmdLine.append(ELEVATION_FLAG)
 
     if os.name == 'posix':
-        cmdLine.insert(0, "sudo")
+        cmdLine.insert(0, "sudo")  # make a call using the system's "sudo"
         cmd = quote(*cmdLine)
         print('Running command-->', cmd)
-        rc = subprocess.call(cmd, shell=True)
+        return_code = subprocess.call(cmd, shell=True)
 
-    elif os.name == 'nt':
+    elif os.name == 'nt':  # running Windows -- must use pywin32 to ask for elevation
         try:
+            # noinspection PyUnresolvedReferences
             import win32con, win32event, win32process
         except ImportError:
             raise ImportError('PyWin32 module has not been installed.')
@@ -98,19 +116,23 @@ def runAsAdmin(commandLine=None, context=None, python_shell=False, wait=True):
             procHandle = procInfo['hProcess']
             if procHandle is None:
                 print("Windows Process Handle is Null. RunAsAdmin did not create a child process.")
-                rc = None
+                return_code = 89
             else:
                 win32event.WaitForSingleObject(procHandle, win32event.INFINITE)
-                rc = win32process.GetExitCodeProcess(procHandle)
-                # print("Process handle %s returned code %s" % (procHandle, rc))
+                return_code = win32process.GetExitCodeProcess(procHandle)
+                # print("Process handle %s returned code %s" % (procHandle, return_code))
                 procHandle.Close()
         else:
-            rc = None
+            return_code = None  # asked not to wait for completion
     else:
         raise RuntimeError("Unsupported operating system for this module: {}".format(os.name))
-    return rc
+    return return_code
 
 def get_context():
+    '''
+    parse and return json dictionary from the --_context argument.
+    :return: dic
+    '''
     for arg in sys.argv:
         if arg.startswith(ELEVATION_FLAG):
             try:
@@ -127,6 +149,7 @@ def set_env_variables_permanently_win(key_value_pairs: dict, whole_machine: bool
     """
     Similar to os.environ[var_name] = var_value for all pairs provided, but instead of setting the variables in the
     current process, sets the environment variables permanently at the os MACHINE level.
+    NOTE:  process must be "elevated" before making this call.  Use "sudo" first.
 
     Original Recipe from http://code.activestate.com/recipes/416087/
     :param key_value_pairs: a dictionary of variable name+value to set
@@ -139,6 +162,7 @@ def set_env_variables_permanently_win(key_value_pairs: dict, whole_machine: bool
     if os.name != 'nt':
         raise ModuleNotFoundError('Attempting Windows operation on non-Windows')
 
+    # noinspection PyUnresolvedReferences
     import winreg, win32gui, win32con
 
     path = r'SYSTEM\CurrentControlSet\Control\Session Manager\Environment' if whole_machine else r'Environment'
@@ -191,18 +215,18 @@ def test(command=None):
     if not isUserAdmin():
         print("You're not an admin. You are running PID={} with command-->{}".format(os.getpid(), command))
         if command is not None:
-            rc = runAsAdmin(command[1:])
+            return_code = runAsAdmin(command[1:])
     else:
         print("You ARE an admin. You are running PID={} with command-->{}".format(os.getpid(), command))
         if command is not None and len(command) > 1:
             import subprocess
             import argv_quote
-            rc = subprocess.call(argv_quote.quote(*command[1:]), shell=True)
+            return_code = subprocess.call(argv_quote.quote(*command[1:]), shell=True)
         else:
-            rc = 0
+            return_code = 0
         time.sleep(2)
         input('Press Enter to exit.')
-    return rc
+    return return_code
 
 
 if __name__ == "__main__":

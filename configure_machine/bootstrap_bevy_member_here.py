@@ -65,14 +65,12 @@ SALT_DOWNLOAD_SOURCE = "stable"
 SALT_SRV_ROOT = '/srv/salt'
 SALT_PILLAR_ROOT = '/srv/pillar'
 # the path to write the bootstrap Salt Minion configuration file
-SALTCALL_CONFIG_FILE = '/srv/saltcall_config/minion'
 GUEST_MASTER_CONFIG_FILE = '/srv/bevymaster_config/minion'
 GUEST_MINION_CONFIG_FILE = '/srv/guest_config/minion'
 WINDOWS_GUEST_CONFIG_FILE = '/srv/windows_config/minion'
 
 DEFAULT_VAGRANT_PREFIX = '172.17'  # first two bytes of Vagrant private network
 DEFAULT_VAGRANT_NETWORK = '172.17.0.0/16'  #  Vagrant private network
-DEFAULT_FQDN_PATTERN = '{}.{}.test' # .test is ICANN reserved for test networks.
 
 minimum_salt_version = MINIMUM_SALT_VERSION.split('.')
 # noinspection PyTypeChecker
@@ -90,12 +88,41 @@ my_settings = {}
 user_name = ''
 
 
+def minion_tag():
+    '''
+    tests settings['additional_minion_tag']
+    returns "" for the primary minion (tag is blank or "none")
+      or "2" for a second minion running on the same machine,
+      possibly some other value "3"? if three minions were running, but who would do that?
+    :return: '' or '2'
+    '''
+    amt = my_settings.get('additional_minion_tag', '')
+    if amt.lower() == 'none':
+        return ''
+    return amt
+
+
+def my_salt_config_file_path():
+    if platform.system() == 'Windows':  # minion_tag not yet supported
+        return Path('c:\\salt\\conf{}\\minion.d\\00_bevy_boot.conf'.format(minion_tag()))
+    # else:
+    return Path('/etc/salt{}/minion.d/00_bevy_boot.conf'.format(minion_tag()))
+
+
+def write_my_config_file():
+    write_config_file(my_salt_config_file_path(),
+                      is_master=my_settings.get('master', False),
+                      virtual=False,
+                      windows=platform.system()=='Windows',
+                      master_host=my_settings.get('master_host', False))
+
+
 def set_file_owned_by(filename, username):
     if sys.platform != 'win32':  # not on Windows
         if sudo.isUserAdmin():   # must have elevated privileges
             try:
-                shutil.chown(filename, username, 'staff')
-                shutil.chown(filename.parent, username, 'staff')
+                shutil.chown(str(filename), username, 'staff')
+                shutil.chown(str(filename.parent), username, 'staff')
             except (OSError, AttributeError):
                 pass
 
@@ -233,11 +260,9 @@ def write_bevy_settings_files(bevy_extension=''):
                 if store_additional:
                     f.write('# settings for Vagrant to read...\n')  # NOTE: names are in UPPER_CASE
                     #... f'strings' are only available in Python 3.5+ ! ...#
-                    # f.write(f"SALTCALL_CONFIG_FILE: '{SALTCALL_CONFIG_FILE}'\n")
                     # f.write(f"GUEST_MASTER_CONFIG_FILE: '{GUEST_MASTER_CONFIG_FILE}'\n")
                     # f.write(f"GUEST_MINION_CONFIG_FILE: '{GUEST_MINION_CONFIG_FILE}'\n")
                     # f.write(f"WINDOWS_GUEST_CONFIG_FILE: '{WINDOWS_GUEST_CONFIG_FILE}'\n")
-                    f.write("SALTCALL_CONFIG_FILE: '{}'\n".format(SALTCALL_CONFIG_FILE))
                     f.write("GUEST_MASTER_CONFIG_FILE: '{}'\n".format(GUEST_MASTER_CONFIG_FILE))
                     f.write("GUEST_MINION_CONFIG_FILE: '{}'\n".format(GUEST_MINION_CONFIG_FILE))
                     f.write("WINDOWS_GUEST_CONFIG_FILE: '{}'\n".format(WINDOWS_GUEST_CONFIG_FILE))
@@ -325,7 +350,7 @@ def format_additional_roots(settings, virtual):
                 print('WARNING: cannot find application directory "{}"'.format(dir))
         return some_roots
 
-    more_parents = settings['application_roots']
+    more_parents = settings.get('application_roots', [])
     more_roots = make_the_list(more_parents, 'salt')
     more_pillars = make_the_list(more_parents, 'pillar')
     return more_roots, more_pillars
@@ -370,7 +395,7 @@ fileserver_backend:
         if master_host else settings.get('master_external_ip', '')
     master = 'localhost' if is_master else master_url
     id2m = my_settings.get('second_minion_id', 'None')
-    id = '' if virtual else 'id: {}'.format(id2m if id2m.lower() != 'none' else my_settings['id'])
+    id = '' if virtual else 'id: {}'.format(id2m if id2m.lower() != 'none' else my_settings.get('id', ''))
     other = 'file_client: local\n' if is_master else ''
     projects_root = my_settings.get('projects_root', 'none')
     other += 'projects_root: {}\n'.format(projects_root)
@@ -381,10 +406,11 @@ fileserver_backend:
     file_roots = ['/srv/salt'] + more_roots + [str(bevy_srv_path / 'bevy_srv/salt')]
     pillar_roots = ['/srv/pillar'] + more_pillars + [str(bevy_srv_path / 'bevy_srv/pillar')]
 
-    os.makedirs(str(config_file_name.parent), exist_ok=True)  # old Python 3.4 method
-    # config_file_name.parent.mkdir(parents=True, exist_ok=True)  # 3.5+
     newline = '\r\n' if windows else '\n'
     try:
+        os.makedirs(str(config_file_name.parent), exist_ok=True)  # old Python 3.4 method
+        # config_file_name.parent.mkdir(parents=True, exist_ok=True)  # 3.5+
+
         with config_file_name.open('w', newline=newline) as config_file:
             config_file.write(template.format(config_file_name, this_file, master, file_roots, pillar_roots, id, other))
             print('file {} written'.format(str(config_file_name)))
@@ -713,6 +739,8 @@ def choose_vagrant_network():
 
 
 def choose_bridge_interface():
+    if platform.system() == 'Darwin':
+        return {'name': ''}  # MacOS will be guessed by Vagrant itself
     try:
         host_network = ipaddress.ip_network(settings.get('vagrant_network'))
         choices = []
@@ -770,9 +798,9 @@ def get_projects_directory():
 
 def clear_master_pub_key(force=False):
     if platform.system() == 'Windows':
-        master_pub = Path(r'C:\salt{}\conf\pki\minion\minion_master.pub'.format(two))
+        master_pub = Path(r'C:\salt{}\conf\pki\minion\minion_master.pub'.format(minion_tag()))
     else:
-        master_pub = Path('/etc/salt{}/pki/minion/minion_master.pub'.format(two))
+        master_pub = Path('/etc/salt{}/pki/minion/minion_master.pub'.format(minion_tag()))
 
     try:
         if master_pub.exists():
@@ -801,7 +829,7 @@ def write_config_files():
     except Exception as e:
         print('Error writing {}-->'.format(GUEST_MASTER_CONFIG_FILE), e)
         input('hit <Enter> to continue:')
-    write_config_file(Path(SALTCALL_CONFIG_FILE), my_settings['master'], virtual=False,
+    write_config_file(my_salt_config_file_path(), my_settings['master'], virtual=False,
                       windows=platform.system() == 'Windows', master_host=my_settings['master_host'])
 
     if my_settings['vm_host']:
@@ -847,12 +875,11 @@ if __name__ == '__main__':
     if '--help' in argv:
         print(__doc__)
         exit(0)
-
     context = sudo.get_context()
     user_name = context.pop('user_name', '')
     interactive = context.pop('interactive', True)
 
-    if not user_name:  # this must be the first (i.e. unprivileged) invocation of the program
+    if user_name == "":  # this must be the first (i.e. unprivileged) invocation of the program
         display_introductory_text()
         user_name = getpass.getuser()
         if user_name == 'root':  # happens on Posix systems
@@ -863,9 +890,10 @@ if __name__ == '__main__':
     # read the default settings from the stored values on disk.
     bevy, changed = read_bevy_settings_files(context)  # user may change to another bevy during this call.
     if changed:
-        if settings and my_settings:
-            interactive = affirmative(
-                input("Do you wish to change any settings for bevy {}? [y/N]:".format(bevy)))
+        write_my_config_file()
+    if settings and my_settings and not sudo.has_context():
+        interactive = affirmative(
+            input("Do you wish to change any settings for bevy {}? [y/N]:".format(bevy)))
     context['bevy'] = bevy
     settings['bevy'] = bevy
 
@@ -898,6 +926,15 @@ if __name__ == '__main__':
         print('Setting up user "{}" for bevy "{}"'.format(settings['my_linux_user'], settings['bevy']))
         write_bevy_settings_files()
 
+    # . . . .   This is the point where our program flow goes crazy.
+    #           Up until this line, in most cases, the program will be running as a normal (unprivileged) user.
+    #           From this point on, we need to have elevated or "root" permissions,
+    #            so we will ask the operating system to run a program (which happens to be THIS program)
+    #            with elevated privileges, passing it an argument containing "--_context".
+    #           When we are run the second time, we use the lines above to retrieve the context which we
+    #            carefully stored away previously.
+    #           We can detect the second run because "sudo.has_context()" returns "True".
+    #           ... so now, a blinding light, a "bang", and a cloud of smoke and ...
     if sudo.has_context():
         print('Now running as Administrator...')
     elif sudo.isUserAdmin():
@@ -910,14 +947,18 @@ if __name__ == '__main__':
         ctx['user_name'] = user_name
         ctx['interactive'] = interactive
         time.sleep(2)  # give user a moment to absorb this ...
-        cmdLine = sys.argv[:]  # make a shallow copy.
-        sudo.runAsAdmin(cmdLine, python_shell=True, context=ctx)  # Run this script using Administrator privileges
-        time.sleep(3)
-        exit(0)  # Our exalted child has taken over and done the hard work. Goodbye.
+        cmdLine = sys.argv[:]  # make a shallow copy of our original command line.
+        retcode = sudo.runAsAdmin(cmdLine, python_shell=True, context=ctx)  # Run this script using Administrator privileges
+        time.sleep(2)  # another comfort pause for after the elevated program has run.
+        exit(retcode)  # Our exalted child has taken over and should have done all of the hard work.
+    #           ... PRESTO! we are running with elevated privileges for the rest of this script! ...
+    #
 
     my_settings.setdefault('master_host',  False)  # assume this machine is NOT the VM host for the Master
     if settings['bevy'] == "local":
         my_settings['master'] = True  # a masterless system is a master to itself
+        get_additional_roots()
+        default = my_settings.get('id', platform.node().split('.')[0])
     elif interactive:
         print('\n\nThis program can make this machine a simple workstation to join the bevy')
         if platform.system() != 'Windows':
@@ -1021,8 +1062,6 @@ if __name__ == '__main__':
         settings['vagrant_interface_guess'] = choice['name']
         my_settings['projects_root'] = get_projects_directory()
 
-    settings.setdefault('fqdn_pattern',  DEFAULT_FQDN_PATTERN)
-
     master_url = get_salt_master_url()
     if interactive:
         we_installed_it = salt_install(my_settings['master'])  # download & run salt
@@ -1038,11 +1077,11 @@ if __name__ == '__main__':
                 else:
                     exit(1)
         ask_second_minion = master_url not in ['localhost', 'salt', '127.0.0.1'] and \
-                            platform.system() != 'Windows'  # TODO: figure out how to run 2nd minion on Windows
+                            platform.system() not in ['Windows', 'Darwin']  # TODO: figure out how to run 2nd minion on Windows
     else:
         ask_second_minion = False
     second_minion_id = my_settings.setdefault('second_minion_id', 'None')
-    historic_second_minion = second_minion_id != 'None'
+    historic_second_minion = second_minion_id.lower() not in ['none', '']
     if interactive and (ask_second_minion or historic_second_minion):
         print('Your primary Salt master URL was detected as: {}'.format(master_url))
         if settings.get('master_external_ip', None):
@@ -1050,17 +1089,17 @@ if __name__ == '__main__':
         print('You may continue to use your primary master, and also use a second master to connect your bevy.')
         print('Your previously used minion ID was "{}" on your (optional) second master'.format(
             my_settings.get('second_minion_id', 'None')))
-    while interactive:
-        default = my_settings.get('second_minion_id', 'bevymaster' if my_settings['master'] else node_name)
-        print('Enter "None" to use the primary Salt Master only.')
-        response = normalize_literal_none(input(
-            'What ID do you want to use for this node on your second master? [{}]:'.format(default))) or default
-        if response == 'None' or affirmative(input('Use "{}"?: [Y/n]:'.format(response)), True):
-            my_settings['second_minion_id'] = response
-            my_settings['additional_minion_tag'] = \
-                '' if response == 'None' else my_settings['additional_minion_tag'] or '2'
-            break
-    two = my_settings.get('additional_minion_tag')
+        while ...:
+            default = my_settings.get('second_minion_id', 'bevymaster' if my_settings['master'] else node_name)
+            print('Enter "None" to use the primary Salt Master only.')
+            response = normalize_literal_none(input(
+                'What ID do you want to use for this node on your second master? [{}]:'.format(default))) or default
+            if response == 'None' or affirmative(input('Use "{}"?: [Y/n]:'.format(response)), True):
+                my_settings['second_minion_id'] = response
+                my_settings['additional_minion_tag'] = \
+                    '' if response == 'None' else my_settings['additional_minion_tag'] or '2'
+                break
+    two = my_settings.get('additional_minion_tag', '')
 
     if settings['bevy'] == "local":
         master_address = 'localhost'
@@ -1079,10 +1118,11 @@ if __name__ == '__main__':
     write_bevy_settings_files()
 
     if my_settings['master']:
+        write_my_config_file()
         print('\n\n. . . . . . . . . .\n')
         salt_call_local.state_apply('',  # blank name means: apply highstate
                          id=node_name,
-                         config_dir=str(Path(SALTCALL_CONFIG_FILE).resolve().parent),
+                         config_dir=str(Path(my_salt_config_file_path()).resolve().parent.parent),
                          bevy_root=str(bevy_root_node),
                          bevy=settings['bevy'],
                          master_vagrant_ip=master_address,
@@ -1115,6 +1155,7 @@ if __name__ == '__main__':
                                                      .format(my_master_url)), True):
                             settings['master_vagrant_ip'] = my_master_url
                     write_bevy_settings_files()
+                    write_my_config_file()
                     break  # it looks good -- exit the loop
             except (socket.error, IndexError, Exception) as e:
                 print('Sorry. That produced the error==>{}'.format(e))
@@ -1123,7 +1164,7 @@ if __name__ == '__main__':
         print('\n\n. . . . . . . . . .\n')
         salt_call_local.state_apply('configure_bevy_member',
                          id=node_name,
-                         config_dir=str(Path(SALTCALL_CONFIG_FILE).resolve().parent), # for local
+                         config_dir=str(Path(my_salt_config_file_path()).resolve().parent.parent), # for local
                          bevy_root=str(bevy_root_node),
                          bevy=settings['bevy'],
                          master_vagrant_ip=settings['master_vagrant_ip'],

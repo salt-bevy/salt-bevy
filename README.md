@@ -196,21 +196,29 @@ You can create a Salt cloud master ("bevymaster") as a virtual machine on your w
 This can be very convenient, except for **one restriction** which occurs if you have any 
 application servers (salt minions) running separately from your workstation. 
 Minions will be trying to connect to their master at a fixed address. 
-If your master should re-connect using a different IP address, they will be lost. 
-You will need to consistently use the same network connection for your host workstion,
+If your master should re-connect using a different IP address, they will be lost,
+so in that case, will need to consistently use the same network connection for your host workstion,
 or use some sort of dynamic DNS arrangement.
 
-The Vagrantfile also defines two simple empty Ubuntu 16.04 VMs, named "quail1" and "quail16".
-  
-There is also an Ubuntu 14.04 VM (named "quail14") defined in the Vagrantfile. 
+The Vagrantfile defines:
+| Name | ip | minion? | OS version |
+| ---- | -- | ------- | ---------- |
+| bevymaster | 2.2 | master | Ubuntu 18.04 |
+| quail1 | 2.201 | no | Ubuntu 18.04 |
+| quail2 | 2.202 | yes | Ubuntu 18.04 |
+| quail14 | 2.214 | no | Ubuntu 14.04 |
+| quail16 | 2.216 | no | Ubuntu 16.04 |
+| quail18 | 2.218 | no | Ubuntu 18.04 |
+| win10 | 2.10 | yes | Windows 10 |
+| win12 | 2.12 | yes | Windows Server 2012 |
+| win14 | 2.16 | yes | Windows Server 2016 |
+| win19 | 2.19 | yes | Windows Server 2019 |
+| mac13 | 2.13 | yes | MacOS 10.3 |
+| **generic** | 2.200 | yes | Ubuntu 18.04 | 
 
-There is a Windows Server 2016 machine named "win16",
-and a Windows 10 virtual machine named "win10".
-Each will provision itself as a Salt minion of the bevymaster.
+The "generic" machine can be re-configured using environment variables. See below.
 
-Finally, there is a VM named "quail2" for quick-and-dirty operation which will be configured as a Salt minion.
-
-Each of these has three virtual network ports:
+Each machine has three virtual network ports:
 
 - One has a pre-defined IP address range used for a Vagrant host-only network adapter, 
 which used to connect a to a Vagrant shared directory, 
@@ -241,6 +249,31 @@ There is some Ruby code in the Vagrantfile to try getting the correct name.
 The configuration script will try to help you select the correct name, which
 will be saved in your configuration pillar file. If you are using MacOS,
 this will not work and we will just guess at the two most usual adapters.
+
+#### The "generic" VM
+
+The Vagrantfile defines one virtual machine which can, by manupulation of environment variables, create many named VMs.
+
+Define the environment variable GENERIC (or "generic" for lazy typers) as "True" (or "t") and then type any machine name.
+For example:
+```
+generic=t vagrant up somename
+generic=t vagrant ssh somename
+generic=t vagrant destroy somename
+```
+
+You will need to use the `vagrant global-status` command to see your generic VMs.
+
+Other environment variables can be used to further define the operation of your generic VMs.
+
+- **NODE_ADDRESS** (default=.2.200) the last two octets for the IP address of the machine's host-only network inderface.
+- **NODE_MEMORY** (default=5000) the size of virtual memory to allocate for the VM.
+- **NODE_BOX** (default= Ubuntu LTS) the Vagrant Box definition for the VM.
+```
+GENERIC=True NODE_ADDRESS=.2.203 NODE_MEMORY=10000 NODE_BOX=boxesio/xenial64-standard vagrant up anothername
+generic=t vagrant ssh anothername
+ssh vagrant@172.17.2.203 'ls /home'
+```
 
 ### Single Source of Truth
 

@@ -181,16 +181,23 @@ def set_env_variables_permanently_win(key_value_pairs: dict, whole_machine: bool
 
 
 def test(command=None):
+    try:
+        if isinstance(command, str):
+            command = command.split()
+        if "--test" in command:
+            command.remove("--test")
+    except TypeError:
+        pass
     if not isUserAdmin():
         print("You're not an admin. You are running PID={} with command-->{}".format(os.getpid(), command))
-        rc = runAsAdmin(command)
+        if command is not None:
+            rc = runAsAdmin(command[1:])
     else:
-        sys.argv.remove("--test")
         print("You ARE an admin. You are running PID={} with command-->{}".format(os.getpid(), command))
-        if len(sys.argv) > 1:
+        if command is not None and len(command) > 1:
             import subprocess
             import argv_quote
-            rc = subprocess.call(argv_quote.quote(sys.argv[1:]), shell=True)
+            rc = subprocess.call(argv_quote.quote(*command[1:]), shell=True)
         else:
             rc = 0
         time.sleep(2)
@@ -200,8 +207,8 @@ def test(command=None):
 
 if __name__ == "__main__":
     if "--test" in sys.argv:
-        print('......testing with no arguments.......')
-        test("")
+        print('......testing.......')
+        test(sys.argv)
         if not isUserAdmin():
             print('....... NEXT, a real useful example ... editing the "etc/hosts" file ........')
             if os.name == 'nt':
@@ -211,9 +218,14 @@ if __name__ == "__main__":
             test(call)
     elif "--install-sudo-command" in sys.argv and os.name == 'nt':
         print('Installing "sudo" command...')
-        import shutil
-        shutil.copy2(__file__, r'C:\Windows\sudo.py')
-        set_env_variables_permanently_win({'PATHEXT': r'.PY'}, whole_machine=True)
+        if isUserAdmin():
+            import shutil
+            shutil.copy2(__file__, r'C:\Windows\sudo.py')
+            shutil.copy2(os.path.dirname(os.path.abspath(__file__)) + r'\argv_quote.py',
+                                         r'C:\Windows\argv_quote.py')
+            set_env_variables_permanently_win({'PATHEXT': r'.PY'}, whole_machine=True)
+        else:
+            runAsAdmin([os.path.abspath(__file__), '--install-sudo-command'], python_shell=True)
     elif "--set-environment" in sys.argv and os.name == 'nt':
         ctx = get_context()
         set_env_variables_permanently_win(ctx, whole_machine=True)

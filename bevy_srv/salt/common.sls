@@ -65,7 +65,6 @@ debian_packages:
     - pkgs:
       - git
       - htop
-      - mtr
       - nano
       - python-pip
       - python3

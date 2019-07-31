@@ -282,22 +282,22 @@ from the command line.
 Use `generic` or `generic_no_salt` as a key word in your command to have the script define the needed environment variables for you.
 The arguments are interpreted as:
 
-`./vgr up generic <node name> <node_address> <node_memory> <node_box>`
+`./vgr up generic <node name> <node_address> <node_memory> <node_box> <--switches>`
 
 The `generic_no_salt` keyword is needed only at `vgr up` time to inhibit the provision of a Salt minion.
 
 ```bash
-./vgr up generic somename
+./vgr up generic somename "" "" ubuntu/trusty64 --provision
 ./vgr up generic_no_salt another .2.199 8000  # assigns an address and more RAM
 ./vgr ssh generic another
+./vgr destroy generic somename
 ```
 or, on Windows:
 ```cmd
-vgr up generic somename
-vgr up generic_no_salt another .2.199 8000  # assigns an address and more RAM
-vgr ssh generic another
+vgr up generic somename "" "" ubuntu/trusty64 --provision
+# etcetera
 ```
-The `vgr` and `vgr.bat` scripts are also used to operate salt-bevy VMs from differnt project directories.
+The `vgr` and `vgr.bat` scripts can also be copied to other projects to operate salt-bevy VMs from different directories.
 ### Single Source of Truth
 
  This project attempts to establish a [DRY](https://en.wikipedia.org/wiki/Don%27t_repeat_yourself)

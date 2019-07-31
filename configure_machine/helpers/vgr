@@ -1,7 +1,0 @@
-#!/usr/bin/env bash
-# run Vagrant using salt-bevy definitions
-PWD="$(pwd -P)"
-export VAGRANT_PWD=$PWD
-SCRIPTPATH="$( cd "$(dirname "$0")/../salt-bevy" ; pwd -P )"
-export VAGRANT_CWD=$SCRIPTPATH
-/usr/bin/env vagrant "$@"

@@ -214,9 +214,10 @@ The Vagrantfile defines:
 | win14 | 2.16 | yes | Windows Server 2016 |
 | win19 | 2.19 | yes | Windows Server 2019 |
 | mac13 | 2.13 | yes | MacOS 10.3 |
-| **generic** | 2.200 | yes | Ubuntu 18.04 | 
+| **generic** | 2.200 * | yes | Ubuntu 18.04 * | 
+| **generic_no_salt** | 2.200 * | no | Ubuntu 18.04 * |
 
-The "generic" machine can be re-configured using environment variables. See below.
+ \* The "generic" machine can be re-configured using environment variables. See below.
 
 Each machine has three virtual network ports:
 
@@ -275,6 +276,28 @@ generic=t vagrant ssh anothername
 ssh vagrant@172.17.2.203 'ls /home'
 ```
 
+The `vgr` and `vgr.bat` script commands are provided for convenience in controlling "generic" VMs
+from the command line.
+
+Use `generic` or `generic_no_salt` as a key word in your command to have the script define the needed environment variables for you.
+The arguments are interpreted as:
+
+`./vgr up generic <node name> <node_address> <node_memory> <node_box>`
+
+The `generic_no_salt` keyword is needed only at `vgr up` time to inhibit the provision of a Salt minion.
+
+```bash
+./vgr up generic somename
+./vgr up generic_no_salt another .2.199 8000  # assigns an address and more RAM
+./vgr ssh generic another
+```
+or, on Windows:
+```cmd
+vgr up generic somename
+vgr up generic_no_salt another .2.199 8000  # assigns an address and more RAM
+vgr ssh generic another
+```
+The `vgr` and `vgr.bat` scripts are also used to operate salt-bevy VMs from differnt project directories.
 ### Single Source of Truth
 
  This project attempts to establish a [DRY](https://en.wikipedia.org/wiki/Don%27t_repeat_yourself)
@@ -320,7 +343,7 @@ Consider ordering a special router soon. I use a RouterBoard / Mikrotik
 Their RouterOS operating system has professional features lacking in most popular home routers.
 I found mine on Amazon for less than $30 USD. Buy some CAT-5 cables, too.
 
-For test computers on my private network, I use an old HP laptop that once ran Windows Vista, and a Raspberry Pi.
+For test computers on my private network, I use an old HP laptop that once ran Windows Vista, and a Raspberry Pi 3.
 Also running on my test net, I have two development Ubuntu laptops, a Windows 10 laptop,
 an old MacBook, and my Android phone.
 

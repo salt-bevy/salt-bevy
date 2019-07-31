@@ -1,0 +1,36 @@
+#!/usr/bin/env bash
+set -x
+# runing Vagrant using salt-bevy definitions
+PWD="$(pwd -P)"
+export VAGRANT_PWD=$PWD
+SCRIPTPATH="$( cd "$(dirname "$0")/../salt-bevy" ; pwd -P )"
+export VAGRANT_CWD=$SCRIPTPATH
+arg2="$2"
+if [ "$arg2" == "generic_no_salt" ]
+then
+  arg2="generic"
+else
+  VAGRANT_SALT='t'
+fi
+if [ "$arg2" == "generic" ]
+then
+  export GENERIC='t'
+  if [ "$1" == "up" ]
+  then
+    export NODE_ADDRESS=$4
+    export NODE_MEMORY=$5
+    export NODE_BOX=$6
+  fi
+  echo vagrant $1 $3
+  /usr/bin/env vagrant $1 $3
+  NODE_ADDRESS=
+  NODE_BOX=
+  NODE_MEMORY=
+  VAGRANT_SALT=
+else
+  GENERIC=
+  echo vagrant "$@"
+  /usr/bin/env vagrant "$@"
+fi
+VAGRANT_CWD=
+VAGRANT_PWD=

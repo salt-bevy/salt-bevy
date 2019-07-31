@@ -209,10 +209,12 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
       else
         quail_config.vm.provision "file", source: __dir__ + '/configure_machine/masterless_minion.conf', destination: "/etc/salt/minion.d/00_vagrant_boot.conf"
       end
-      quail_config.vm.provision :salt do |salt|
-         salt.verbose = false
-         salt.bootstrap_options = "-A #{settings['master_vagrant_ip']} -i #{node_id} -F -P #{SALT_BOOTSTRAP_ARGUMENTS}"
-         salt.run_highstate = false #default_run_highstate
+      if ENV.key?("VAGRANT_SALT")
+        quail_config.vm.provision :salt do |salt|
+           salt.verbose = false
+           salt.bootstrap_options = "-A #{settings['master_vagrant_ip']} -i #{node_id} -F -P #{SALT_BOOTSTRAP_ARGUMENTS}"
+           salt.run_highstate = false #default_run_highstate
+         end
       end
     end
   end

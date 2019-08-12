@@ -19,7 +19,9 @@ salt_config_directory: {{ salt['config.get']('salt_config_directory') }}  # reme
 autosign_file: {{ salt['config.get']('salt_config_directory') }}/pki/master/autosign.minions
 {% endif %}
 winrepo_remotes: []  # do not support Windows minions before v2015.8
-timeout: 20  # give Windows minions more time to respond (default was 5 seconds).
+winrepo_remotes_ng: []  # do not remember the official SaltStack winrepo either
+
+timeout: 10  # give minions more time to heartbeat because of Windows (default was 5 seconds).
 
 worker_threads: 2  {# sufficient for test systems #}
 

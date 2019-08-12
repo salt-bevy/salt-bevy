@@ -196,21 +196,30 @@ You can create a Salt cloud master ("bevymaster") as a virtual machine on your w
 This can be very convenient, except for **one restriction** which occurs if you have any 
 application servers (salt minions) running separately from your workstation. 
 Minions will be trying to connect to their master at a fixed address. 
-If your master should re-connect using a different IP address, they will be lost. 
-You will need to consistently use the same network connection for your host workstion,
+If your master should re-connect using a different IP address, they will be lost,
+so in that case, will need to consistently use the same network connection for your host workstion,
 or use some sort of dynamic DNS arrangement.
 
-The Vagrantfile also defines two simple empty Ubuntu 16.04 VMs, named "quail1" and "quail16".
-  
-There is also an Ubuntu 14.04 VM (named "quail14") defined in the Vagrantfile. 
+The Vagrantfile defines:
+| Name | ip | minion? | OS version |
+| ---- | -- | ------- | ---------- |
+| bevymaster | 2.2 | master | Ubuntu 18.04 |
+| quail1 | 2.201 | no | Ubuntu 18.04 |
+| quail2 | 2.202 | yes | Ubuntu 18.04 |
+| quail14 | 2.214 | no | Ubuntu 14.04 |
+| quail16 | 2.216 | no | Ubuntu 16.04 |
+| quail18 | 2.218 | no | Ubuntu 18.04 |
+| win10 | 2.10 | yes | Windows 10 |
+| win12 | 2.12 | yes | Windows Server 2012 |
+| win14 | 2.16 | yes | Windows Server 2016 |
+| win19 | 2.19 | yes | Windows Server 2019 |
+| mac13 | 2.13 | yes | MacOS 10.3 |
+| **generic** | 2.200 * | yes | Ubuntu 18.04 * | 
+| **generic_no_salt** | 2.200 * | no | Ubuntu 18.04 * |
 
-There is a Windows Server 2016 machine named "win16",
-and a Windows 10 virtual machine named "win10".
-Each will provision itself as a Salt minion of the bevymaster.
+ \* The "generic" machine can be re-configured using environment variables. See below.
 
-Finally, there is a VM named "quail2" for quick-and-dirty operation which will be configured as a Salt minion.
-
-Each of these has three virtual network ports:
+Each machine has three virtual network ports:
 
 - One has a pre-defined IP address range used for a Vagrant host-only network adapter, 
 which used to connect a to a Vagrant shared directory, 
@@ -242,6 +251,53 @@ The configuration script will try to help you select the correct name, which
 will be saved in your configuration pillar file. If you are using MacOS,
 this will not work and we will just guess at the two most usual adapters.
 
+#### The "generic" VM
+
+The Vagrantfile defines one virtual machine which can, by manupulation of environment variables, create many named VMs.
+
+Define the environment variable GENERIC (or "generic" for lazy typers) as "True" (or "t") and then type any machine name.
+For example:
+```
+generic=t vagrant up somename
+generic=t vagrant ssh somename
+generic=t vagrant destroy somename
+```
+
+You will need to use the `vagrant global-status` command to see your generic VMs.
+
+Other environment variables can be used to further define the operation of your generic VMs.
+
+- **NODE_ADDRESS** (default=.2.200) the last two octets for the IP address of the machine's host-only network inderface.
+- **NODE_MEMORY** (default=5000) the size of virtual memory to allocate for the VM.
+- **NODE_BOX** (default= Ubuntu LTS) the Vagrant Box definition for the VM.
+```
+GENERIC=True NODE_ADDRESS=.2.203 NODE_MEMORY=10000 NODE_BOX=boxesio/xenial64-standard vagrant up anothername
+generic=t vagrant ssh anothername
+ssh vagrant@172.17.2.203 'ls /home'
+```
+
+The `vgr` and `vgr.bat` script commands are provided for convenience in controlling "generic" VMs
+from the command line.
+
+Use `generic` or `generic_no_salt` as a key word in your command to have the script define the needed environment variables for you.
+The arguments are interpreted as:
+
+`./vgr up generic <node name> <node_address> <node_memory> <node_box> <--switches>`
+
+The `generic_no_salt` keyword is needed only at `vgr up` time to inhibit the provision of a Salt minion.
+
+```bash
+./vgr up generic somename "" "" ubuntu/trusty64 --provision
+./vgr up generic_no_salt another .2.199 8000  # assigns an address and more RAM
+./vgr ssh generic another
+./vgr destroy generic somename
+```
+or, on Windows:
+```cmd
+vgr up generic somename "" "" ubuntu/trusty64 --provision
+# etcetera
+```
+The `vgr` and `vgr.bat` scripts can also be copied to other projects to operate salt-bevy VMs from different directories.
 ### Single Source of Truth
 
  This project attempts to establish a [DRY](https://en.wikipedia.org/wiki/Don%27t_repeat_yourself)
@@ -287,7 +343,7 @@ Consider ordering a special router soon. I use a RouterBoard / Mikrotik
 Their RouterOS operating system has professional features lacking in most popular home routers.
 I found mine on Amazon for less than $30 USD. Buy some CAT-5 cables, too.
 
-For test computers on my private network, I use an old HP laptop that once ran Windows Vista, and a Raspberry Pi.
+For test computers on my private network, I use an old HP laptop that once ran Windows Vista, and a Raspberry Pi 3.
 Also running on my test net, I have two development Ubuntu laptops, a Windows 10 laptop,
 an old MacBook, and my Android phone.
 

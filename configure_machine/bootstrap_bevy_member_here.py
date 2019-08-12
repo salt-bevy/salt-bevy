@@ -362,7 +362,6 @@ def write_config_file(config_file_name, is_master: bool, virtual=True, windows=F
     substituting the actual path to the ../bevy_srv salt and pillar subdirectories,
     -- which will be used as the Salt minion configuration during the "salt_call_local.state_apply" function below.
     '''
-#   global user_name
     template = """
 # initial configuration file for a bevy member.
 # from file: {0}
@@ -591,7 +590,6 @@ def request_windows_username_and_password():
 
 
 def write_ssh_key_file(my_linux_user):
-    # global interactive
     pub = None  # object to contain the user's ssh public key
     okay = 'n'
     pub_key = ''

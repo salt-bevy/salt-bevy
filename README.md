@@ -51,14 +51,15 @@ If you need to return to the original text, you can use `git` to restore it.
 
 [1]: see [how to git stuff](lessons/git/how_to_git_stuff.md) if you don't understand what "clone" means.
 
-[2]: Windows users -- use the `C:\projects\salt-bevy` folder. 
+[2]: Windows users -- use the `C:\projects\salt-bevy` folder to follow the examples here.
 All future instructions will use POSIX names with right-leaning slashes and no drive letter. Live with it. 
 If you need help, look in the [Linux for Windows Users](lessons/windows/Linux_for_Windows_users.md) lesson.
 
 [3]: v v v
 ### What the #&*$%! is a `bevy`?
 
-In this project, we will use the term "bevy" to specify the collection of virtual (and sometimes physical) computers which are managed by our Salt master.
+In this project, we will use the term "bevy" to specify the collection of virtual (and sometimes physical) computers which are 
+managed by our (included) Salt master.
 
 The Oxford English dictionary says:
 
@@ -95,7 +96,7 @@ If you always pretend that file names must be in the exact case, you should have
 For simplicity, we will assume a few things which may be different in your situation.
 These are not prerequisites, but merely conventions which you can freely ignore. 
 If you chose not to follow the convention, everything should work correctly anyway.
-For example, this documentation my refer to `/projects/salt-bevy/lessons/windows/xkcd.py`
+For example, this documentation may refer to `/projects/salt-bevy/lessons/windows/xkcd.py`
 but on your system, the file may actually be `C:\Users\Vernon\PyCharmProjects\ls\lessons\windows\xkcd.py`.
 You are expected to mentally make the translation between the lesson's examples and your reality.
 
@@ -110,10 +111,10 @@ Pythonwin from [pywin32](https://github.com/mhammond/pywin32),
 [IDLE](https://docs.python.org/3/library/idle.html),
 or even [Notepad++](https://notepad-plus-plus.org/).
 But do yourself a favor and select an environment from early, rather than late, in the list.
-- Workstation Operating System. Why would anyone use Windows for a programmer's workstation?
-But we test with (as of this writing): Ubuntu 17.10, and MacOS High Sierra, and Windows 10.
-- Your Bevy_Master machine. As of this writing, we test with Ubuntu 16.04 on a Vagrant VM, 
-and Raspbian Jesse on a Raspberry Pi W0.
+- Workstation Operating System. Why would anyone want to use Windows for a programmer's workstation?
+But we test with (as of this writing): Ubuntu 18.04, and MacOS Mojave, and Windows 10.
+- Your Bevy_Master machine. As of this writing, we test with Ubuntu 18.04 on a Vagrant VM, 
+and Raspbian Stretch on a Raspberry Pi 3.
 - Your Internet Router.
 Most lessons will be runnable from a large corporate router or an inexpensive home router. 
 For some lessons, you will need control over who runs your PXE, DHCP and/or DNS servers. 
@@ -130,7 +131,7 @@ and the group must be spelled "users".
 ##### Prerequisites
 
 Things that are **NOT** optional:
-- [Python3](https://www.python.org/) version 3.4 or later. See [the Python clock](https://pythonclock.org/).
+- [Python3](https://www.python.org/) version 3.5 or later. See [the Python clock](https://pythonclock.org/).
 - [git](https://git-scm.com/). I hate git. [But, I use it, because Github is great](https://www.python.org/dev/peps/pep-0512/). 
 Be careful not to shoot any toes off.
 
@@ -140,14 +141,19 @@ This directory has this README.md file,
 along with a big complex *Vagrantfile*,
 and a few other handy files.
 
-- The [lessons](./lessons) directory contains 
-the [lesson index](lessons/index.md).  
-Often, the lessons will have lab or example files
+- A [parallel git repository](https://github.com/salt-bevy/training) contains 
+the [lesson index](../training/lessons/index.md).  
+Clone on your workstation running 
+    - `./clone_training_material.cmd` on Linux.
+    - `clone_training_material` on Windows (ignore the error messages.)
+    
+    Often, the lessons will have lab or example files
 associated with them. When studying each lesson, you should be running the examples using
 a terminal with your current default directory set for that lesson.
-For example, if you are running the [Basics of Vagrant](vagrant_basics/basics_of_vagrant.md)
+For example, if you are running the [Basics of Vagrant](../training/lessons/about_vagrant/vagrant_basics.md)
 lesson, you should start by typing: 
-`cd /projects/salt-bevy/lessons/vagrant_basics`
+
+    `cd /projects/training/lessons/about_vagrant`
 
 [comment]: # (The file index.md is the source for index.html)
 

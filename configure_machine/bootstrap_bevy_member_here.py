@@ -670,6 +670,7 @@ def get_salt_master_url():
 def get_salt_minion_id():
     # get an existing id from Salt if possible
     out = salt_call_local.salt_call_json("config.get id")
+    print('(Please ignore any error messages from "salt-call --json" while running this script.)')
     try:
         ans = out['local']
         print('Detected minion ID (of first minion) as = "{}"'.format(ans))

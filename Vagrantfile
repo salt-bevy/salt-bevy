@@ -10,6 +10,7 @@ require "yaml"
 require "ipaddr"
 
 SALT_BOOTSTRAP_ARGUMENTS = "" # for example "git v2019.2.0rc1"  # (usually leave blank for latest production Salt version)
+DEFAULT_BOX = "ubuntu/bionic64"  # the vagrantbox to use for most VMs below
 
 vagrant_command = ARGV[0]
 vagrant_object = ARGV.length > 1 ? ARGV[1] : ""  # the name (if any) of the vagrant VM for this command
@@ -108,7 +109,7 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
   # . . . . . . . . . . . . Define machine QUAIL1 . . . . . . . . . . . . . .
   # This machine has no Salt provisioning at all. Salt-cloud can provision it.
   config.vm.define "quail1", primary: true do |quail_config|  # this will be the default machine
-    quail_config.vm.box = "ubuntu/bionic64"
+    quail_config.vm.box = DEFAULT_BOX
     quail_config.vm.hostname = "quail1" # + DOMAIN
     quail_config.vm.network "private_network", ip: NETWORK + ".2.201"  # needed so saltify_profiles.conf can find this unit
     if vagrant_command == "up" and (ARGV.length == 1 or (vagrant_object == "quail1"))
@@ -134,7 +135,7 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
 # . this machine bootstraps Salt but no states are run or defined.
 # . Its master is "bevymaster".
   config.vm.define "quail2", autostart: false do |quail_config|
-    quail_config.vm.box = "ubuntu/bionic64"
+    quail_config.vm.box = DEFAULT_BOX
     quail_config.vm.hostname = "quail2" # + DOMAIN
     quail_config.vm.network "private_network", ip: NETWORK + ".2.202"
     if vagrant_command == "up" and vagrant_object == "quail2"
@@ -177,18 +178,19 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
   generic = ENV["GENERIC"] || ENV['generic']
   if generic and generic.downcase.chars.first == "t" then
     if vagrant_object == "" and vagrant_command == "up" then
-      puts "ERROR: You must specify a machine id when environment variable GENERIC=True."
+      puts "ERROR: You must specify a new machine id when environment variable GENERIC=True."
       raise "Command Line Error triggered."
     end
     node_id = vagrant_object
-    node_address = ENV["NODE_ADDRESS"] || ".2.200"
-    node_memory = ENV["NODE_MEMORY"] || 5000
-    node_box = ENV["NODE_BOX"] || "ubuntu/bionic64"
+    node_address = ENV.fetch("NODE_ADDRESS", ".2.200")
+    node_memory = ENV.fetch("NODE_MEMORY", "5000")
+    node_box = ENV.fetch("NODE_BOX", DEFAULT_BOX)
     config.vm.define node_id, autostart: false do |quail_config|
       quail_config.vm.box = node_box
       quail_config.vm.hostname = node_id # + DOMAIN
       quail_config.vm.network "private_network", ip: NETWORK + node_address
       if vagrant_command == "up"
+        puts "generic box=#{node_box} memory=#{node_memory}"
         puts "Starting #{node_id} at #{NETWORK}#{node_address} as a Salt minion with master=#{settings['master_vagrant_ip']}...\n."
       end
       quail_config.vm.network "public_network", bridge: interface_guesses
@@ -204,17 +206,17 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
       script += "chown -R vagrant:staff /etc/salt/minion.d\n"
       script += "chmod -R 775 /etc/salt/minion.d\n"
       quail_config.vm.provision "shell", inline: script
-      if settings.has_key?('GUEST_MINION_CONFIG_FILE') and File.exist?(settings['GUEST_MINION_CONFIG_FILE'])
-        quail_config.vm.provision "file", source: settings['GUEST_MINION_CONFIG_FILE'], destination: "/etc/salt/minion.d/00_vagrant_boot.conf"
-      else
-        quail_config.vm.provision "file", source: __dir__ + '/configure_machine/masterless_minion.conf', destination: "/etc/salt/minion.d/00_vagrant_boot.conf"
-      end
       if ENV.key?("VAGRANT_SALT")
+        if settings.has_key?('GUEST_MINION_CONFIG_FILE') and File.exist?(settings['GUEST_MINION_CONFIG_FILE'])
+          quail_config.vm.provision "file", source: settings['GUEST_MINION_CONFIG_FILE'], destination: "/etc/salt/minion.d/00_vagrant_boot.conf"
+        else
+          quail_config.vm.provision "file", source: __dir__ + '/configure_machine/masterless_minion.conf', destination: "/etc/salt/minion.d/00_vagrant_boot.conf"
+        end
         quail_config.vm.provision :salt do |salt|
            salt.verbose = false
            salt.bootstrap_options = "-A #{settings['master_vagrant_ip']} -i #{node_id} -F -P #{SALT_BOOTSTRAP_ARGUMENTS}"
            salt.run_highstate = false #default_run_highstate
-         end
+        end
       end
     end
   end
@@ -223,7 +225,7 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
 # This is the Vagrant version of a Bevy Salt-master.
 # You cannot run it if you are using an external bevymaster.
   config.vm.define "bevymaster", autostart: false do |master_config|
-    master_config.vm.box = "ubuntu/bionic64"
+    master_config.vm.box = DEFAULT_BOX
     master_config.vm.hostname = "bevymaster"
     master_config.vm.network "private_network", ip: NETWORK + ".2.2"
     if vagrant_command == "up" and vagrant_object == "bevymaster"

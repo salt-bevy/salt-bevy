@@ -12,6 +12,7 @@ then
 else
   export VAGRANT_SALT='true'
 fi
+pushd $SCRIPTPATH
 if [ "$arg2" == "generic" ]
 then
   export GENERIC='true'
@@ -38,3 +39,4 @@ fi
 GENERIC=
 VAGRANT_CWD=
 VAGRANT_PWD=
+popd

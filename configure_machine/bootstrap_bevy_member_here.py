@@ -389,7 +389,7 @@ fileserver_backend:
   
 # log_level_logfile: debug  # uncomment this to get minion logs at debug level
 """
-    bevy_srv_path = PurePosixPath('/vagrant') if virtual else PurePosixPath(this_file.parent.parent.as_posix())
+    bevy_srv_path = PurePosixPath('/salt-bevy') if virtual else PurePosixPath(this_file.parent.parent.as_posix())
     master_url = settings.get('master_vagrant_ip', '') \
         if master_host else settings.get('master_external_ip', '')
     master = 'localhost' if is_master else master_url

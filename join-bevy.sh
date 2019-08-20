@@ -7,4 +7,4 @@ if [ ! -d $SCRIPTPATH ]; then
   popd
 fi
 /usr/bin/env python3 $SCRIPTPATH/configure_machine/bootstrap_bevy_member_here.py "$@"
-cp --no-clobber $SCRIPTPATH/vgr .
+cp -n $SCRIPTPATH/vgr .

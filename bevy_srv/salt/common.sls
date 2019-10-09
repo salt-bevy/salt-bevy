@@ -93,5 +93,12 @@ ubuntu_packages:
       - 'language-pack-en'
       {% endif %}
 {% endif %}
+
+{% if grains['os_family'] == 'MacOS' %}
+MacOS_common:
+  test.nop:
+    - name: 'successful operation on MacOS complete'
+{% endif %}
+
 {% endif %}
 ...

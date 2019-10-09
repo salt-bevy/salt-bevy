@@ -123,11 +123,11 @@ alternate_minion_configuration:
 make_salt{{ other_minion }}-minion_service:
   file.copy:
     - source: /lib/systemd/system/salt-minion.service
-    - name: /lib/systemd/system/salt{{ other_minion }}-minion.service
+    - name: /etc/systemd/system/salt{{ other_minion }}-minion.service
 
 edit_salt-minion{{ other_minion }}_service:
   file.replace:
-    - name: /lib/systemd/system/salt{{ other_minion }}-minion.service
+    - name: /etc/systemd/system/salt{{ other_minion }}-minion.service
     - pattern: "ExecStart=/usr/bin/salt-minion$"
     - repl: "ExecStart=/usr/bin/salt-minion --config-dir={{ salt['config.get']('salt_config_directory') }}{{ other_minion }}\n"
     - require:

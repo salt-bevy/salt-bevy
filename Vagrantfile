@@ -100,6 +100,9 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
   if ENV.key?("VAGRANT_PWD")
     config.vm.synced_folder ENV["VAGRANT_PWD"], "/vagrant", :owner => "vagrant", :group => "staff", :mount_options => ["umask=0002"]
   end
+  if ENV.key?("VAGRANT_CWD")
+    config.vm.synced_folder ENV["VAGRANT_CWD"], "/salt-bevy", :owner => "vagrant", :group => "staff", :mount_options => ["umask=0002"]
+  end
   if settings.has_key?('projects_root') and settings['projects_root'] != 'none'
     config.vm.synced_folder settings['projects_root'], "/projects", :owner => "vagrant", :group => "staff", :mount_options => ["umask=0002"]
   end
@@ -158,13 +161,14 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
     script += "chown -R vagrant:staff /etc/salt/minion.d\n"
     script += "chmod -R 775 /etc/salt/minion.d\n"
     quail_config.vm.provision "shell", inline: script
-    if settings.has_key?('GUEST_MINION_CONFIG_FILE') and File.exist?(settings['GUEST_MINION_CONFIG_FILE'])
-      quail_config.vm.provision "file", source: settings['GUEST_MINION_CONFIG_FILE'], destination: "/etc/salt/minion.d/00_vagrant_boot.conf"
-    end
     quail_config.vm.provision :salt do |salt|
        salt.verbose = false
        salt.bootstrap_options = "-A #{settings['master_vagrant_ip']} -i quail2 -F -P #{SALT_BOOTSTRAP_ARGUMENTS}"
        salt.run_highstate = default_run_highstate
+       salt.masterless = true
+       if settings.has_key?('GUEST_MINION_CONFIG_FILE') and File.exist?(settings['GUEST_MINION_CONFIG_FILE'])
+         salt.minion_config = settings['GUEST_MINION_CONFIG_FILE']
+       end
     end
   end
 
@@ -207,15 +211,14 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
       script += "chmod -R 775 /etc/salt/minion.d\n"
       quail_config.vm.provision "shell", inline: script
       if ENV.key?("VAGRANT_SALT")
-        if settings.has_key?('GUEST_MINION_CONFIG_FILE') and File.exist?(settings['GUEST_MINION_CONFIG_FILE'])
-          quail_config.vm.provision "file", source: settings['GUEST_MINION_CONFIG_FILE'], destination: "/etc/salt/minion.d/00_vagrant_boot.conf"
-        else
-          quail_config.vm.provision "file", source: __dir__ + '/configure_machine/masterless_minion.conf', destination: "/etc/salt/minion.d/00_vagrant_boot.conf"
-        end
         quail_config.vm.provision :salt do |salt|
            salt.verbose = false
            salt.bootstrap_options = "-A #{settings['master_vagrant_ip']} -i #{node_id} -F -P #{SALT_BOOTSTRAP_ARGUMENTS}"
-           salt.run_highstate = false #default_run_highstate
+           salt.run_highstate = default_run_highstate
+           salt.masterless = true
+           if settings.has_key?('GUEST_MINION_CONFIG_FILE') and File.exist?(settings['GUEST_MINION_CONFIG_FILE'])
+             salt.minion_config = settings['GUEST_MINION_CONFIG_FILE']
+           end
         end
       end
     end
@@ -410,9 +413,6 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
     #quail_config.winrm.username = "IEUser"
     script = "new-item C:\\salt\\conf\\minion.d -itemtype directory -ErrorAction silentlycontinue\r\n"
     quail_config.vm.provision "shell", inline: script
-    if settings.has_key?('WINDOWS_GUEST_CONFIG_FILE') and File.exist?(settings['WINDOWS_GUEST_CONFIG_FILE'])
-      quail_config.vm.provision "file", source: settings['WINDOWS_GUEST_CONFIG_FILE'], destination: "c:\\salt\\conf\\minion.d\\00_vagrant_boot.conf"
-    end
     quail_config.vm.provision :salt do |salt|  # salt_cloud cannot push Windows salt
         salt.minion_id = "win10"
         salt.master_id = "#{settings['master_vagrant_ip']}"
@@ -420,6 +420,10 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
         salt.verbose = false
         salt.colorize = true
         salt.run_highstate = default_run_highstate
+        salt.masterless = true
+        if settings.has_key?('WINDOWS_GUEST_CONFIG_FILE') and File.exist?(settings['WINDOWS_GUEST_CONFIG_FILE'])
+          salt.minion_config = settings['GUEST_MINION_CONFIG_FILE']
+        end
     end
   end
 
@@ -551,9 +555,9 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
     quail_config.vm.hostname = "mac13"
     quail_config.vm.network "private_network", ip: NETWORK + ".2.13"
     if settings.has_key?('projects_root') and settings['projects_root'] != 'none'
-      quail_config.vm.synced_folder settings['projects_root'], "/projects", disabled: true # shared folders do not work
+      quail_config.vm.synced_folder settings['projects_root'], "/projects", type: "rsync" # virtualbox shared folders do not work
     end
-    quail_config.vm.synced_folder ".", "/vagrant", disabled: true
+    quail_config.vm.synced_folder ".", "/vagrant", type: "rsync"  # disabled: true
     if vagrant_command == "up" and vagrant_object == "mac13"
       puts "Starting #{vagrant_object} at #{NETWORK}.2.13 as a Salt minion with master=#{settings['bevymaster_url']}...\n."
     end
@@ -579,5 +583,4 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
     quail_config.vm.provision "shell", inline: script
     quail_config.vm.provision "shell", path: "configure_machine/macos_install_P3_salt.sh"
   end
-
 end

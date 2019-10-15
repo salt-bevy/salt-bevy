@@ -41,8 +41,9 @@ from helpers import pwd_hash, sudo, salt_call_local, provisioner
 
 # # # # #
 # This program attempts to establish a DRY single source of truth as the file
-BEVY_SETTINGS_FILE_NAME = '/srv/pillar/01_bevy_settings.sls'
-# That should actually work in many (but not all) cases. It can be extended to more cases.
+SRV_ROOT = '/srv' if platform.system()!='Darwin' else '/opt/saltdata'  # MacOS 10.15+ prohibits use of /srv
+BEVY_SETTINGS_FILE_NAME = SRV_ROOT + '/pillar/01_bevy_settings.sls'  # the default Salt location
+
 #
 # Normal minions will receive their settings from the Bevy Master.
 # If the Bevy Master is a stand-alone server, it might be a "good idea" to connect its /srv directory to
@@ -62,12 +63,13 @@ MINIMUM_SALT_VERSION = "2018.3.0"  # ... as a string... the month will be conver
 SALT_BOOTSTRAP_URL = "http://bootstrap.saltstack.com/stable/bootstrap-salt.sh"
 SALT_DOWNLOAD_SOURCE = "stable"
 
-SALT_SRV_ROOT = '/srv/salt'
-SALT_PILLAR_ROOT = '/srv/pillar'
+SALT_SRV_ROOT = SRV_ROOT + '/salt'
+SALT_PILLAR_ROOT = SRV_ROOT + '/pillar'
 # the path to write the bootstrap Salt Minion configuration file
-GUEST_MASTER_CONFIG_FILE = '/srv/bevymaster_config/minion'
-GUEST_MINION_CONFIG_FILE = '/srv/guest_config/minion'
-WINDOWS_GUEST_CONFIG_FILE = '/srv/windows_config/minion'
+GUEST_MASTER_CONFIG_FILE = SRV_ROOT + '/bevymaster_config/minion'
+GUEST_MINION_CONFIG_FILE = SRV_ROOT + '/guest_config/minion'
+WINDOWS_GUEST_CONFIG_FILE = SRV_ROOT + '/windows_config/minion'
+MAC_GUEST_CONFIG_FILE = SRV_ROOT + '/macos_config/minion'
 
 DEFAULT_VAGRANT_PREFIX = '172.17'  # first two bytes of Vagrant private network
 DEFAULT_VAGRANT_NETWORK = '172.17.0.0/16'  #  Vagrant private network
@@ -113,7 +115,7 @@ def write_my_config_file():
     write_config_file(my_salt_config_file_path(),
                       is_master=my_settings.get('master', False),
                       virtual=False,
-                      windows=platform.system()=='Windows',
+                      platform=platform.system(),
                       master_host=my_settings.get('master_host', False))
 
 
@@ -266,6 +268,7 @@ def write_bevy_settings_files(bevy_extension=''):
                     f.write("GUEST_MASTER_CONFIG_FILE: '{}'\n".format(GUEST_MASTER_CONFIG_FILE))
                     f.write("GUEST_MINION_CONFIG_FILE: '{}'\n".format(GUEST_MINION_CONFIG_FILE))
                     f.write("WINDOWS_GUEST_CONFIG_FILE: '{}'\n".format(WINDOWS_GUEST_CONFIG_FILE))
+                    f.write("MAC_GUEST_CONFIG_FILE: '{}'\n".format(MAC_GUEST_CONFIG_FILE))
             set_file_owned_by(bevy_settings_file_name, user_name)
             print('File "{}" written.'.format(bevy_settings_file_name))
             print()
@@ -356,7 +359,7 @@ def format_additional_roots(settings, virtual):
     return more_roots, more_pillars
 
 
-def write_config_file(config_file_name, is_master: bool, virtual=True, windows=False, master_host=False) -> None:
+def write_config_file(config_file_name, is_master: bool, virtual=True, platform='Linux', master_host=False) -> None:
     '''
     writes a copy of the template, below, into a file in this /srv/salt directory
     substituting the actual path to the ../bevy_srv salt and pillar subdirectories,
@@ -389,7 +392,7 @@ fileserver_backend:
   
 # log_level_logfile: debug  # uncomment this to get minion logs at debug level
 """
-    bevy_srv_path = PurePosixPath('/salt-bevy') if virtual else PurePosixPath(this_file.parent.parent.as_posix())
+    bevy_srv_path = PurePosixPath('/vagrant') if virtual else PurePosixPath(this_file.parent.parent.as_posix())
     master_url = settings.get('master_vagrant_ip', '') \
         if master_host else settings.get('master_external_ip', '')
     master = 'localhost' if is_master else master_url
@@ -402,10 +405,11 @@ fileserver_backend:
 
     more_roots, more_pillars = format_additional_roots(settings, virtual)
 
-    file_roots = ['/srv/salt'] + more_roots + [str(bevy_srv_path / 'bevy_srv/salt')]
-    pillar_roots = ['/srv/pillar'] + more_pillars + [str(bevy_srv_path / 'bevy_srv/pillar')]
+    srv_root = '/srv' if platform!='Darwin' else '/opt/saltdata'
+    file_roots = [srv_root + '/salt'] + more_roots + [str(bevy_srv_path / 'bevy_srv/salt')]
+    pillar_roots = [srv_root + '/pillar'] + more_pillars + [str(bevy_srv_path / 'bevy_srv/pillar')]
 
-    newline = '\r\n' if windows else '\n'
+    newline = '\r\n' if platform=='Windows' else '\n'
     try:
         os.makedirs(str(config_file_name.parent), exist_ok=True)  # old Python 3.4 method
         # config_file_name.parent.mkdir(parents=True, exist_ok=True)  # 3.5+
@@ -829,15 +833,16 @@ def write_config_files():
         print('Error writing {}-->'.format(GUEST_MASTER_CONFIG_FILE), e)
         input('hit <Enter> to continue:')
     write_config_file(my_salt_config_file_path(), my_settings['master'], virtual=False,
-                      windows=platform.system() == 'Windows', master_host=my_settings['master_host'])
+                      platform=platform.system(), master_host=my_settings['master_host'])
 
     if my_settings['vm_host']:
         write_config_file(Path(GUEST_MINION_CONFIG_FILE), is_master=False, virtual=True,
                           master_host=my_settings['master_host'])
 
         write_config_file(Path(WINDOWS_GUEST_CONFIG_FILE), is_master=False, virtual=True,
-                          windows=True, master_host=my_settings['master_host'])
-
+                          platform='Windows', master_host=my_settings['master_host'])
+        write_config_file(Path(MAC_GUEST_CONFIG_FILE), is_master=False, virtual=True,
+                          platform='Darwin', master_host=my_settings['master_host'])
 
 def display_introductory_text():
     intro = """

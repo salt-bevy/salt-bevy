@@ -64,26 +64,24 @@ debian_packages:
   pkg.installed:
     - pkgs:
       - git
-      - htop
       - nano
+      {% if grains['pythonversion'][0] == 2 %}
       - python-pip
+      {% endif %}
       - python3
       - python3-pip
       - tree
+      - virt-what
 {% endif %}
 
 {% if salt['grains.get']('os') == 'Ubuntu' %}
 ubuntu_packages:
   pkg.installed:
     - pkgs:
-      - jq
       {% if grains['osrelease'] < '18.04' %}
       - python-software-properties
       {% endif %}
-      - silversearcher-ag
-      - strace
       - vim-tiny
-      - virt-what
       {% if grains['osrelease'] < '16.04' %}
       - python-git  # fallback package if pygit2 is not found.
       {% else %}

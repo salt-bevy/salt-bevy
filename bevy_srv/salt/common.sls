@@ -3,6 +3,8 @@
 {# this is an example of things you may always want installed. #}
 
 {% if grains['os_family'] == 'Windows' %}
+{% set install_git_using_traditional_tools = False %}
+{% if install_git_using_traditional_tools %}
 pkg.refresh_db:
   module.run:
   - require_in:
@@ -13,16 +15,34 @@ windows_packages:
     - pkgs:
       - npp
       - git
+{% endif %}
 
 choco_boot:
   cmd.run:
     - name: salt-call chocolatey.bootstrap
     - require_in:
       - windows_py3
+    - unless:
+      - choco --version
 
 windows_py3:
   chocolatey.installed:
-    - name: python3
+    - name:
+      - python3
+    - unless:
+      - py -3 --version
+
+{% if not install_git_using_traditional_tools %}
+notepadplusplus.install:
+  chocolatey.installed:
+    - unless:
+      - where notepad++
+git.install:
+  chocolatey.installed:
+    - unless:
+      - git --version
+    - package_args: "/GitAndUnixToolsOnPath"
+{% endif %}
 
 windows_pygit2_failure_workaround:
    cmd.run:
@@ -64,9 +84,7 @@ debian_packages:
   pkg.installed:
     - pkgs:
       - git
-      - htop
       - nano
-      - python-pip
       - python3
       - python3-pip
       - tree
@@ -76,11 +94,9 @@ debian_packages:
 ubuntu_packages:
   pkg.installed:
     - pkgs:
-      - jq
       {% if grains['osrelease'] < '18.04' %}
       - python-software-properties
       {% endif %}
-      - silversearcher-ag
       - strace
       - vim-tiny
       - virt-what

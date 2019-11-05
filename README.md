@@ -191,6 +191,31 @@ Sample shell scripts are provided like
     # you may cut them out and paste them into your command terminal,
     # but you might learn better if you type them with your own fingers.
 ```
+### Defining and/or joining Bevys and altering their configurations
+
+A given machine may be configured for membership in several different bevys. 
+You can create a new bevy, or switch your membership from one to another, using the `join-bevy` script.
+```cmd
+# on Windows:
+join_bevy bevy01
+```
+```
+# on any other operating system:
+./join_bevy.sh bevy01
+```
+Basic configuration for each bevy (and for an individual machine's place in that bevy) is interactively
+requested and edited from that script. Reasonable defaults are provided.
+
+You will be asked for permission to use elevated priviledges (sudo) when needed.
+
+Edit the configuration of your present bevy by re-running the script.
+```bash
+./join_bevy.sh
+```
+The bevy named **local** is special, and sets up a machine for "masterless" Salt operation.
+```cmd
+join_bevy local
+```
 
 ### Vagrant VMs on your workstation
 
@@ -205,9 +230,26 @@ If your master should re-connect using a different IP address, they will be lost
 so in that case, will need to consistently use the same network connection for your host workstion,
 or use some sort of dynamic DNS arrangement.
 
+For example, you can start the bevymaster VM like this:
+```cmd
+# on Windows:
+vgr up bevymaster
+```
+```bash
+# on any other OS:
+./vgr up bevymaster
+```
+Each other machine from the table below is controlled by using its name in the `vgr` command:
+```cmd
+vgr up quail1
+vgr ssh quail1
+vgr destroy quail1
+```
+
 The Vagrantfile defines:
+
 | Name | ip | minion? | OS version |
-| ==== | == | ======= | ========== |
+| ---- | -- | ------- | ---------- |
 | bevymaster | 2.2 | master | Ubuntu 18.04 |
 | quail1 | 2.201 | no | Ubuntu 18.04 |
 | quail2 | 2.202 | yes | Ubuntu 18.04 |
@@ -216,20 +258,22 @@ The Vagrantfile defines:
 | quail18 | 2.218 | no | Ubuntu 18.04 |
 | win10 | 2.10 | yes | Windows 10 |
 | win12 | 2.12 | yes | Windows Server 2012 |
-| win14 | 2.16 | yes | Windows Server 2016 |
+| win16 | 2.16 | yes | Windows Server 2016 |
 | win19 | 2.19 | yes | Windows Server 2019 |
 | mac13 | 2.13 | yes | MacOS 10.3 |
 | **generic** | 2.200 * | yes | Ubuntu 18.04 * |
 | **generic_no_salt** | 2.200 * | no | Ubuntu 18.04 * |
 
- \* The "generic" machine can be re-configured using environment variables. See below.
+ \* The "generic" machine(s) can be re-configured using environment variables. See below.
 
+---
 Each machine has three virtual network ports:
 
 - One has a pre-defined IP address range used for a Vagrant host-only network adapter,
 which used to connect a to a Vagrant shared directory,
 for Vagrant to ssh connect to the machine, and for NAT networking.
-As supplied, these will use small subnets of 172.17.17.0.
+As supplied, these will use small subnets of 172.17.17.0. 
+(Assuming that "Vagrant internal network" is set for '172.17.0.0/16')
 
 - A second has a fixed hard-wired address for a
 [private network](https://www.vagrantup.com/docs/networking/private_network.html)
@@ -253,20 +297,24 @@ Since a workstation usually has more than one interface (are you using WiFi or h
 this can be trick to determine. Vagrant expects to ask the user for input.
 There is some Ruby code in the Vagrantfile to try getting the correct name.
 The configuration script will try to help you select the correct name, which
-will be saved in your configuration pillar file. If you are using MacOS,
-this will not work and we will just guess at the two most usual adapters.
+will be saved in your configuration pillar file. If you are using MacOS, none of
+this will work, and we will just guess at some usual adapters.
 
 #### The "generic" VM
 
 The Vagrantfile defines one virtual machine which can, by manupulation of environment variables, create many named VMs.
 
-Define the environment variable GENERIC (or "generic" for lazy typers) as "True" (or "t") and then type any machine name.
+You define the environment variable GENERIC (or "generic") as "True" (or "t") and then use a different machine name.
 For example:
 
 ```
 generic=t vagrant up somename
-generic=t vagrant ssh somename
-generic=t vagrant destroy somename
+```
+or, use the shortcut `vgr` script like:
+```
+./vgr up generic somename
+./vgr ssh generic somename
+./vgr destroy generic somename
 ```
 
 You will need to use the `vagrant global-status` command to see your generic VMs.

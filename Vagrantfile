@@ -97,7 +97,7 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
   config.ssh.forward_agent = true
 
   unless vagrant_object.start_with? 'win'
-    config.vm.provision "shell", inline: "ifconfig", run: "always"  # what did we get?
+    config.vm.provision "shell", inline: "ifconfig || ip addr", run: "always"  # what did we get?
   end
 
   # Now ... just in case our user is running some flavor of VMWare, we will

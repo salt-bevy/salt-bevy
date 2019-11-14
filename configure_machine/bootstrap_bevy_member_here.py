@@ -899,8 +899,7 @@ if __name__ == '__main__':
 
     # read our stored settings from the disk.
     bevy, changed = read_bevy_settings_files(context)  # user may (first time) change to another bevy during this call.
-    if changed:
-        write_my_config_file()  # if we have enough privilege to do this, it will be nice of us.
+
     if settings and my_settings and not sudo.has_context():  # first time through and old settings exist
         interactive = affirmative(
             input("Do you wish to change any settings for bevy {}? [y/N]:".format(bevy)))
@@ -1110,7 +1109,7 @@ if __name__ == '__main__':
             if response == 'None' or affirmative(input('Use "{}"?: [Y/n]:'.format(response)), True):
                 my_settings['second_minion_id'] = response
                 my_settings['additional_minion_tag'] = \
-                    '' if response == 'None' else my_settings['additional_minion_tag'] or '2'
+                    '' if response == 'None' else my_settings.get('additional_minion_tag', '2')
                 break
     two = my_settings.get('additional_minion_tag', '')
 
@@ -1161,7 +1160,8 @@ if __name__ == '__main__':
                 if my_settings['master_host']:
                     print("(Hint: your guest VM bevy master local address will be {})"
                           .format(settings['master_vagrant_ip']))
-                okay = input("Use {} as this machine's bevy master address? [Y/n]:".format(ip_[0][4][0]))
+                print('Your master URL {} translates to {} '.format(my_master_url, ip_[0][4][0]))
+                okay = input("Use {} as this machine's bevy master address? [Y/n]:".format(my_master_url))
                 if affirmative(okay, True):
                     my_settings['my_master_url'] = my_master_url
                     if my_settings['vm_host'] and my_master_url != settings['master_vagrant_ip']:

@@ -137,7 +137,7 @@ edit_salt-minion{{ other_minion }}_service:
 
 systemctl_reload_{{ other_minion }}:
   service.running:
-    - name: salt_minion{{ other_minion }}
+    - name: salt{{ other_minion }}_minion
     - require:
       - file: edit_salt-minion{{ other_minion }}_service
 

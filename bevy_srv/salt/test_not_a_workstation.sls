@@ -2,7 +2,7 @@
 checked_running_on_VM:
   test.nop:
     - name: Running on a {{ grains['virtual'] }} virtual machine. Okay.
-{% elif grains['os'] == 'Windows'  and 'Server' in grains['os_fullname'] %}
+{% elif grains['os'] == 'Windows' and 'Server' in salt['grains.get']('osfullname', '') %}
 checked_running_on_Windows_server:
   test.nop:
     - name: Running on a server version of Windows. Okay.

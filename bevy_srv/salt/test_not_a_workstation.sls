@@ -2,6 +2,10 @@
 checked_running_on_VM:
   test.nop:
     - name: Running on a {{ grains['virtual'] }} virtual machine. Okay.
+{% elif grains['os'] == 'Windows'  and 'Server' in grains['os_fullname'] %}
+checked_running_on_Windows_server:
+  test.nop:
+    - name: Running on a server version of Windows. Okay.
 {% else %}
   {% set home = salt['environ.get']('HOMEPATH') if grains['os'] == "Windows" else salt['environ.get']('HOME') if grains['os'] == 'Darwin' else salt['file.join']('/home', salt['environ.get']('SUDO_USER', salt['environ.get']('USER'))) %}
 

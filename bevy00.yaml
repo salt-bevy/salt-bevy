@@ -1,0 +1,55 @@
+---
+# bevy00.yaml
+#   defines an example bevy which can be used to test a Windows Python application.
+#
+# Each entry consists of a node name,
+#   then a dictionary of configuration information for that node.
+#
+*:  # generic settings common to all bevy members
+  grains:
+    - datacenter: bevy
+
+  domain: bevy00.test
+
+  bevy: bevy00
+
+  master: salt.bevy00.test
+
+saltmaster:
+  profile: none  # cannot be a cloud machine, since it defines all cloud machines
+  start_command: "vgr up bevymaster"
+  order: 1
+  grains:
+    - roles:
+        - saltmaster
+        - pepper
+  salt_files:
+    source: file:./bevy_srv/salt
+    destination: /srv/salt
+  pillar_files:
+    source: file:./bevy_srv/pillar
+    destination: /srv/pillar
+  # config_file:
+
+testbed:
+  profile: win10
+  order: 500
+  grains:
+    - roles:
+        - pywin32test
+        - jet_database
+
+sql_db:
+  profile: win16
+  order: 20
+  grains:
+    - roles:
+        - sql_server
+
+other_db:
+  profile: vm18
+  order: 10
+  grains:
+    - roles:
+        - postgres
+        - mysql

@@ -1,4 +1,13 @@
-def win_concact_quote(command_line: str, argument: str) -> str:
+#
+# This module provides correct command-line quote escapes for both Windows CMD and Linux bash commands, as needed.
+#
+# call like:
+#  import argv_quote
+#
+#  cli_string = argv_quote.quote(['list', 'of', 'commands', 'you', 'want', 'to', 'send'])
+#
+#
+def win_concat_quote(command_line: str, argument: str) -> str:
     """
     appends the given argument to a command line such that CommandLineToArgvW will return
     the argument string unchanged.
@@ -56,7 +65,7 @@ def win_concact_quote(command_line: str, argument: str) -> str:
 def win_quote(*args):
     cmd = ''
     for arg in args:
-        cmd = win_concact_quote(cmd, arg)
+        cmd = win_concat_quote(cmd, arg)
     return cmd
 
 
@@ -125,9 +134,14 @@ def bash_quote(*args):
 
 
 def quote(*args) -> str:
+   """
+   Given a list of strings, returns a correctly escaped command line string for cmd (if on Windows) or bash commands.
+
+   :param args: A sequence of command tokens, possibly containing embedded spaces.
+   :return: A single string, with quotes and backslashes inserted if needed.
+   """
    import sys
    if sys.platform == 'win32':
         return win_quote(*args)
    else:
         return bash_quote(*args)
-

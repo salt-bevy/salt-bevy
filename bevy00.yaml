@@ -5,6 +5,7 @@
 # Each entry consists of a node name,
 #   then a dictionary of configuration information for that node.
 #
+  {% }
 *:  # generic settings common to all bevy members
   grains:
     - datacenter: bevy
@@ -15,6 +16,14 @@
 
   master: salt.bevy00.test
 
+  salt_files:
+    source: ./bevy_srv/salt
+    soft_links_in: /srv/salt
+
+  pillar_files:
+    source: ./bevy_srv/pillar
+    soft_links_in: /srv/pillar/
+
 saltmaster:
   profile: none  # cannot be a cloud machine, since it defines all cloud machines
   start_command: "vgr up bevymaster"
@@ -23,17 +32,22 @@ saltmaster:
     - roles:
         - saltmaster
         - pepper
-  salt_files:
-    source: file:./bevy_srv/salt
-    destination: /srv/salt
-  pillar_files:
-    source: file:./bevy_srv/pillar
-    destination: /srv/pillar
-  # config_file:
+
 
 testbed:
   profile: win10
   order: 500
+  repo:
+    git.latest:
+      - name: https://mydomain.tld/apps/foo.git
+      - target: /var/www/foo
+      - user: www
+      - rev: dev
+      - force_reset: True
+  salt_files:
+    source:
+    base:
+
   grains:
     - roles:
         - pywin32test

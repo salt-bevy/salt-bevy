@@ -3,6 +3,7 @@
 #    https://docs.saltstack.com/en/latest/ref/netapi/all/salt.netapi.rest_cherrypy.html
 {% set salt_root = salt['file.dirname'](salt['config.get']('conf_file')) %}
 include:
+  - test_not_a_workstation
   - bevy_master
   - .pepper
 

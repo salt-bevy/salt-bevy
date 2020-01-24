@@ -84,6 +84,8 @@ ubuntu_packages:
       - vim-tiny
       {% if grains['osrelease'] < '16.04' %}
       - python-git  # fallback package if pygit2 is not found.
+      {% elif grains['pythonversion'][0] == 3 %}
+      - python3-pygit2
       {% else %}
       - python-pygit2
       {% endif %}

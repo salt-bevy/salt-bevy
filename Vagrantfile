@@ -78,13 +78,16 @@ hash_path = File.join(Dir.home, '.ssh', HASHFILE_NAME)  # where you store it ^ ^
 #
 if (RUBY_PLATFORM=~/darwin/i)  # on Mac OS, guess some frequently used ports
   interface_guesses = ['en0: Ethernet', 'en1: Wi-Fi (AirPort)',  'en0: Wi-Fi (Wireless)']
+  gw = `netstat -rn -f inet`[/default.*/][/\d+\.\d+\.\d+\.\d+/]  # xxx
 else  # Windows or Linux
   interface_guesses = settings['vagrant_interface_guess']
+  gw = `ip route show`[/default.*/][/\d+\.\d+\.\d+\.\d+/]  # xxx
 end
 if vagrant_command == "up" or vagrant_command == "reload"
   puts "Running on host #{VAGRANT_HOST_NAME}"
   puts "Will try bridge network using interface(s): #{interface_guesses}"
 end
+  puts "xxx router gateway detected as #{gw}"
 
 max_cpus = Etc.nprocessors / 2 - 1
 max_cpus = 1 if max_cpus < 1
@@ -94,7 +97,7 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
   config.ssh.forward_agent = true
 
   unless vagrant_object.start_with? 'win'
-    config.vm.provision "shell", inline: "ifconfig", run: "always"  # what did we get?
+    config.vm.provision "shell", inline: "ifconfig || ip addr", run: "always"  # what did we get?
   end
 
   # Now ... just in case our user is running some flavor of VMWare, we will
@@ -220,7 +223,7 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
       quail_config.vm.provision "shell", inline: script
       if ENV.key?("VAGRANT_SALT")
         quail_config.vm.provision :salt do |salt|
-           salt.verbose = false
+           salt.verbose = true
            salt.bootstrap_options = "-A #{settings['master_vagrant_ip']} -i #{node_id} -F -P #{SALT_BOOTSTRAP_ARGUMENTS}"
            salt.run_highstate = default_run_highstate
            salt.masterless = true

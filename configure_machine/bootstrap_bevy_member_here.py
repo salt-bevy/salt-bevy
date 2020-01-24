@@ -836,8 +836,12 @@ def write_config_files():
                       platform=platform.system(), master_host=my_settings['master_host'])
 
     if my_settings['vm_host']:
-        write_config_file(Path(GUEST_MINION_CONFIG_FILE), is_master=False, virtual=True,
-                          master_host=my_settings['master_host'])
+        possible_local_minion_config = Path('.') / 'local_salt' / 'make_minion_config.py'
+        if possible_local_minion_config.is_file():  # use a sibling make_minion_config if it exists
+            subprocess.check_call((possible_local_minion_config, GUEST_MINION_CONFIG_FILE))
+        else:
+            write_config_file(Path(GUEST_MINION_CONFIG_FILE), is_master=False, virtual=True,
+                              master_host=my_settings['master_host'])
 
         write_config_file(Path(WINDOWS_GUEST_CONFIG_FILE), is_master=False, virtual=True,
                           platform='Windows', master_host=my_settings['master_host'])
@@ -867,19 +871,20 @@ Case _is_ preserved for strings, and might be very important on non-Windows syst
 
 
 if __name__ == '__main__':
+
     # reminder: user_name, settings, my_settings are global
 
-    # This main program will normally run twice . . .
-    # Once, when originally started, as a normal, unprivileged user . . .
-    #    which will request elevated privileges (sudo) and re-run itself . . .
-    # Then, running as an administrator, it will do its real work.
-
-    # get former values if this process is running as a privileged child of the former invocation
+    # This main program will (usually) run twice . . .
+    # Once, when originally started (the first time), as a normal, unprivileged user . . .
+    #    it will ask for a few parameters, request elevated privileges (using sudo) and then re-run itself!
+    # Then, running (the second time) as an administrator, it will retrieve the parameters and do its real work.
 
     if '--help' in argv:
         print(__doc__)
         exit(0)
-    context = sudo.get_context()
+
+    # here we try to get the parameters in case this process is running (second time) as a privileged child of itself
+    context = sudo.get_context()  # will be {} if no context was stored
     user_name = context.pop('user_name', '')
     interactive = context.pop('interactive', True)
 
@@ -888,14 +893,14 @@ if __name__ == '__main__':
         user_name = getpass.getuser()
         if user_name == 'root':  # happens on Posix systems
             user_name = os.getenv('SUDO_USER', user_name)
+
         print_names_of_other_bevy_files()  # tell the user what bevys are available
         print()
 
-    # read the default settings from the stored values on disk.
-    bevy, changed = read_bevy_settings_files(context)  # user may change to another bevy during this call.
-    if changed:
-        write_my_config_file()
-    if settings and my_settings and not sudo.has_context():
+    # read our stored settings from the disk.
+    bevy, changed = read_bevy_settings_files(context)  # user may (first time) change to another bevy during this call.
+
+    if settings and my_settings and not sudo.has_context():  # first time through and old settings exist
         interactive = affirmative(
             input("Do you wish to change any settings for bevy {}? [y/N]:".format(bevy)))
     context['bevy'] = bevy
@@ -904,12 +909,12 @@ if __name__ == '__main__':
     try:
         import pwd  # exists on Posix only, raises exception on Windows
         pwd_entry = pwd.getpwnam(user_name)  # look it up the hard way -- we may be running SUDO
-        if pwd_entry[2] > 2000:  # skip uid numbers too close to automatically assigned values
+        if pwd_entry[2] > 2000:  # skip uid numbers too close to the automatically assigned values
             settings.setdefault('my_linux_uid', pwd_entry[2])  # useful for network shared files
         if pwd_entry[3] > 2000:
             settings.setdefault('my_linux_gid', pwd_entry[3])
     except (ImportError, IndexError, AttributeError):
-        settings.setdefault('my_linux_uid', '')  # on Windows or something, so values are not defined
+        settings.setdefault('my_linux_uid', '')  # we are on Windows or something, so values are not defined
         settings.setdefault('my_linux_gid', '')
 
     settings.setdefault('vagrant_prefix', DEFAULT_VAGRANT_PREFIX)
@@ -943,7 +948,7 @@ if __name__ == '__main__':
         print('Now running as Administrator...')
     elif sudo.isUserAdmin():
         print('(program was run by an administrator to start)')
-    elif '--no-sudo' in argv:  # "sudo off" switch for testing
+    elif '--no-sudo' in argv:  # "sudo off" switch for testing has been set
         print('\n\n!!! Running in "--no-sudo" mode. Expect permissions violations...\n')
     else:
         print('\n\n ... Okay. Now requesting elevated (sudo) privileges...\n')
@@ -952,9 +957,12 @@ if __name__ == '__main__':
         ctx['interactive'] = interactive
         time.sleep(2)  # give user a moment to absorb this ...
         cmdLine = sys.argv[:]  # make a shallow copy of our original command line.
+
         retcode = sudo.runAsAdmin(cmdLine, python_shell=True, context=ctx)  # Run this script using Administrator privileges
+
         time.sleep(2)  # another comfort pause for after the elevated program has run.
         exit(retcode)  # Our exalted child has taken over and should have done all of the hard work.
+
     #           ... PRESTO! we are running with elevated privileges for the rest of this script! ...
     #
 
@@ -1101,12 +1109,13 @@ if __name__ == '__main__':
             if response == 'None' or affirmative(input('Use "{}"?: [Y/n]:'.format(response)), True):
                 my_settings['second_minion_id'] = response
                 my_settings['additional_minion_tag'] = \
-                    '' if response == 'None' else my_settings['additional_minion_tag'] or '2'
+                    '' if response == 'None' else my_settings.get('additional_minion_tag', '2')
                 break
     two = my_settings.get('additional_minion_tag', '')
 
     if settings['bevy'] == "local":
         master_address = 'localhost'
+        settings['master_vagrant_ip'] = master_address
     elif interactive:
         master_address = choose_master_address(settings.get('master_external_ip', master_url))
         settings['master_external_ip'] = master_address
@@ -1151,7 +1160,8 @@ if __name__ == '__main__':
                 if my_settings['master_host']:
                     print("(Hint: your guest VM bevy master local address will be {})"
                           .format(settings['master_vagrant_ip']))
-                okay = input("Use {} as this machine's bevy master address? [Y/n]:".format(ip_[0][4][0]))
+                print('Your master URL {} translates to {} '.format(my_master_url, ip_[0][4][0]))
+                okay = input("Use {} as this machine's bevy master address? [Y/n]:".format(my_master_url))
                 if affirmative(okay, True):
                     my_settings['my_master_url'] = my_master_url
                     if my_settings['vm_host'] and my_master_url != settings['master_vagrant_ip']:

@@ -558,10 +558,16 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
     end
     quail_config.vm.hostname = "mac13"
     quail_config.vm.network "private_network", ip: NETWORK + ".2.13"
+
+    # . . . CAUTION: large rsync folders take forever to set up and may overfill VM disk . . .
     if settings.has_key?('projects_root') and settings['projects_root'] != 'none'
-      quail_config.vm.synced_folder settings['projects_root'], "/projects", type: "rsync" # virtualbox shared folders do not work
+      quail_config.vm.synced_folder settings['projects_root'], "/projects", type: "rsync", disabled: true
     end
-    quail_config.vm.synced_folder ".", "/vagrant", type: "rsync"  # disabled: true
+    if ENV.key?("VAGRANT_CWD")
+      config.vm.synced_folder ENV["VAGRANT_CWD"], "/salt-bevy", type: "rsync", disabled: true
+    end
+    quail_config.vm.synced_folder ".", "/vagrant", type: "rsync"
+
     if vagrant_command == "up" and vagrant_object == "mac13"
       puts "Starting #{vagrant_object} at #{NETWORK}.2.13 as a Salt minion with master=#{settings['bevymaster_url']}...\n."
     end
@@ -585,6 +591,6 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
     end
     script = "echo mac13 > /etc/salt/minion_id"
     quail_config.vm.provision "shell", inline: script
-    quail_config.vm.provision "shell", path: "configure_machine/macos_install_P3_salt.sh"
+    quail_config.vm.provision "shell", path: "configure_machine/macos_install_P3_and_salt.sh"
   end
 end

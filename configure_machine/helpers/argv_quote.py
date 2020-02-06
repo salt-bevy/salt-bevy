@@ -6,6 +6,7 @@
 #
 #  cli_string = argv_quote.quote(['list', 'of', 'commands', 'you', 'want', 'to', 'send'])
 #
+import re, sys
 #
 def win_concat_quote(command_line: str, argument: str) -> str:
     """
@@ -22,11 +23,11 @@ def win_concat_quote(command_line: str, argument: str) -> str:
     result = command_line + " "  if command_line else "" # vdc - I will automatically add a space
 
     if argument:                  # if (Force == false &$ Argument.empty() == false &&
-        if len(argument.split()) == 1:
-            if argument.find('"') < 0:  #     Argument.find_first_of(L" \t\n\v\"") == Argument.npos)
-                result += argument        # { CommandLine.append(Argument); }
+        if len(argument.split()) == 1:  # // if no white space or double quote embedded in argument
+            if '"' not in argument:     #  Argument.find_first_of(L" \t\n\v\"") == Argument.npos)
+                result += argument      # { CommandLine.append(Argument); }
                 return result
-    # else {
+                                  # else {
     result += '"'                 #     CommandLine.push_back(L'"');
     it = 0
     end = len(argument)
@@ -35,7 +36,7 @@ def win_concat_quote(command_line: str, argument: str) -> str:
         char = argument[it]
         #
         while char == '\\':  # while (It != Argument.end() && * It == L'\\') {
-            it += 1                # ++It;
+            it += 1                 # ++It;
             number_backslashes += 1 # ++NumberBackslashes;
             try:
                 char = argument[it]
@@ -89,6 +90,11 @@ BASH_RESERVED_WORDS = {
     'time'
     }
 
+####
+#  _quote_re1 escapes double-quoted special characters.
+#  _quote_re2 escapes unquoted special characters.
+_quote_re1 = re.compile(r"([\!\"\$\\\`])")
+_quote_re2 = re.compile(r"([\t\ \!\"\#\$\&\'\(\)\*\:\;\<\>\?\@\[\\\]\^\`\{\|\}\~])")
 
     ######################################################################
     #  Written by Kevin L. Sitze on 2006-12-03
@@ -101,12 +107,6 @@ def bash_concat_quote(command_line, arg):
     possible string (correctly quoted suited to pass to a bash shell)
     is returned.
     """
-    import re
-    ####
-    #  _quote_re1 escapes double-quoted special characters.
-    #  _quote_re2 escapes unquoted special characters.
-    _quote_re1 = re.compile(r"([\!\"\$\\\`])")
-    _quote_re2 = re.compile(r"([\t\ \!\"\#\$\&\'\(\)\*\:\;\<\>\?\@\[\\\]\^\`\{\|\}\~])")
 
     result = command_line + " " if command_line else ""  # vdc - I will automatically add a space
 
@@ -140,7 +140,6 @@ def quote(*args) -> str:
    :param args: A sequence of command tokens, possibly containing embedded spaces.
    :return: A single string, with quotes and backslashes inserted if needed.
    """
-   import sys
    if sys.platform == 'win32':
         return win_quote(*args)
    else:

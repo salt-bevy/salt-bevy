@@ -51,7 +51,7 @@ include:
 
 {% else %}  {# Not Windows #}
 
-{% if grains['mem_total'] < 2000 %}
+{% if grains['mem_total'] < 2000 %}  {# NOTE: k8s will demand NO swap #}
 swapspace:
   pkg.installed:
     - refresh: true

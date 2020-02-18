@@ -1,22 +1,27 @@
 #!/usr/bin/env python3
 """
-Runs for a long time, looking for an http query from a recently initialized
-computer. When it gets the packet, it tries to clear away the PXE boot configuration
+The problem -- we are trying to load a new Ubuntu image onto a naked server machine by PXE-booting an install script
+  onto that machine . . . but, after the new Operating System is successfully installed, we do not want to be stuck
+  in a loop when it reboots, continually re-installing it.
+The solution -- this program will hang out on the Salt Master (which is also the PXE install source),
+  and, when triggered, it will re-write the pxe configuration for the target computec.
+
+This program runs (idling) for a long time, looking for an http query from a recently initialized
+computer. When it gets that query, it tries to clear away the PXE boot configuration
 for that computer, so that it will boot from its disk from then on.
 
-It expects to receive html GET requests on pillar['pxe_clearing_port']
-see the docstring of FileClearingRequestHandler for details.
+It expects to receive html GET requests on a port defined in pillar['pxe_clearing_port']
+  see the docstring of FileClearingRequestHandler, below, for details.
 
 WARNING: whenever this daemon is running, it will allow anyone to execute shell commands as ROOT.
 There is no attempt to filter or authenticate commands.
 It will shut itself down when it clears its internal queue of expected work,
-or at the end of pillar value 'pxe_clearing_daemon_life_minutes',
+or at the end of pillar['pxe_clearing_daemon_life_minutes'] time,
 or when it receives a 'GET /shutdown' message.
 
 The job queue should be pre-loaded by 'GET /store' lines from the salt-master so that
 it knows when to shut down.
 """
-from __future__ import print_function
 from http.server import BaseHTTPRequestHandler, HTTPServer
 import threading, time, json, subprocess, urllib
 from pathlib import Path
@@ -78,7 +83,7 @@ class FileClearingRequestHandler(BaseHTTPRequestHandler):
         will be sent by the just-booted client computer
       action: retrieves data for mac_address
       This query should be sent by the client computer's hands-free install process
-      by placing a command at the end of the preseed file (bevy_srv/salt/dnsmasq/files/hands_off.preseed)
+      by placing a command at the end of the preseed file (bevy_srv/salt/pxe_install/files/hands_off.preseed)
       something like this...
     d-i preseed/late_command string in-target wget -q -O - http://{{ pillar['pxe_server_ip'] }}:{{ pillar['pxe_clearing_port'] }}/execute?mac_addr={{ config_mac }}
       Note: After processing by Salt, each target machine has its own preseed file with its own GET/execute command.
@@ -204,7 +209,7 @@ def run(port_number):
         http_server = StoppableHTTPServer(server_address, FileClearingRequestHandler)
     except OSError as err:
         if err.errno == 98:
-            print(DAEMON_NAME, '-->', 'Port {} already in use.'.format(port_number))
+            print(DAEMON_NAME, '-->', 'Port {} is already in use.'.format(port_number))
             print(DAEMON_NAME, '-->', 'HINT: you can shut down my brother daemon by:')
             print(DAEMON_NAME, '-->', 'wget -O - http://localhost:{}/shutdown'.format(port_number))
             http_server = None
@@ -218,9 +223,9 @@ def run(port_number):
         server = threading.Thread(target=http_server.run)
         server.start()
 
-        server.join()
+        server.join()  # wait here until the server loop is shut down for whatever reason
         print(DAEMON_NAME, '-->', "Server Stopped - port:{}".format(port_number))
-        game_over.cancel()
+        game_over.cancel()  # clear the timer
     else:
         print(DAEMON_NAME, '-->', 'Could not create a server.')
         exit(1)

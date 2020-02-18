@@ -8,6 +8,12 @@ pxe_network_cidr: '{{ pxe_network_cidr }}'
 bevymaster_external_ip: {{ master_external_ip }}
 bevymaster_vagrant_ip: {{ master_vagrant_ip }}  # vagrant host-only IP address of master
 
+cert_source: 'self'
+self_cert_info:  {# use this to create self-signed TLS certifacates #}
+  tls_organization: 'My Company Name'
+  tls_location: 'Somewhere, UT'
+  tls_emailAddress: 'me@mycompany.test'
+
 {# define module functions which will each minion will run periodically to send data to Salt Mine #}
 mine_functions:
   network.ip_addrs: '[]'
@@ -79,8 +85,4 @@ salt-api:  {# the api server is located using the "master" grain #}
   eauth: pam
   username: vagrant
   password: vagrant
-
-  tls_organization: 'My Company Name'
-  tls_location: 'Somewhere, UT'
-  tls_emailAddress: 'me@mycompany.test'
 ...

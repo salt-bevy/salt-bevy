@@ -85,6 +85,9 @@ debian_packages:
     - pkgs:
       - git
       - nano
+      {% if grains['pythonversion'][0] == 2 %}
+      - python-pip
+      {% endif %}
       - python3
       - python3-pip
       - tree
@@ -97,11 +100,12 @@ ubuntu_packages:
       {% if grains['osrelease'] < '18.04' %}
       - python-software-properties
       {% endif %}
-      - strace
       - vim-tiny
       - virt-what
       {% if grains['osrelease'] < '16.04' %}
       - python-git  # fallback package if pygit2 is not found.
+      {% elif grains['pythonversion'][0] == 3 %}
+      - python3-pygit2
       {% else %}
       - python-pygit2
       {% endif %}

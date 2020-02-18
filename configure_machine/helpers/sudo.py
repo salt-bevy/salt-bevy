@@ -145,7 +145,7 @@ def get_context():
     return {}
 
 
-def set_env_variables_permanently_win(key_value_pairs: dict, whole_machine: bool = False):
+def set_env_variables_permanently_win(key_value_pairs, whole_machine = False):
     """
     Similar to os.environ[var_name] = var_value for all pairs provided, but instead of setting the variables in the
     current process, sets the environment variables permanently at the os MACHINE level.

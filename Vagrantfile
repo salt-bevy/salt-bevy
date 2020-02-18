@@ -19,7 +19,15 @@ vagrant_object = ARGV.length > 1 ? ARGV[1] : ""  # the name (if any) of the vagr
 # in a Salt 'pillar' file. Vagrant has to look them up there...
 #
 # . v . v . retrieve stored bevy settings . v . v . v . v . v . v .
-BEVY_SETTINGS_FILE_NAME = '/srv/pillar/01_bevy_settings.sls'  # settings for the entire bevy
+if (RUBY_PLATFORM=~/darwin/i)  # on MacOS 10.15 and later we cannot use /srv
+  SRV_ROOT = '/opt/saltdata'
+else  # Windows or Linux
+  SRV_ROOT = '/srv'
+end
+def name_bevy_settings_file(rootpath)
+  return File.join(rootpath, 'pillar', '01_bevy_settings.sls')
+end
+BEVY_SETTINGS_FILE_NAME = name_bevy_settings_file(SRV_ROOT)  # settings for the entire bevy
 MY_SETTINGS_FILE_NAME = '/etc/salt-bevy/my_settings.conf'  # settings specific to the current host machine
 if File.exists?(BEVY_SETTINGS_FILE_NAME)
   settings = YAML.load_file(BEVY_SETTINGS_FILE_NAME)  # get your bevy-wide settings
@@ -70,13 +78,16 @@ hash_path = File.join(Dir.home, '.ssh', HASHFILE_NAME)  # where you store it ^ ^
 #
 if (RUBY_PLATFORM=~/darwin/i)  # on Mac OS, guess some frequently used ports
   interface_guesses = ['en0: Ethernet', 'en1: Wi-Fi (AirPort)',  'en0: Wi-Fi (Wireless)']
+  gw = `netstat -rn -f inet`[/default.*/][/\d+\.\d+\.\d+\.\d+/]  # xxx
 else  # Windows or Linux
   interface_guesses = settings['vagrant_interface_guess']
+  gw = `ip route show`[/default.*/][/\d+\.\d+\.\d+\.\d+/]  # xxx
 end
 if vagrant_command == "up" or vagrant_command == "reload"
   puts "Running on host #{VAGRANT_HOST_NAME}"
   puts "Will try bridge network using interface(s): #{interface_guesses}"
 end
+  puts "xxx router gateway detected as #{gw}"
 
 max_cpus = Etc.nprocessors / 2 - 1
 max_cpus = 1 if max_cpus < 1
@@ -86,7 +97,7 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
   config.ssh.forward_agent = true
 
   unless vagrant_object.start_with? 'win'
-    config.vm.provision "shell", inline: "ifconfig", run: "always"  # what did we get?
+    config.vm.provision "shell", inline: "ifconfig || ip addr", run: "always"  # what did we get?
   end
 
   # Now ... just in case our user is running some flavor of VMWare, we will
@@ -107,7 +118,7 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
     config.vm.synced_folder settings['projects_root'], "/projects", :owner => "vagrant", :group => "staff", :mount_options => ["umask=0002"]
   end
 
-  config.vm.synced_folder '/srv/pillar', "/srv/pillar", :owner => "vagrant", :group => "staff", :mount_options => ["umask=0002"]
+  config.vm.synced_folder File.join(SRV_ROOT, 'pillar'), "/srv/pillar", :owner => "vagrant", :group => "staff", :mount_options => ["umask=0002"]
 
   # . . . . . . . . . . . . Define machine QUAIL1 . . . . . . . . . . . . . .
   # This machine has no Salt provisioning at all. Salt-cloud can provision it.
@@ -212,7 +223,7 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
       quail_config.vm.provision "shell", inline: script
       if ENV.key?("VAGRANT_SALT")
         quail_config.vm.provision :salt do |salt|
-           salt.verbose = false
+           salt.verbose = true
            salt.bootstrap_options = "-A #{settings['master_vagrant_ip']} -i #{node_id} -F -P #{SALT_BOOTSTRAP_ARGUMENTS}"
            salt.run_highstate = default_run_highstate
            salt.masterless = true
@@ -259,16 +270,10 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
     script = "mkdir -p /etc/salt/minion.d\n"
     script += "chown -R vagrant:staff /etc/salt/minion.d\n"
     script += "chmod -R 775 /etc/salt/minion.d\n"
-    script += "mkdir -p #{File.dirname(BEVY_SETTINGS_FILE_NAME)}\n"
-    script += "chown -R vagrant:staff #{File.dirname(BEVY_SETTINGS_FILE_NAME)}\n"
-    script += "chmod -R 775 #{File.dirname(BEVY_SETTINGS_FILE_NAME)}\n"
     master_config.vm.provision "shell", inline: script
     if settings.has_key?('GUEST_MASTER_CONFIG_FILE') and File.exist?(settings['GUEST_MASTER_CONFIG_FILE'])
       master_config.vm.provision "file", source: settings['GUEST_MASTER_CONFIG_FILE'],
                                 destination: "/etc/salt/minion.d/00_vagrant_boot.conf"
-    end
-    if File.exists?(BEVY_SETTINGS_FILE_NAME)
-      master_config.vm.provision "file", source: BEVY_SETTINGS_FILE_NAME, destination: BEVY_SETTINGS_FILE_NAME
     end
     master_config.vm.provision :salt do |salt|
        # salt.install_type = "stable 2018.3.3"
@@ -300,7 +305,6 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
          "additional_minion_tag" => '',
          "linux_password_hash" => password_hash,
          "force_linux_user_password" => true,
-         "vagranthost" => VAGRANT_HOST_NAME,
          "runas" => login,
          "cwd" => Dir.pwd,
          "server_role" => 'master',
@@ -610,12 +614,12 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
         v.customize ["modifyvm", :id, "--natdnshostresolver1", "on"]  # use host's DNS resolver
     end
     quail_config.vm.provision "shell", path: "configure_machine/macos_unprotect_dirs.sh"
-    if settings.has_key?('GUEST_MINION_CONFIG_FILE') and File.exist?(settings['GUEST_MINION_CONFIG_FILE'])
-      quail_config.vm.provision "file", source: settings['GUEST_MINION_CONFIG_FILE'], destination: "/etc/salt/minion.d/00_vagrant_boot.conf"
+    if settings.has_key?('MAC_MINION_CONFIG_FILE') and File.exist?(settings['MAC_MINION_CONFIG_FILE'])
+      quail_config.vm.provision "file", source: settings['MAC_MINION_CONFIG_FILE'], destination: "/etc/salt/minion.d/00_vagrant_boot.conf"
     end
     # no shared directory on MacOS, so we will make a copy of the bevy settings...
     if File.exist?(BEVY_SETTINGS_FILE_NAME)
-      quail_config.vm.provision "file", source: BEVY_SETTINGS_FILE_NAME, destination: BEVY_SETTINGS_FILE_NAME
+      quail_config.vm.provision "file", source: BEVY_SETTINGS_FILE_NAME, destination: name_bevy_settings_file('/opt/saltdata')
     end
     script = "echo mac13 > /etc/salt/minion_id"
     quail_config.vm.provision "shell", inline: script

@@ -22,14 +22,10 @@ base:
   'quail*':
     - manual_bevy_settings
 
-  bevymaster*:
-    - manual_bevy_settings
-    - bitbucket_settings
-
   'bevy:*':
     - match: grain
     - manual_bevy_settings
 
-  'win*':
-    - playready_settings
-
+  'roles:*':
+    - match: grain
+    - roles_demo_settings

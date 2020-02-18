@@ -1,14 +1,16 @@
 ---
 # salt state file for setting up Salt's Small DataBase
 
-{{ salt['config.get']('salt_config_directory') }}/master.d/sdb.conf:
+{% set salt_root = salt['file.dirname'](salt['config.get']('conf_file')) %}
+
+{{ salt_root }}/master.d/sdb.conf:
   file.managed:
     - source: salt://files/sdb.conf
     - template: jinja
     - onlyif:
-      - test -d {{ salt['config.get']('salt_config_directory') }}/master.d
+      - test -d {{ salt_root }}/master.d
 
-{{ salt['config.get']('salt_config_directory') }}/minion.d/sdb.conf:
+{{ salt_root }}/minion.d/sdb.conf:
   file.managed:
     - makedirs: True
     - source: salt://files/sdb.conf

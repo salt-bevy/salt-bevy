@@ -25,7 +25,7 @@ wol_test_machine_ip: 192.168.88.8  # the ip address of the minion machine
 wol_test_mac: '00-1a-4b-7c-2a-b2'  # mac address of minion machine
 wol_test_sender_id: bevymaster  # Salt node id of WoL transmitter
 
-bevy_dir: '/projects/salt-bevy'  # path to salt-bevy directory tree
+bevy_dir: {{ salt['config.get']('projects_root', '/projects') ~ '/salt-bevy' }}  # path to salt-bevy directory tree
 #
 
 # the minion ID's to be put in the master's AUTOSIGN_FILE

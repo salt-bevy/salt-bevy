@@ -20,9 +20,9 @@ cherrypy:
 tls.create_self_signed_cert:
   module.run:
       - kwargs:
-          O: {{ salt['pillar.get']('salt-api:tls_organization', 'Dummy Organization') }}
-          L: {{ salt['pillar.get']('salt-api:tls_location', 'supply in manual_bevy_settings.sls') }}
-          emailAddress: {{ salt['pillar.get']('salt-api:tls_emailAddress', 'nobody@nowhere.test') }}
+          O: {{ salt['pillar.get']('self_cert_info:tls_organization', 'Dummy Organization') }}
+          L: {{ salt['pillar.get']('self_cert_info:tls_location', 'supply in manual_bevy_settings.sls') }}
+          emailAddress: {{ salt['pillar.get']('self_cert_info:tls_emailAddress', 'nobody@nowhere.test') }}
 
 {{ salt['config.get']('salt_config_directory') }}/master.d/api.conf:
   file.managed:

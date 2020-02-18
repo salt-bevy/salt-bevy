@@ -544,6 +544,44 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
       end
     end
 
+ # . . . . . . . . . . . . Define machine win7 . . . . . . . . . . . . . .
+ # . this machine bootstraps a salt minion on Windows Server 2012.
+  config.vm.define "win7", autostart: false do |quail_config|
+    quail_config.vm.box = "mrh1997/vanilla-win7-32bit"
+    quail_config.vm.network "public_network", bridge: interface_guesses
+    #quail_config.vm.network "private_network", ip: NETWORK + ".2.7"
+    if vagrant_command == "up" and vagrant_object == "win7"
+      puts "Starting #{vagrant_object} as a Salt minion of #{settings['master_vagrant_ip']}."
+    end
+    quail_config.vm.provider "virtualbox" do |v|
+        v.name = BEVY + '_win7'  # ! N.O.T.E.: name must be unique
+        v.gui = true  # turn on the graphic window
+        v.linked_clone = true
+        v.customize ["modifyvm", :id, "--vram", "27"]  # enough video memory for full screen
+        v.memory = 4096
+        v.cpus = max_cpus
+        #v.customize ["modifyvm", :id, "--natnet1", NETWORK + ".18.96/27"]  # do not use 10.0 network for NAT
+        v.customize ["modifyvm", :id, "--natdnshostresolver1", "on"]  # use host's DNS resolver
+    end
+    quail_config.vm.guest = :windows
+    quail_config.vm.boot_timeout = 900
+    quail_config.vm.graceful_halt_timeout = 60
+    #script = "new-item C:\\salt\\conf\\minion.d -itemtype directory -ErrorAction silentlycontinue\r\n"
+    #script += "route add 10.0.0.0 mask 255.0.0.0 #{NETWORK}.18.98 -p\r\n"  # route 10. network through host NAT for VPN
+    #quail_config.vm.provision "shell", inline: script
+    if settings.has_key?('WINDOWS_GUEST_CONFIG_FILE') and File.exist?(settings['WINDOWS_GUEST_CONFIG_FILE'])
+      quail_config.vm.provision "file", source: settings['WINDOWS_GUEST_CONFIG_FILE'], destination: "c:\\salt\\conf\\minion.d\\00_vagrant_boot.conf"
+    end
+    quail_config.vm.provision :salt do |salt|  # salt_cloud cannot push Windows salt
+        salt.minion_id = "win12"
+        salt.master_id = "#{settings['master_vagrant_ip']}"
+        #salt.log_level = "info"
+        salt.verbose = false
+        salt.colorize = true
+        salt.run_highstate = default_run_highstate
+    end
+  end
+
 # . . . . . . .  Define MacOS mac13 with Salt minion installed . . . . . . . . . . . . . .
 # . this machine bootstraps Salt but no states are run or defined.
   config.vm.define "mac13", autostart: false do |quail_config|

@@ -74,7 +74,7 @@ DEFAULT_VAGRANT_NETWORK = '172.17.0.0/16'  #  Vagrant private network
 
 minimum_salt_version = MINIMUM_SALT_VERSION.split('.')
 # noinspection PyTypeChecker
-minimum_salt_version[1] = int(minimum_salt_version[1])  # use numeric compare of month field
+minimum_salt_version[1] = int(minimum_salt_version[1])  # use numeric compare of month (or release) field
 this_file = Path(__file__).resolve()  # the absolute path name of this program's source
 user_ssh_key_file_directory = this_file.parent.parent / 'bevy_srv/salt/ssh_keys'
 
@@ -386,7 +386,9 @@ use_superseded:  # feature flags
 
 fileserver_backend:
   - roots
-  
+
+ca.cert_base_path: '/etc/pki'
+
 # log_level_logfile: debug  # uncomment this to get minion logs at debug level
 """
     bevy_srv_path = PurePosixPath('/salt-bevy') if virtual else PurePosixPath(this_file.parent.parent.as_posix())

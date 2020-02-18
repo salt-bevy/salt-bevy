@@ -66,8 +66,11 @@ def salt_minion_version():
     try:
         out = salt_call_json("test.version")
         version = out['local'].split('.')
-        version[1] = int(version[1])
-    except (IndexError, subprocess.CalledProcessError, TypeError, KeyError):
+        try:
+            version[1] = int(version[1])
+        except IndexError:  # works with version 3000+ as well as semantic version numbers
+            version.append(0)
+    except (subprocess.CalledProcessError, TypeError, KeyError):
         print("salt-minion not installed or no output")
         version = ['', 0, '']
     else:

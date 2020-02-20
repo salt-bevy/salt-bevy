@@ -43,6 +43,7 @@ from helpers import pwd_hash, sudo, salt_call_local, provisioner
 # This program attempts to establish a DRY single source of truth as the file
 SRV_ROOT = '/srv' if platform.system()!='Darwin' else '/opt/saltdata'  # MacOS 10.15+ prohibits use of /srv
 BEVY_SETTINGS_FILE_NAME = SRV_ROOT + '/pillar/01_bevy_settings.sls'  # the default Salt location
+VAGRANT_PROJECTS_ROOT = '/projects'
 
 #
 # Normal minions will receive their settings from the Bevy Master.
@@ -134,7 +135,7 @@ def print_names_of_other_bevy_files():
     bsf = Path(BEVY_SETTINGS_FILE_NAME)
     found_bevys = [bsfx.suffix[1:] for bsfx in bsf.parent.glob('*') if bsfx.stem == bsf.name]
     if found_bevys:
-        print('Saved bevys found in your {} directory:\n  {}'.format(
+        print('I found the following saved bevys in your {} directory:\n  {}'.format(
             Path(BEVY_SETTINGS_FILE_NAME).parent, found_bevys))
 
 
@@ -162,7 +163,7 @@ def read_bevy_settings_files(context=None) -> (str, bool):  # (new_bevy_name, ch
     def read_settings_file(provision_file_name, description=""):
         prov_file = Path(provision_file_name)
         try:
-            print("Trying to read {} settings from '{}'".format(description, prov_file))
+            print("(Trying to read {} settings from '{}')".format(description, prov_file))
             with prov_file.open() as provision_file:
                 stored_settings = yaml.safe_load(provision_file.read()) or {}
         except (OSError, yaml.YAMLError) as e:
@@ -191,7 +192,7 @@ def read_bevy_settings_files(context=None) -> (str, bool):  # (new_bevy_name, ch
         if arg_bevy_name in ['', 'sls', 'conf']:  # was not (correctly) defined on command line or context
             default = settings.get('bevy', 'bevy01')
             print()
-            print('HINT: Use "local" as your bevy name for masterless operation of Salt...')
+            print('HINT: Use "local" as your bevy name for masterless operation of Salt on a single machine...')
 
             # ask the user for a new bevy name.
             new_bevy = input("Name your bevy: [{}]:".format(default)) or default
@@ -200,7 +201,7 @@ def read_bevy_settings_files(context=None) -> (str, bool):  # (new_bevy_name, ch
                 continue
 
         else:  # was defined on command line or context['bevy']
-            print('  using bevy name {} from context or command line'.format(arg_bevy_name))
+            print('(using bevy name {} from context or command line)'.format(arg_bevy_name))
             new_bevy = arg_bevy_name
         print()
 
@@ -270,7 +271,7 @@ def write_bevy_settings_files(bevy_extension=''):
                     f.write("WINDOWS_GUEST_CONFIG_FILE: '{}'\n".format(WINDOWS_GUEST_CONFIG_FILE))
                     f.write("MAC_GUEST_CONFIG_FILE: '{}'\n".format(MAC_GUEST_CONFIG_FILE))
             set_file_owned_by(bevy_settings_file_name, user_name)
-            print('File "{}" written.'.format(bevy_settings_file_name))
+            print('(File "{}" written.)'.format(bevy_settings_file_name))
             print()
         except PermissionError:
             print('Sorry. Permission error trying to write {}'.format(bevy_settings_file_name))
@@ -281,14 +282,16 @@ def write_bevy_settings_files(bevy_extension=''):
     write_bevy_settings_file(Path(MY_SETTINGS_FILE_NAME + bevy_extension), my_settings)
 
 
-def get_additional_roots():
+def get_additional_roots(tag):
     '''
-    set up lists for additional file_roots and pillar_root directories
-    if the command line calls for them using --add-roots
-    DIRTY! -- MODIFIES the contents of "settings"
+    set up lists for additional file_roots or pillar_root directories
+    if typed in, or the command line calls for them using --file_roots or --pillar_roots
+
+    :param tag: must be 'file_roots' or 'pillar_roots'
+    :return: none -- but DIRTY SIDE EFFECT! -- MODIFIES the contents of "settings"
     '''
     global settings
-    add_roots = '--add-roots='
+    add_roots = '--' + tag + '='
     len_ar = len(add_roots)
     more_parents = []  # list of additional file_roots directories
     try:  # pick out the substring after "=" if --add-roots= exists as a CLI argument
@@ -298,29 +301,29 @@ def get_additional_roots():
     except Exception:
         raise ValueError('Error in "{}" processing.'.format(add_roots))
 
-    if len(settings.setdefault('application_roots', [])) + len(more_parents) == 0:
+    if len(settings.setdefault(tag, [])) + len(more_parents) == 0:
         return  # quick silent return in default case
     print()
-    print('Additional application state roots from old settings: {!r}'.format(settings['application_roots']))
-    print('Additional application state roots from new CLI --add-roots: {}'.format(more_parents))
-    default = 'k' if settings['application_roots'] else 'n' if more_parents else 'x'
+    print('You Salt system may need additional {} directories which can be defined here.'.format(tag))
+    print('Directory paths must be absolute, or start with "{path}" to be relative to your project root at',
+            ' {}'.format(my_settings['projects_root']))
+    print('You may select:')
+    print('Keep additional {} from your previous settings (K) --> {!r}'.format(tag, settings['application_roots']))
+    print('or use additional {0} from new CLI --{0} values (N) --> {1!r}'.format(tag, more_parents))
+    default = 'k' if settings[tag] else 'n' if more_parents else 'x'
     possibilites = 'knax'
     prompt = possibilites.replace(default, default.upper())
     resp = 'impossible'
     while resp not in possibilites:
-        print('(K)Keep old, use (N)New, (A)Append both, or (X) use no eXtra apps.')
+        print('(K)Keep old, use (N)New, (A)Append both, or (X) erase both.')
         resp = input('your choice? [{}]:'.format(prompt)) or default
         resp = resp.lower()
-    for i, parent in enumerate(more_parents):  # make relative paths absolute
-        paths = parent.split('=')
-        paths[0] = Path(paths[0]).resolve().as_posix()
-        more_parents[i] = '='.join(paths)
     if resp == 'n':
-        settings['application_roots'] = more_parents
+        settings[tag] = more_parents
     elif resp == 'a':
-        settings['application_roots'] = settings['application_roots'] + more_parents
+        settings[tag] = settings[tag] + more_parents
     elif resp == 'x':
-        settings['application_roots'] = []
+        settings['tag'] = []
 
 
 def format_additional_roots(settings, virtual):
@@ -330,32 +333,25 @@ def format_additional_roots(settings, virtual):
     :param virtual: creating path names for a VM?
     :return: a list of Salt file-roots and a list of pillar-roots
     '''
-    def make_the_list(more_parents, condiment):
+    if virtual:  # refer to the Vagrant shared path, not the real one
+        path_dir = VAGRANT_PROJECTS_ROOT
+    else:
+        path_dir = my_settings.get('projects_root', '/')
+
+    def make_the_list(some_sls_dirs):
         some_roots = []
-        for parent in more_parents:
-            try:
-                phys, virt = parent.split('=')
-            except (ValueError, AttributeError):
-                if virtual:
-                    raise ValueError(
-                        'application root parameter "{}" should have real-path=virtual-name'.format(parent))
-                else:
-                    phys = parent
-                    virt = NotImplemented
-            dir = Path(phys) / condiment
-            if dir.is_dir and dir.exists():  # extract the absolute path of any ./salt directory
-                if virtual:  # refer to the Vagrant shared path, not the real one
-                    virt_dir = PurePosixPath('/', virt) / condiment
-                    some_roots.append(str(virt_dir))
-                else:
-                    some_roots.append(str(dir.resolve().as_posix()))
+        for sls_dir in some_sls_dirs:
+            if sls_dir.startswith('{path}'):
+                sls_path = PurePosixPath(path_dir) / sls_dir
             else:
+                sls_path = PurePosixPath(sls_dir)
+            if not (dir.is_dir and dir.exists()):
                 print('WARNING: cannot find application directory "{}"'.format(dir))
+            some_roots.append(str(dir.resolve().as_posix()))
         return some_roots
 
-    more_parents = settings.get('application_roots', [])
-    more_roots = make_the_list(more_parents, 'salt')
-    more_pillars = make_the_list(more_parents, 'pillar')
+    more_roots = make_the_list(settings.get('file_roots', []))
+    more_pillars = make_the_list(settings.get('pillar_roots', []))
     return more_roots, more_pillars
 
 
@@ -367,18 +363,21 @@ def write_config_file(config_file_name, is_master: bool, virtual=True, platform=
     '''
     template = """
 # initial configuration file for a bevy member.
-# from file: {0}
-# written by: {1}
+# from file: {name}
+# written by: {this}
 #
-master: {2}
-{5}
-{6}
+master: {master}
+{id}
+{other}
+
+# note: file server and pillar settings are effective only for masterless minion operation
+fileserver_backend: ['roots']
 file_roots:    # states are searched in the given order -- first found wins
-  base: {3!r}
-top_file_merging_strategy: same  # do not merge the top.sls file from srv/salt, just use it
+  base: {file_roots!r}
+top_file_merging_strategy: marge_all  # all top.sls file are effective
 
 pillar_roots:  # all pillars are merged -- the last entry wins
-  base: {4!r}
+  base: {pillar_roots!r}
 pillar_source_merging_strategy: recurse
 
 file_ignore_regex:
@@ -387,8 +386,10 @@ file_ignore_regex:
 use_superseded:  # feature flags
   - module.run 
 
-fileserver_backend:
-  - roots
+peer:
+  .*:
+    - network.ip_addrs
+    - grains.item
   
 # log_level_logfile: debug  # uncomment this to get minion logs at debug level
 """
@@ -415,8 +416,9 @@ fileserver_backend:
         # config_file_name.parent.mkdir(parents=True, exist_ok=True)  # 3.5+
 
         with config_file_name.open('w', newline=newline) as config_file:
-            config_file.write(template.format(config_file_name, this_file, master, file_roots, pillar_roots, id, other))
-            print('file {} written'.format(str(config_file_name)))
+            config_file.write(template.format(name=config_file_name, this=this_file, master=master,
+                                              file_roots=file_roots, pillar_roots=pillar_roots, id=id, other=other))
+            print('(file {} written)'.format(str(config_file_name)))
         set_file_owned_by(config_file_name, user_name)
     except PermissionError:
         print('Sorry. Permission error when trying to write {}'.format(str(config_file_name)))
@@ -604,11 +606,11 @@ def write_ssh_key_file(my_linux_user):
 
     user_key_file = user_ssh_key_file_directory / (my_linux_user + '.pub')
     try:  # maybe it is already in our tree?
-        print('trying file: "{}"'.format(user_key_file))
+        print('(trying file: "{}")'.format(user_key_file))
         pub = user_key_file.open()
     except OSError:
         try:  # named user's default location on this machine?
-            print('Not found. trying file: "{}"'.format(user_home_pub))
+            print('Not found. (Next, trying file: "{}")'.format(user_home_pub))
             pub = user_home_pub.open()
         except OSError:
             print('No ssh public key found. You will have to supply it the hard way...')
@@ -651,7 +653,7 @@ def write_ssh_key_file(my_linux_user):
         with user_key_file.open('w') as f:  # 3.4
             f.write(pub_key)  # 3.4
             f.close()
-            print('file {} written.'.format(str(user_key_file)))
+            print('(file {} written.)'.format(str(user_key_file)))
         set_file_owned_by(user_key_file, user_name)
 
 def get_salt_master_url():
@@ -672,7 +674,7 @@ def get_salt_master_url():
 def get_salt_minion_id():
     # get an existing id from Salt if possible
     out = salt_call_local.salt_call_json("config.get id")
-    print('(Please ignore any error messages from "salt-call --json" while running this script.)')
+    print('((-->Please ignore any error messages from "salt-call --json" while running this script.))')
     try:
         ans = out['local']
         print('Detected minion ID (of first minion) as = "{}"'.format(ans))
@@ -850,21 +852,22 @@ def write_config_files():
 
 def display_introductory_text():
     intro = """
-Dear User:
+-------------------------------------------------------------------------------------------------
+Dear User:                                                                                      |
+                                                                                                |
+This program will take you step-by-step through the process of defining a new Bevy of computers,|
+(if you run it on a new Salt-master, or on a workstation which will VM host the new master),    |
+or it will collect the information needed to become a minion of some existing Bevy.             |
 
-This program will take you step-by-step through the process of defining a new Bevy,
-(if you run it on a new Salt-master or on a workstation which will host the new master),
-or it will collect the information needed to become a minion of some existing Bevy.
+Answers you give will (if possible) be stored for use as the defaults for later runs.           |
+Settings can be stored for multiple different named bevys.                                      |
 
-Answers you give will (if possible) be stored for use as the defaults for later runs.
-Settings can be stored for multiple named bevys.
-
-Default values will appear at the end of most questions, in square brackets, [like this]:.
+Default values will appear at the end of most questions, in square brackets, [like this]:.      |
 Just hit <Enter> to select the default.
-The default for a yes/no or multiple choice questions will be capitalized, like [y/N] or [knAx].
-You can select one of the letters, or just hit <Enter> for the default.
-Case is not significant for multiple choice or "None" responses. 
-Case _is_ preserved for strings, and might be very important on non-Windows systems.
+The default for a yes/no or multiple choice questions will be capitalized, like [y/N] or [knAx].|
+You can select one of the letters, or just hit <Enter> for the default.                         |
+Case is not significant for multiple choice or "None" responses.                                |
+Case _is_ preserved for strings, and might be very important on non-Windows systems.            |
 ....
 """
     print(intro)
@@ -932,7 +935,7 @@ if __name__ == '__main__':
         if interactive:
             settings['my_linux_user'], settings['linux_password_hash'] = request_linux_username_and_password(user_name)
             settings['my_windows_user'], settings['my_windows_password'] = request_windows_username_and_password()
-        print('Setting up user "{}" for bevy "{}"'.format(settings['my_linux_user'], settings['bevy']))
+        print('(Setting up user "{}" for bevy "{}")'.format(settings['my_linux_user'], settings['bevy']))
         write_bevy_settings_files()
 
     # . . . .   This is the point where our program flow goes crazy.
@@ -945,13 +948,13 @@ if __name__ == '__main__':
     #           We can detect the second run because "sudo.has_context()" returns "True".
     #           ... so now, a blinding light, a "bang", and a cloud of smoke and ...
     if sudo.has_context():
-        print('Now running as Administrator...')
+        print('(Now running as Administrator...)')
     elif sudo.isUserAdmin():
         print('(program was run by an administrator to start)')
     elif '--no-sudo' in argv:  # "sudo off" switch for testing has been set
         print('\n\n!!! Running in "--no-sudo" mode. Expect permissions violations...\n')
     else:
-        print('\n\n ... Okay. Now requesting elevated (sudo) privileges...\n')
+        print('\n\n( ... Okay. Now requesting elevated (sudo) privileges...)\n')
         ctx = {k: settings[k] for k in ('bevy', 'my_linux_user', 'my_windows_user', 'my_windows_password')}
         ctx['user_name'] = user_name
         ctx['interactive'] = interactive
@@ -969,7 +972,8 @@ if __name__ == '__main__':
     my_settings.setdefault('master_host',  False)  # assume this machine is NOT the VM host for the Master
     if settings['bevy'] == "local":
         my_settings['master'] = True  # a masterless system is a master to itself
-        get_additional_roots()
+        get_additional_roots('file_roots')
+        get_additional_roots('pillar_roots')
         default = my_settings.get('id', platform.node().split('.')[0])
     elif interactive:
         print('\n\nThis program can make this machine a simple workstation to join the bevy')
@@ -983,7 +987,8 @@ if __name__ == '__main__':
         if not my_settings['master'] and on_a_workstation:
             my_settings['master_host'] = get_affirmation('Will the Bevy Master be a VM guest of this machine?',
                                                          my_settings['master_host'])
-        get_additional_roots()
+        get_additional_roots('file_roots')
+        get_additional_roots('pillar_roots')
 
         print()
         first_id = get_salt_minion_id()

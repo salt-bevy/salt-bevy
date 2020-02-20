@@ -4,7 +4,9 @@ class BashQuoteTests(unittest.TestCase):
 
 
     def test_bash_quote_special(self):
+        # noinspection PyUnresolvedReferences
         from argv_quote import BASH_RESERVED_WORDS, bash_quote
+
 
         for word in BASH_RESERVED_WORDS:
             self.assertEqual("\\" + word, bash_quote(word))
@@ -19,6 +21,7 @@ class BashQuoteTests(unittest.TestCase):
             self.assertEqual("\\" + char, bash_quote(char))
 
     def test_bash_quote_strings(self):
+        # noinspection PyUnresolvedReferences
         from argv_quote import bash_quote
 
         self.assertEqual("'this is a simple path with spaces'",
@@ -31,6 +34,7 @@ class BashQuoteTests(unittest.TestCase):
 class WindowsQuoteTests(unittest.TestCase):
 
     def testEmbeddedSpace(self):
+        # noinspection PyUnresolvedReferences
         from argv_quote import win_concact_quote, win_quote
         self.assertEqual( 'x x x "z z"', win_concact_quote('x x x', 'z z'))
 
@@ -47,6 +51,7 @@ class OsDefinedQuoteTests(unittest.TestCase):
 
     def testOsSelection(self):
         import sys
+        # noinspection PyUnresolvedReferences
         from argv_quote import quote
         if sys.platform == 'win32':
             self.assertEqual('"I am" Windows not bash', quote('I am', 'Windows', 'not', 'bash'))

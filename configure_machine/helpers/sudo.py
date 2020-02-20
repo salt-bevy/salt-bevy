@@ -80,7 +80,7 @@ def runAsAdmin(commandLine=None, context=None, python_shell=False, wait=True):
     if os.name == 'posix':
         cmdLine.insert(0, "sudo")  # make a call using the system's "sudo"
         cmd = quote(*cmdLine)
-        print('Running command-->', cmd)
+        print('(Running command-->', cmd, ')')
         return_code = subprocess.call(cmd, shell=True)
 
     elif os.name == 'nt':  # running Windows -- must use pywin32 to ask for elevation
@@ -105,8 +105,8 @@ def runAsAdmin(commandLine=None, context=None, python_shell=False, wait=True):
             cmd = "_No_command_was_supplied_"
         lpVerb = 'runas'  # causes UAC elevation prompt.
         print()
-        print("This window is waiting while a child window is run as an Administrator...")
-        print("Running command-->{} {}".format(cmd, params))
+        print("This window will be waiting while a child window is run as an Administrator...")
+        print("(Running command-->{} {})".format(cmd, params))
         procInfo = ShellExecuteEx(nShow=showCmd,
                                   fMask=shellcon.SEE_MASK_NOCLOSEPROCESS,
                                   lpVerb=lpVerb,

@@ -48,7 +48,7 @@ staff:
     - password: {{ salt['pillar.get']('my_windows_password') }}
     - win_profile: C:/Users/{{ my_user }}
     {% elif grains['os'] == 'MacOS' %}
-    - password: {{ salt['pillar.get']('my_windows_password') }}
+    - password: {{ salt['pillar.get']('my_windows_password') }} {# this probably does not work #}
     {% else %}
     - password: "{{ salt['pillar.get']('linux_password_hash') }}"
     - enforce_password: {{ salt['config.get']('force_linux_user_password', false) }}

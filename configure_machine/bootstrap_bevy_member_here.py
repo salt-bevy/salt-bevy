@@ -13,7 +13,7 @@ Maintenance command-line switches:
   --no-sudo = Do not attempt to run with elevated privileges, use the present level
   --no-read-settings = Do not read an existing BEVY_SETTINGS_FILE
 """
-import subprocess, os, getpass, socket, platform, ipaddress, sys, time, shutil
+import subprocess, os, getpass, socket, platform, ipaddress, sys, time, shutil, tempfile
 from pathlib import Path, PurePosixPath
 from urllib.request import urlopen
 
@@ -44,7 +44,7 @@ from helpers import pwd_hash, sudo, salt_call_local, provisioner
 SRV_ROOT = '/srv' if platform.system()!='Darwin' else '/opt/saltdata'  # MacOS 10.15+ prohibits use of /srv
 BEVY_SETTINGS_FILE_NAME = SRV_ROOT + '/pillar/01_bevy_settings.sls'  # the default Salt location
 VAGRANT_PROJECTS_ROOT = '/projects'
-
+temp_settings_name = os.path.join(tempfile.gettempdir(), 'salt-bevy_my_settings.conf')
 #
 # Normal minions will receive their settings from the Bevy Master.
 # If the Bevy Master is a stand-alone server, it might be a "good idea" to connect its /srv directory to
@@ -139,7 +139,7 @@ def print_names_of_other_bevy_files():
             Path(BEVY_SETTINGS_FILE_NAME).parent, found_bevys))
 
 
-def read_bevy_settings_files(context=None) -> (str, bool):  # (new_bevy_name, changed)
+def read_bevy_settings_files(context=None, try_temp=False) -> (str, bool):  # (new_bevy_name, changed)
     """
     This procedure is a complex mess.
 
@@ -154,27 +154,33 @@ def read_bevy_settings_files(context=None) -> (str, bool):  # (new_bevy_name, ch
     If no bevy name is passed, the user will  be prompted for one, with the existing bevy as the default.
 
     :param context: a dictionary passed from the normal invocation to the elevated invocation
+    :param try_temp: See if a previous run stored quique settings somplace other than /etc
     :return: a tuple (the new 'bevy' name, was it different than the last run)
          many values are returned as the global dictionaries "settings" and "my_settings".
     """
     global settings
     global my_settings
 
-    def read_settings_file(provision_file_name, description=""):
+    def read_settings_file(provision_file_name, description="", try_temp=False):
         prov_file = Path(provision_file_name)
         try:
             print("(Trying to read {} settings from '{}')".format(description, prov_file))
             with prov_file.open() as provision_file:
                 stored_settings = yaml.safe_load(provision_file.read()) or {}
         except (OSError, yaml.YAMLError) as e:
-            print("Unable to read previous values from {} because {}.".format(provision_file_name, e))
-            stored_settings = {}
+            if try_temp and isinstance(e, FileNotFoundError):  # recursive call for trouble writing in /etc directory
+                stored_settings = read_settings_file(try_temp, 'temporary unique', try_temp=False)
+            else:
+                print("Unable to read previous values from {} because {}.".format(provision_file_name, e))
+                stored_settings = {}
         return stored_settings
+
+    local_temp_settings_name = context.get('temp_settings_name', temp_settings_name)
 
     arg_bevy_name = new_bevy = ''
     # read in the present bevy settings. Will usually be the one we want
     settings = read_settings_file(BEVY_SETTINGS_FILE_NAME, "shared")  # settings for entire bevy
-    my_settings = read_settings_file(MY_SETTINGS_FILE_NAME, "local ")  # settings for only this machine
+    my_settings = read_settings_file(MY_SETTINGS_FILE_NAME, "unique", try_temp=local_temp_settings_name)  # settings for only this machine
 
     try:  # this will happen when program has been re-run with elevated privilege
         arg_bevy_name = context['bevy']
@@ -210,9 +216,9 @@ def read_bevy_settings_files(context=None) -> (str, bool):  # (new_bevy_name, ch
             return present_bevy, False
         # should not normally get here on an elevated pass
         new_settings = read_settings_file(BEVY_SETTINGS_FILE_NAME + '.' + new_bevy, "archived shared")
-        my_new_settings = read_settings_file(MY_SETTINGS_FILE_NAME + '.' + new_bevy, "archived local ")
+        my_new_settings = read_settings_file(MY_SETTINGS_FILE_NAME + '.' + new_bevy, "archived unique")
         if new_settings == {}:
-            ok_create = affirmative(input('Create a (connection to a) new bevy named "{}"? [y/N]:'.format(new_bevy)))
+            ok_create = affirmative(input('Create a (connection to a) bevy named "{}"? [y/N]:'.format(new_bevy)))
             if not ok_create:
                 print('Please try another bevy name...')
                 print_names_of_other_bevy_files()
@@ -220,7 +226,7 @@ def read_bevy_settings_files(context=None) -> (str, bool):  # (new_bevy_name, ch
                 continue
 
         stored_present_settings = read_settings_file(BEVY_SETTINGS_FILE_NAME + '.' + present_bevy, "previous shared")
-        stored_my_present_settings = read_settings_file(MY_SETTINGS_FILE_NAME + '.' + present_bevy, "previous local ")
+        stored_my_present_settings = read_settings_file(MY_SETTINGS_FILE_NAME + '.' + present_bevy, "previous unique")
         # see if your present values have changed from the stored copy, if so offer to update them.
         ok_update = False
         if stored_present_settings == {} or stored_my_present_settings == {}:
@@ -240,9 +246,9 @@ def read_bevy_settings_files(context=None) -> (str, bool):  # (new_bevy_name, ch
     return new_bevy, True
 
 
-def write_bevy_settings_files(bevy_extension=''):
+def write_bevy_settings_files(bevy_extension='', try_temp=False):
 
-    def write_bevy_settings_file(bevy_settings_file_name, store_settings: dict, store_additional=False):
+    def write_bevy_settings_file(bevy_settings_file_name, store_settings: dict, store_additional=False, try_temp=False):
         global user_name
         try:
             # python 3.4
@@ -274,12 +280,15 @@ def write_bevy_settings_files(bevy_extension=''):
             print('(File "{}" written.)'.format(bevy_settings_file_name))
             print()
         except PermissionError:
-            print('Sorry. Permission error trying to write {}'.format(bevy_settings_file_name))
+            if try_temp:  # recursive call in case we cannot write in /etc directory
+                write_bevy_settings_file(Path(temp_settings_name), store_settings, store_additional, try_temp=False)
+            else:
+                print('Sorry. Permission error trying to write {}'.format(bevy_settings_file_name))
 
     if bevy_extension != '':
         bevy_extension = '.' + bevy_extension
-    write_bevy_settings_file(Path(BEVY_SETTINGS_FILE_NAME + bevy_extension), settings, True)
-    write_bevy_settings_file(Path(MY_SETTINGS_FILE_NAME + bevy_extension), my_settings)
+    write_bevy_settings_file(Path(BEVY_SETTINGS_FILE_NAME + bevy_extension), settings, store_additional=True)
+    write_bevy_settings_file(Path(MY_SETTINGS_FILE_NAME + bevy_extension), my_settings, try_temp=try_temp)
 
 
 def get_additional_roots(tag):
@@ -850,6 +859,14 @@ def write_config_files():
         write_config_file(Path(MAC_GUEST_CONFIG_FILE), is_master=False, virtual=True,
                           platform='Darwin', master_host=my_settings['master_host'])
 
+
+def cleanup_temp_files():
+    try:
+        os.unlink(temp_settings_name)
+    except:
+        pass
+
+
 def display_introductory_text():
     intro = """
 -------------------------------------------------------------------------------------------------
@@ -901,11 +918,11 @@ if __name__ == '__main__':
         print()
 
     # read our stored settings from the disk.
-    bevy, changed = read_bevy_settings_files(context)  # user may (first time) change to another bevy during this call.
+    bevy, changed = read_bevy_settings_files(context, try_temp=True)  # user may (first time) change to another bevy during this call.
 
     if settings and my_settings and not sudo.has_context():  # first time through and old settings exist
         interactive = affirmative(
-            input("Do you wish to change any settings for bevy {}? [y/N]:".format(bevy)))
+            input('Do you wish to change any settings for bevy "{}"? [y/N]:'.format(bevy)))
     context['bevy'] = bevy
     settings['bevy'] = bevy
 
@@ -936,7 +953,7 @@ if __name__ == '__main__':
             settings['my_linux_user'], settings['linux_password_hash'] = request_linux_username_and_password(user_name)
             settings['my_windows_user'], settings['my_windows_password'] = request_windows_username_and_password()
         print('(Setting up user "{}" for bevy "{}")'.format(settings['my_linux_user'], settings['bevy']))
-        write_bevy_settings_files()
+        write_bevy_settings_files(try_temp=True)
 
     # . . . .   This is the point where our program flow goes crazy.
     #           Up until this line, in most cases, the program will be running as a normal (unprivileged) user.
@@ -958,12 +975,14 @@ if __name__ == '__main__':
         ctx = {k: settings[k] for k in ('bevy', 'my_linux_user', 'my_windows_user', 'my_windows_password')}
         ctx['user_name'] = user_name
         ctx['interactive'] = interactive
+        ctx['temp_settings_name'] = temp_settings_name
         time.sleep(2)  # give user a moment to absorb this ...
         cmdLine = sys.argv[:]  # make a shallow copy of our original command line.
 
-        retcode = sudo.runAsAdmin(cmdLine, python_shell=True, context=ctx)  # Run this script using Administrator privileges
+        retcode = sudo.runAsAdmin(cmdLine, python_shell=True, context=ctx)  # Re-run this script as an Administrator
 
         time.sleep(2)  # another comfort pause for after the elevated program has run.
+        cleanup_temp_files()
         exit(retcode)  # Our exalted child has taken over and should have done all of the hard work.
 
     #           ... PRESTO! we are running with elevated privileges for the rest of this script! ...

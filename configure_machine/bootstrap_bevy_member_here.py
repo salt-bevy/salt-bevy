@@ -14,7 +14,7 @@ Maintenance command-line switches:
   --no-read-settings = Do not read an existing BEVY_SETTINGS_FILE
 """
 import subprocess, os, getpass, socket, platform, ipaddress, sys, time, shutil, tempfile
-from pathlib import Path, PurePosixPath
+from pathlib import Path, PosixPath
 from urllib.request import urlopen
 
 try:
@@ -299,7 +299,7 @@ def get_additional_roots(tag):
     :param tag: must be 'file_roots' or 'pillar_roots'
     :return: none -- but DIRTY SIDE EFFECT! -- MODIFIES the contents of "settings"
     '''
-    global settings
+    global settings, my_settings
     add_roots = '--' + tag + '='
     len_ar = len(add_roots)
     more_parents = []  # list of additional file_roots directories
@@ -309,22 +309,19 @@ def get_additional_roots(tag):
             more_parents = more.replace('\\', '/').strip('[').rstrip(']').split(',')
     except Exception:
         raise ValueError('Error in "{}" processing.'.format(add_roots))
-
-    if len(settings.setdefault(tag, [])) + len(more_parents) == 0:
-        return  # quick silent return in default case
     print()
     print('You Salt system may need additional {} directories which can be defined here.'.format(tag))
     print('Directory paths must be absolute, or start with "{path}" to be relative to your project root at',
             ' {}'.format(my_settings['projects_root']))
     print('You may select:')
-    print('Keep additional {} from your previous settings (K) --> {!r}'.format(tag, settings['application_roots']))
+    print('Keep additional {} from your previous settings (K) --> {!r}'.format(tag, settings[tag]))
     print('or use additional {0} from new CLI --{0} values (N) --> {1!r}'.format(tag, more_parents))
     default = 'k' if settings[tag] else 'n' if more_parents else 'x'
-    possibilites = 'knax'
+    possibilites = 'knaxi'
     prompt = possibilites.replace(default, default.upper())
     resp = 'impossible'
     while resp not in possibilites:
-        print('(K)Keep old, use (N)New, (A)Append both, or (X) erase both.')
+        print('(K)Keep old, use (N)New, (A)Append both, (X)erase both, or (I)Interactive input.')
         resp = input('your choice? [{}]:'.format(prompt)) or default
         resp = resp.lower()
     if resp == 'n':
@@ -333,6 +330,13 @@ def get_additional_roots(tag):
         settings[tag] = settings[tag] + more_parents
     elif resp == 'x':
         settings['tag'] = []
+    elif resp == 'i':
+        while ...:
+            resp = input('enter new value for paths (comma separted) for additional {}:'.format(tag))
+            ok = affirmative(input('Use "{}" for {} value? [Y/n]:'.format(resp, tag)), True)
+            if ok:
+                settings[tag] = resp
+                return
 
 
 def format_additional_roots(settings, virtual):
@@ -346,17 +350,20 @@ def format_additional_roots(settings, virtual):
         path_dir = VAGRANT_PROJECTS_ROOT
     else:
         path_dir = my_settings.get('projects_root', '/')
+        if path_dir == 'none':
+            path_dir = ''
 
-    def make_the_list(some_sls_dirs):
+    def make_the_list(sls_dirs):
         some_roots = []
+        some_sls_dirs = sls_dirs if isinstance(sls_dirs, (list, tuple)) else sls_dirs.split(',')
         for sls_dir in some_sls_dirs:
             if sls_dir.startswith('{path}'):
-                sls_path = PurePosixPath(path_dir) / sls_dir
+                sls_path = PosixPath(path_dir) / sls_dir[6:]
             else:
-                sls_path = PurePosixPath(sls_dir)
-            if not (dir.is_dir and dir.exists()):
-                print('WARNING: cannot find application directory "{}"'.format(dir))
-            some_roots.append(str(dir.resolve().as_posix()))
+                sls_path = PosixPath(sls_dir)
+                if not (sls_path.is_dir and sls_path.exists()):
+                    print('WARNING: cannot find application directory "{}"'.format(sls_path))
+            some_roots.append(str(sls_path.resolve().as_posix()))
         return some_roots
 
     more_roots = make_the_list(settings.get('file_roots', []))
@@ -402,7 +409,7 @@ peer:
   
 # log_level_logfile: debug  # uncomment this to get minion logs at debug level
 """
-    bevy_srv_path = PurePosixPath('/vagrant') if virtual else PurePosixPath(this_file.parent.parent.as_posix())
+    bevy_srv_path = PosixPath('/vagrant') if virtual else PosixPath(this_file.parent.parent.as_posix())
     master_url = settings.get('master_vagrant_ip', '') \
         if master_host else settings.get('master_external_ip', '')
     master = 'localhost' if is_master else master_url
@@ -794,15 +801,16 @@ def choose_bridge_interface():
 
 
 def get_projects_directory():
-    while Ellipsis:
+    while ...:
         try:
             default = my_settings.get('projects_root', str(this_file.parents[2]))
         except (IndexError, AttributeError):
             default = '/projects'
         print()
-        print('We can set up a Vagrant share "/projects" to find all of your working directories.')
-        print('Use "none" to disable this feature.')
-        resp = input('What is the root directory for your projects directories? [{}]:'.format(default))
+        print('We will set up a Vagrant share "/projects" to map the following path (if applicable).')
+        print('  and prepend this path to the additional sls file paths defined below.')
+        print('  Use "none" to disable this feature.')
+        resp = input('What is the path to the root directory for your projects directories? [{}]:'.format(default))
         resp = resp or default
         if resp.lower() == 'none':
             resp = 'none'
@@ -989,8 +997,9 @@ if __name__ == '__main__':
     #
 
     my_settings.setdefault('master_host',  False)  # assume this machine is NOT the VM host for the Master
-    if settings['bevy'] == "local":
+    if bevy == "local":
         my_settings['master'] = True  # a masterless system is a master to itself
+        my_settings['projects_root'] = get_projects_directory()
         get_additional_roots('file_roots')
         get_additional_roots('pillar_roots')
         default = my_settings.get('id', platform.node().split('.')[0])
@@ -1006,9 +1015,9 @@ if __name__ == '__main__':
         if not my_settings['master'] and on_a_workstation:
             my_settings['master_host'] = get_affirmation('Will the Bevy Master be a VM guest of this machine?',
                                                          my_settings['master_host'])
+        my_settings['projects_root'] = get_projects_directory()
         get_additional_roots('file_roots')
         get_additional_roots('pillar_roots')
-
         print()
         first_id = get_salt_minion_id()
 
@@ -1096,12 +1105,10 @@ if __name__ == '__main__':
         settings['vagrant_prefix'], settings['vagrant_network'] = choose_vagrant_network()
         choice = choose_bridge_interface()
         settings['vagrant_interface_guess'] = choice['name']
-        my_settings['projects_root'] = get_projects_directory()
 
-    master_url = get_salt_master_url()
     if interactive:
         we_installed_it = salt_install(my_settings['master'])  # download & run salt
-
+        master_url = get_salt_master_url()
         if we_installed_it and master_url.startswith('!'):
             ask_second_minion = False
             master_url = 'salt'

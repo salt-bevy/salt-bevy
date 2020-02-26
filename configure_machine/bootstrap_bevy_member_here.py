@@ -312,7 +312,7 @@ def get_additional_roots(tag):
     print()
     print('You Salt system may need additional {} directories which can be defined here.'.format(tag))
     print('Directory paths must be absolute, or start with "{path}" to be relative to your project root at',
-            ' {}'.format(my_settings['projects_root']))
+            '"{}"'.format(my_settings['projects_root']))
     print('You may select:')
     print('Keep additional {} from your previous settings (K) --> {!r}'.format(tag, settings[tag]))
     print('or use additional {0} from new CLI --{0} values (N) --> {1!r}'.format(tag, more_parents))
@@ -333,7 +333,7 @@ def get_additional_roots(tag):
     elif resp == 'i':
         while ...:
             resp = input('enter new value for paths (comma separted) for additional {}:'.format(tag))
-            ok = affirmative(input('Use "{}" for {} value? [Y/n]:'.format(resp, tag)), True)
+            ok = affirmative(input('Appending "{}" to {} configuration. Correct? [Y/n]:'.format(resp, tag)), True)
             if ok:
                 settings[tag] = resp
                 return
@@ -915,8 +915,10 @@ if __name__ == '__main__':
     context = sudo.get_context()  # will be {} if no context was stored
     user_name = context.pop('user_name', '')
     interactive = context.pop('interactive', True)
-
-    if user_name == "":  # this must be the first (i.e. unprivileged) invocation of the program
+    if context:
+        print('\n\n. . . .')
+        print('(New instance here. Received context for user "{}", interactive={})'.format(user_name, interactive))
+    else:  # this must be the first (i.e. unprivileged) invocation of the program
         display_introductory_text()
         user_name = getpass.getuser()
         if user_name == 'root':  # happens on Posix systems
@@ -979,7 +981,7 @@ if __name__ == '__main__':
     elif '--no-sudo' in argv:  # "sudo off" switch for testing has been set
         print('\n\n!!! Running in "--no-sudo" mode. Expect permissions violations...\n')
     else:
-        print('\n\n( ... Okay. Now requesting elevated (sudo) privileges...)\n')
+        print('\n\n( ... Okay. Now we will start a new instance of this program using elevated (sudo) privileges...)\n')
         ctx = {k: settings[k] for k in ('bevy', 'my_linux_user', 'my_windows_user', 'my_windows_password')}
         ctx['user_name'] = user_name
         ctx['interactive'] = interactive
@@ -989,6 +991,8 @@ if __name__ == '__main__':
 
         retcode = sudo.runAsAdmin(cmdLine, python_shell=True, context=ctx)  # Re-run this script as an Administrator
 
+        print('. . .')
+        print('(original (non-priviledged) instance is back. Return code from other instance was {})'.format(retcode))
         time.sleep(2)  # another comfort pause for after the elevated program has run.
         cleanup_temp_files()
         exit(retcode)  # Our exalted child has taken over and should have done all of the hard work.
@@ -1224,6 +1228,10 @@ if __name__ == '__main__':
     print()
     print('{} done.'.format(__file__))
     print()
+    if my_settings['master_host']:
+        print('Ready for you to run "{}"'.format(
+            'vgr up bevymaster' if platform.system() == 'Windows' else './vgr up bevymaster'
+        ))
     if platform.system() == 'Windows':
         input('Hit <Enter> to close this window:')
         print('and ... if you see this message, you may need to hit <Ctrl C>, too.')

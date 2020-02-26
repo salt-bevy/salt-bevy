@@ -78,16 +78,13 @@ hash_path = File.join(Dir.home, '.ssh', HASHFILE_NAME)  # where you store it ^ ^
 #
 if (RUBY_PLATFORM=~/darwin/i)  # on Mac OS, guess some frequently used ports
   interface_guesses = ['en0: Ethernet', 'en1: Wi-Fi (AirPort)',  'en0: Wi-Fi (Wireless)']
-  gw = `netstat -rn -f inet`[/default.*/][/\d+\.\d+\.\d+\.\d+/]  # xxx
 else  # Windows or Linux
   interface_guesses = settings['vagrant_interface_guess']
-  gw = `ip route show`[/default.*/][/\d+\.\d+\.\d+\.\d+/]  # xxx
 end
 if vagrant_command == "up" or vagrant_command == "reload"
   puts "Running on host #{VAGRANT_HOST_NAME}"
   puts "Will try bridge network using interface(s): #{interface_guesses}"
 end
-  puts "xxx router gateway detected as #{gw}"
 
 max_cpus = Etc.nprocessors / 2 - 1
 max_cpus = 1 if max_cpus < 1

@@ -84,7 +84,6 @@ debian_packages:
   pkg.installed:
     - pkgs:
       - git
-      - htop
       - nano
       {% if grains['pythonversion'][0] == 2 %}
       - python-pip

@@ -230,7 +230,10 @@ def test(command=None):
 
 
 if __name__ == "__main__":
-    if "--test" in sys.argv:
+    if '--pause' in sys.argv:
+        if isUserAdmin():
+            input('. . . This window is running "sudo --pause". . . Press <enter> to exit:')
+    elif "--test" in sys.argv:
         print('......testing.......')
         test(sys.argv)
         if not isUserAdmin():

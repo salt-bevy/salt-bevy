@@ -109,7 +109,8 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
     config.vm.synced_folder ENV["VAGRANT_PWD"], "/vagrant", :owner => "vagrant", :group => "staff", :mount_options => ["umask=0002"]
   end
   if ENV.key?("VAGRANT_CWD")
-    config.vm.synced_folder ENV["VAGRANT_CWD"], "/salt-bevy", :owner => "vagrant", :group => "staff", :mount_options => ["umask=0002"]
+    vcwd = File.expand_path(ENV['VAGRANT_CWD'])
+    config.vm.synced_folder vcwd, "/salt_bevy", :owner => "vagrant", :group => "staff", :mount_options => ["umask=0002"]
   end
   if settings.has_key?('projects_root') and settings['projects_root'] != 'none'
     config.vm.synced_folder settings['projects_root'], "/projects", :owner => "vagrant", :group => "staff", :mount_options => ["umask=0002"]

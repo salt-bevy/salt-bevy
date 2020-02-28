@@ -14,7 +14,7 @@ Maintenance command-line switches:
   --no-read-settings = Do not read an existing BEVY_SETTINGS_FILE
 """
 import subprocess, os, getpass, socket, platform, ipaddress, sys, time, shutil, tempfile, traceback
-from pathlib import Path, PurePosixPath
+from pathlib import Path, PurePosixPath, PureWindowsPath
 from urllib.request import urlopen
 
 try:
@@ -106,16 +106,20 @@ def minion_tag():
 
 
 def my_salt_config_file_path():
-    if platform.system() == 'Windows':  # minion_tag not yet supported
+    if platform.system() == 'Windows':  # TODO: minion_tag not yet actually supported
         return Path('c:\\salt\\conf{}\\minion.d\\00_bevy_boot.conf'.format(minion_tag()))
     # else:
     return Path('/etc/salt{}/minion.d/00_bevy_boot.conf'.format(minion_tag()))
 
 
 def write_my_config_file():
-    write_config_file(my_salt_config_file_path(),
+    conf_file_path = my_salt_config_file_path()
+    for other_file in conf_file_path.parent.glob('[0-9][0-9]*.conf'):
+        print('xxx other_file->', other_file)
+        other_file.unlink()  # delete other (competing) configuration files.
+    write_config_file(conf_file_path,
                       is_master=my_settings.get('master', False),
-                      virtual=False,
+                      virtual=False,  # NOTE: may be a true lie if interactive on a virtual machine.
                       platform=platform.system(),
                       master_host=my_settings.get('master_host', False))
 
@@ -380,6 +384,7 @@ def write_config_file(config_file_path, is_master: bool, virtual=True, platform=
     substituting the actual path to the ../bevy_srv salt and pillar subdirectories,
     -- which will be used as the Salt minion configuration during the "salt_call_local.state_apply" function below.
     '''
+    path_maker = PureWindowsPath if platform=='Windows' else PurePosixPath
     config_file_name = str(config_file_path)
     template = """
 # initial configuration file for a bevy member.
@@ -394,7 +399,7 @@ master: {master}
 fileserver_backend: ['roots']
 file_roots:    # states are searched in the given order -- first found wins
   base: {file_roots!r}
-top_file_merging_strategy: marge_all  # all top.sls file are effective
+top_file_merging_strategy: merge_all  # all top.sls file are effective
 
 pillar_roots:  # all pillars are merged -- the last entry wins
   base: {pillar_roots!r}
@@ -414,8 +419,8 @@ peer:
 # log_level_logfile: debug  # uncomment this to get minion logs at debug level
 """
     projects_root = my_settings.get('projects_root', 'none')
-    bevy_srv_path = '/vagrant' if virtual else \
-        '' if projects_root=='none' else projects_root
+    bevy_srv_path = path_maker('/vagrant' if virtual else \
+        '' if projects_root=='none' else this_file.parent.parent)
     master_url = settings.get('master_vagrant_ip', '') \
         if master_host else settings.get('master_external_ip', '')
     master = 'localhost' if is_master else master_url
@@ -428,8 +433,8 @@ peer:
     more_roots, more_pillars = format_additional_roots(settings, virtual)
 
     srv_root = '/srv' if platform!='Darwin' else '/opt/saltdata'
-    file_roots = [srv_root + '/salt'] + more_roots + [bevy_srv_path + '/bevy_srv/salt']
-    pillar_roots = [srv_root + '/pillar'] + more_pillars + [bevy_srv_path + '/bevy_srv/pillar']
+    file_roots = [srv_root + '/salt'] + more_roots + [(bevy_srv_path / 'bevy_srv' / 'salt').as_posix()]
+    pillar_roots = [srv_root + '/pillar'] + more_pillars + [(bevy_srv_path / 'bevy_srv' / 'pillar').as_posix()]
 
     newline = '\r\n' if platform=='Windows' else '\n'
 

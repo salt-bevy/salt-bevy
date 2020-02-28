@@ -9,8 +9,9 @@
 
 import sys, os, traceback, time, json, subprocess
 
-ELEVATION_FLAG = "--_context"  # internal use only. Should never be passed on a user command line
+VERSION = 1.0
 
+ELEVATION_FLAG = "--_context"  # internal use only. Should never be passed on a user command line
 
 def has_context():  # we-were-here flag has been set
     '''
@@ -230,26 +231,39 @@ def test(command=None):
 
 
 if __name__ == "__main__":
-    if '--pause' in sys.argv:
-        if isUserAdmin():
-            input('. . . This window is running "sudo --pause". . . Press <enter> to exit:')
-    elif "--test" in sys.argv:
+    if len(sys.argv) == 1 or sys.argv[1] in ["--help", "-h"]:
+        print('''usage:
+         sudo <command> <arguments>  # will run with elevated priviledges
+         sudo --pause <cmd> <args> # will keep a command screen open until you hit a key
+         sudo salt-xxx . . . # will call a command from C:\Salt\salt- and then pause-after
+         sudo --etc-hosts  # will open your /etc/hosts file for editing (on Windows, too)
+         sudo cmd  # starts an Administrator command window
+         ''')
+    elif sys.argv[1] == "--version":
+        print('sudo version', VERSION)
+    elif sys.argv[1] == "--test":
         print('......testing.......')
         test(sys.argv)
-        if not isUserAdmin():
-            print('....... NEXT, a real useful example ... editing the "etc/hosts" file ........')
-            if os.name == 'nt':
-                call = ["c:\\Windows\\notepad.exe", r"C:\Windows\System32\drivers\etc\hosts"]
-            else:
-                call = ['nano', '/etc/hosts']
-            test(call)
-    elif "--install-sudo-command" in sys.argv and os.name == 'nt':
+    elif sys.argv[1] == "--etc-hosts":
+        print('....... NEXT, a real useful example ... editing the "etc/hosts" file ........')
+        if os.name == 'nt':
+            call = ["notepad", r"C:\Windows\System32\drivers\etc\hosts"]
+        else:
+            call = ['nano', '/etc/hosts']
+        runAsAdmin(call)
+    elif sys.argv[1] == "--install-sudo-command" and os.name == 'nt':
+        WINDOWS_PATH = r'C:\Windows\sudo.py'
+        if os.path.abspath(__file__) == os.path.abspath(WINDOWS_PATH):
+            print('No point in installing self.')
+            exit(1)
         print('Installing "sudo" command...')
         if isUserAdmin():
             import shutil
-            shutil.copy2(__file__, r'C:\Windows\sudo.py')
+            shutil.copy2(__file__, WINDOWS_PATH)
             shutil.copy2(os.path.dirname(os.path.abspath(__file__)) + r'\argv_quote.py',
-                                         r'C:\Windows\argv_quote.py')
+                         os.path.dirname(WINDOWS_PATH) + r'\argv_quote.py')
+            shutil.copy2(os.path.dirname(os.path.abspath(__file__)) + r'\pause_after.bat',
+                         os.path.dirname(WINDOWS_PATH) + r'\pause_after.bat')
             set_env_variables_permanently_win({'PATHEXT': r'.PY'}, whole_machine=True)
         else:
             runAsAdmin([os.path.abspath(__file__), '--install-sudo-command'], python_shell=True)
@@ -259,7 +273,13 @@ if __name__ == "__main__":
     elif "--set-user-environment" in sys.argv and os.name == 'nt':
         ctx = get_context()
         set_env_variables_permanently_win(ctx, whole_machine=False)
-    elif len(sys.argv) == 1:
-        print('usage: sudo <command> <arguments>  # will run with elevated priviledges')
     else:
+        if sys.argv[1].startswith('salt-'):  # make "sudo salt-call" actually work without being in PATH
+            sys.argv[1] = os.path.join('c:\\', 'salt', sys.argv[1])
+            sys.argv.insert(1, '--pause')
+
+        pause_after = sys.argv[1] == '--pause'
+        if pause_after:
+            sys.argv[1] = 'pause_after'
+
         runAsAdmin(sys.argv[1:])

@@ -271,7 +271,7 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
     master_config.vm.provision "shell", inline: script
     if settings.has_key?('GUEST_MASTER_CONFIG_FILE') and File.exist?(settings['GUEST_MASTER_CONFIG_FILE'])
       master_config.vm.provision "file", source: settings['GUEST_MASTER_CONFIG_FILE'],
-                                destination: "/etc/salt/minion.d/00_vagrant_boot.conf"
+                                destination: "/etc/salt/minion.d/00_bevy_boot.conf"
     end
     master_config.vm.provision :salt do |salt|
        # salt.install_type = "stable 2018.3.3"
@@ -456,7 +456,7 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
     script += "route add 10.0.0.0 mask 255.0.0.0 #{NETWORK}.17.226 -p\r\n"  # route 10. network through host NAT for VPN
     quail_config.vm.provision "shell", inline: script
     if settings.has_key?('WINDOWS_GUEST_CONFIG_FILE') and File.exist?(settings['WINDOWS_GUEST_CONFIG_FILE'])
-      quail_config.vm.provision "file", source: settings['WINDOWS_GUEST_CONFIG_FILE'], destination: "c:\\salt\\conf\\minion.d\\00_vagrant_boot.conf"
+      quail_config.vm.provision "file", source: settings['WINDOWS_GUEST_CONFIG_FILE'], destination: "c:\\salt\\conf\\minion.d\\00_bevy_boot.conf"
     end
     quail_config.vm.provision :salt do |salt|  # salt_cloud cannot push Windows salt
         salt.minion_id = "win16"
@@ -494,7 +494,7 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
     script += "route add 10.0.0.0 mask 255.0.0.0 #{NETWORK}.17.130 -p\r\n"  # route 10. network through host NAT for VPN
     quail_config.vm.provision "shell", inline: script
     if settings.has_key?('WINDOWS_GUEST_CONFIG_FILE') and File.exist?(settings['WINDOWS_GUEST_CONFIG_FILE'])
-      quail_config.vm.provision "file", source: settings['WINDOWS_GUEST_CONFIG_FILE'], destination: "c:\\salt\\conf\\minion.d\\00_vagrant_boot.conf"
+      quail_config.vm.provision "file", source: settings['WINDOWS_GUEST_CONFIG_FILE'], destination: "c:\\salt\\conf\\minion.d\\00_bevy_boot.conf"
     end
     quail_config.vm.provision :salt do |salt|  # salt_cloud cannot push Windows salt
         salt.minion_id = "win12"
@@ -534,7 +534,7 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
       #script += "route add 10.0.0.0 mask 255.0.0.0 #{NETWORK}.18.34 -p\r\n"  # route 10. network through host NAT for VPN
       #quail_config.vm.provision "shell", inline: script
       if settings.has_key?('WINDOWS_GUEST_CONFIG_FILE') and File.exist?(settings['WINDOWS_GUEST_CONFIG_FILE'])
-        quail_config.vm.provision "file", source: settings['WINDOWS_GUEST_CONFIG_FILE'], destination: "c:\\salt\\conf\\minion.d\\00_vagrant_boot.conf"
+        quail_config.vm.provision "file", source: settings['WINDOWS_GUEST_CONFIG_FILE'], destination: "c:\\salt\\conf\\minion.d\\00_bevy_boot.conf"
       end
       quail_config.vm.provision :salt do |salt|  # salt_cloud cannot push Windows salt
           salt.minion_id = "win19"
@@ -572,7 +572,7 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
     #script += "route add 10.0.0.0 mask 255.0.0.0 #{NETWORK}.18.98 -p\r\n"  # route 10. network through host NAT for VPN
     #quail_config.vm.provision "shell", inline: script
     if settings.has_key?('WINDOWS_GUEST_CONFIG_FILE') and File.exist?(settings['WINDOWS_GUEST_CONFIG_FILE'])
-      quail_config.vm.provision "file", source: settings['WINDOWS_GUEST_CONFIG_FILE'], destination: "c:\\salt\\conf\\minion.d\\00_vagrant_boot.conf"
+      quail_config.vm.provision "file", source: settings['WINDOWS_GUEST_CONFIG_FILE'], destination: "c:\\salt\\conf\\minion.d\\00_bevy_boot.conf"
     end
     quail_config.vm.provision :salt do |salt|  # salt_cloud cannot push Windows salt
         salt.minion_id = "win12"
@@ -619,7 +619,7 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
     end
     quail_config.vm.provision "shell", path: "configure_machine/macos_unprotect_dirs.sh"
     if settings.has_key?('MAC_MINION_CONFIG_FILE') and File.exist?(settings['MAC_MINION_CONFIG_FILE'])
-      quail_config.vm.provision "file", source: settings['MAC_MINION_CONFIG_FILE'], destination: "/etc/salt/minion.d/00_vagrant_boot.conf"
+      quail_config.vm.provision "file", source: settings['MAC_MINION_CONFIG_FILE'], destination: "/etc/salt/minion.d/00_bevy_boot.conf"
     end
     # no shared directory on MacOS, so we will make a copy of the bevy settings...
     if File.exist?(BEVY_SETTINGS_FILE_NAME)

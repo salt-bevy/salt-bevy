@@ -231,12 +231,13 @@ def test(command=None):
 
 
 if __name__ == "__main__":
-    if len(sys.argv) == 1 or sys.argv[1] in ["--help", "-h"]:
+    if len(sys.argv) == 1 or sys.argv[1] in ["--help", "-h", "su"]:
         print('''usage:
-         sudo <command> <arguments>  # will run <command> with elevated priviledges
-         sudo --pause <cmd> <args> # will keep the command screen open until you hit a key
-         sudo salt-xxx . . . # will call a command from C:\Salt\salt-xxx and then pause
+         sudo <command> <arguments> # will run <command> with elevated priviledges
+         sudo --pause <cmd> <args>  # will keep the command screen open until you hit a key
+         sudo salt-xxx <cmd> . . .  # will call a command from C:\Salt\salt-xxx and then pause
          sudo --etc-hosts  # will open your /etc/hosts file for editing (on Windows, too)
+         sudo bash # starts an Administrator Linux-subsystem-for-Windows window
          sudo cmd  # starts an Administrator command window
          ''')
     elif sys.argv[1] == "--version":

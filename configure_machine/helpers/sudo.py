@@ -233,9 +233,9 @@ def test(command=None):
 if __name__ == "__main__":
     if len(sys.argv) == 1 or sys.argv[1] in ["--help", "-h"]:
         print('''usage:
-         sudo <command> <arguments>  # will run with elevated priviledges
-         sudo --pause <cmd> <args> # will keep a command screen open until you hit a key
-         sudo salt-xxx . . . # will call a command from C:\Salt\salt- and then pause-after
+         sudo <command> <arguments>  # will run <command> with elevated priviledges
+         sudo --pause <cmd> <args> # will keep the command screen open until you hit a key
+         sudo salt-xxx . . . # will call a command from C:\Salt\salt-xxx and then pause
          sudo --etc-hosts  # will open your /etc/hosts file for editing (on Windows, too)
          sudo cmd  # starts an Administrator command window
          ''')

@@ -1,5 +1,5 @@
 ---
-# Salt state for provisioning a Windows (or Linux) server to run a dotnet_core program
+# Salt state for provisioning a server to run a dotnet_core program
 #
 {% if grains['os'] == 'Windows' %}
 
@@ -9,7 +9,16 @@ include:
 dotnetcore-sdk:
   chocolatey.installed
 
-{% else %}
+{% elif grains['os'] == 'MacOS' %}
+
+include:
+  - macos.install_homebrew
+
+dotnet_core_mac:
+  pkg.installed:
+    - name: homebrew/cask/dotnet-sdk
+
+  {% else %}
 
   {% if salt['grains.get']('os_family') == 'Debian' %}
 microsoft_repo_dn:
@@ -28,7 +37,7 @@ dotnetcore_install:
       - dotnet-sdk-3.1
       - aspnetcore-runtime-3.1
     - requires:
-        - pkgrepo: microsoft_repo
+        - pkgrepo: microsoft_repo_dn
 
 {% endif %} {# Windows else #}
 ...

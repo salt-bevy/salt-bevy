@@ -986,7 +986,7 @@ if __name__ == '__main__':
         print('(Now running as Administrator...)')
     elif sudo.isUserAdmin():
         print('(program was run by an administrator to start)')
-    elif '--no-sudo' in argv:  # "sudo off" switch for testing has been set
+    elif '--no-sudo' in argv:  # "sudo off" switch (for testing) has been set
         print('\n\n!!! Running in "--no-sudo" mode. Expect permissions violations...\n')
     else:
         print('\n\n( ... Okay. Now we will start a new instance of this program using elevated (sudo) privileges...)\n')

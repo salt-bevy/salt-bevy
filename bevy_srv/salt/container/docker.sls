@@ -3,14 +3,11 @@
 
 {% if grains['os_family'] == 'Windows' %}
 
-include:
-  - windows.install_chocolatey
-
 windows_docker:
-  chocolatey.installed:
-    - name: docker-desktop
-    - require:
-      - sls: windows.install_chocolatey
+  test.fail_without_changes:
+    - name: 'Aborting install. Docker-desktop installation on Windows will disable VirtualBox, which is needed for salt-bevy.'
+    - failhard: True
+    - order: 1
 
 {% elif grains['os_family'] == 'MacOS' %}
 

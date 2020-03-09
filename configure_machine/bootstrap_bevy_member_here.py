@@ -1035,7 +1035,7 @@ if __name__ == '__main__':
             first_id = get_salt_minion_id()
 
             if my_settings['master'] and not settings['bevy'] == "local":
-                print('NOTE: The Salt Node ID of the Bevy Master on itself should by "bevymaster".')
+                print('NOTE: The Salt Node ID for the Bevy Master on itself should be "bevymaster".')
 
             default = my_settings.get('id',
                                # determine machine ID if not in my_settings

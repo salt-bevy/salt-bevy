@@ -3,11 +3,9 @@
 """
 A utility program to install a SaltStack minion, and optionally, a master with cloud controller.
 
-arguments:  add one or more file_roots and pillar_roots entries.  "[]" are optional, spaces not permitted.
-  --add-roots=[path/to/directory1,path/to/directory2]
-      where each directory is expected to have a ./salt and ./pillar subdirectory
-      If you use a definition like:  --add-roots=[/full/path/to/directory1/local_salt=../directory1/local_salt]
-      These entries will be mapped as Vagrant shared directories,
+arguments:  add one or more file_roots and pillar_roots entries. Spaces are not permitted.
+  --file_roots=/absolute/path/to/directory1,{path}relative/to/directory2
+  --pillar_roots={path}relative/dir
 
 Maintenance command-line switches:
   --no-sudo = Do not attempt to run with elevated privileges, use the present level
@@ -40,11 +38,11 @@ except ImportError:
 from helpers import pwd_hash, sudo, salt_call_local, provisioner
 
 # # # # #
-# This program attempts to establish a DRY single source of truth as the file
+# This program attempts to establish a DRY single source of truth in the following files . . .
 SRV_ROOT = '/srv' if platform.system()!='Darwin' else '/opt/saltdata'  # MacOS 10.15+ prohibits use of /srv
 BEVY_SETTINGS_FILE_NAME = SRV_ROOT + '/pillar/01_bevy_settings.sls'  # the default Salt location
-VAGRANT_PROJECTS_ROOT = '/projects'
 temp_settings_name = os.path.join(tempfile.gettempdir(), 'salt-bevy_my_settings.conf')
+VAGRANT_PROJECTS_ROOT = '/projects'
 #
 # Normal minions will receive their settings from the Bevy Master.
 # If the Bevy Master is a stand-alone server, it might be a "good idea" to connect its /srv directory to
@@ -79,15 +77,15 @@ minimum_salt_version = MINIMUM_SALT_VERSION.split('.')
 # noinspection PyTypeChecker
 minimum_salt_version[1] = int(minimum_salt_version[1])  # use numeric compare of month field
 this_file = Path(__file__).resolve()  # the absolute path name of this program's source
-user_ssh_key_file_directory = this_file.parent.parent / 'bevy_srv/salt/ssh_keys'
+user_ssh_key_file_directory = this_file.parent.parent / 'bevy_srv/salt/ssh_keys'  # TODO: move this
 
 argv = [s.strip() for s in sys.argv]
 if '--help' in argv:
     print(__doc__)
     exit()
 
-settings = {}  # global variable
-my_settings = {}
+settings = {}  # global variable for entire Bevy settings dictionary
+my_settings = {}  # settings dictionary for this machine only
 user_name = ''
 
 
@@ -888,9 +886,10 @@ def display_introductory_text():
 -------------------------------------------------------------------------------------------------
 Dear User:                                                                                      |
                                                                                                 |
-This program will take you step-by-step through the process of defining a new Bevy of computers,|
-(if you run it on a new Salt-master, or on a workstation which will VM host the new master),    |
-or it will collect the information needed to become a minion of some existing Bevy.             |
+This program can take you step-by-step through the process of defining a new Bevy of computers, |
+(if you run it on a new Salt-master, or on a workstation which will host the new master VM),    |
+or it can collect the information needed to become a minion of some existing Bevy,              |
+or it can set up this machine to operate as a masterless Salt-minion.                           |
 
 Answers you give will (if possible) be stored for use as the defaults for later runs.           |
 Settings can be stored for multiple different named bevys.                                      |

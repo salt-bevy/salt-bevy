@@ -883,24 +883,24 @@ def cleanup_temp_files():
 
 def display_introductory_text():
     intro = """
--------------------------------------------------------------------------------------------------
-Dear User:                                                                                      |
-                                                                                                |
-This program can take you step-by-step through the process of defining a new Bevy of computers, |
-(if you run it on a new Salt-master, or on a workstation which will host the new master VM),    |
-or it can collect the information needed to become a minion of some existing Bevy,              |
-or it can set up this machine to operate as a masterless Salt-minion.                           |
-
-Answers you give will (if possible) be stored for use as the defaults for later runs.           |
-Settings can be stored for multiple different named bevys.                                      |
-
-Default values will appear at the end of most questions, in square brackets, [like this]:.      |
-Just hit <Enter> to select the default.
-The default for a yes/no or multiple choice questions will be capitalized, like [y/N] or [knAx].|
-You can select one of the letters, or just hit <Enter> for the default.                         |
-Case is not significant for multiple choice or "None" responses.                                |
-Case _is_ preserved for strings, and might be very important on non-Windows systems.            |
-....
+-----------------------------------------------------------------------------------------------------
+    Dear User:                                                                                      |
+                                                                                                    |
+    This program can take you step-by-step through the process of defining a new Bevy of computers, |
+    (if you run it on a new Salt-master, or on a workstation which will host the new master VM),    |
+    or it can collect the information needed to become a minion of some existing Bevy,              |
+    or it can set up this machine to operate as a masterless Salt-minion.                           |
+    
+    Answers you give will (if possible) be stored for use as the defaults for later runs.           |
+    Settings can be stored for multiple different named bevys.                                      |
+    
+    Default values will appear at the end of most questions, in square brackets, [like this]:.      |
+    Just hit <Enter> to select the default.
+    The default for a yes/no or multiple choice questions will be capitalized, like [y/N] or [knAx].|
+    You can select one of the letters, or just hit <Enter> for the default.                         |
+    Case is not significant for multiple choice or "None" responses.                                |
+    Case _is_ preserved for strings, and might be very important on non-Windows systems.            |
+-----------------------------------------------------------------------------------------------------
 """
     print(intro)
 

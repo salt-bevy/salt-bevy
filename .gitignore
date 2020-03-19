@@ -114,3 +114,5 @@ configure_machine/grains
 configure_machine/minion
 configure_machine/windows_minion
 bevy_srv/salt/pki_cache
+examples/dotnet/web_hello_world/bin/
+examples/dotnet/web_hello_world/obj/Debug/

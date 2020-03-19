@@ -4,7 +4,7 @@
 
 include:
   - bevy_master  # set up the bevy master
-  - dnsmasq.pxe_auto_install  # load and start the pxe_boot server
+  - pxe_install.pxe_auto_install  # load and start the pxe_boot server
 
 start_hw:
   module.run:  # wake the machine to start the install process

@@ -3,6 +3,8 @@
 {# this is an example of things you may always want installed. #}
 
 {% if grains['os_family'] == 'Windows' %}
+{% set install_git_using_traditional_tools = False %}
+{% if install_git_using_traditional_tools %}
 pkg.refresh_db:
   module.run:
   - require_in:
@@ -13,16 +15,34 @@ windows_packages:
     - pkgs:
       - npp
       - git
+{% endif %}
 
 choco_boot:
   cmd.run:
     - name: salt-call chocolatey.bootstrap
     - require_in:
       - windows_py3
+    - unless:
+      - choco --version
 
 windows_py3:
   chocolatey.installed:
-    - name: python3
+    - name:
+      - python3
+    - unless:
+      - py -3 --version
+
+{% if not install_git_using_traditional_tools %}
+notepadplusplus.install:
+  chocolatey.installed:
+    - unless:
+      - where notepad++
+git.install:
+  chocolatey.installed:
+    - unless:
+      - git --version
+    - package_args: "/GitAndUnixToolsOnPath"
+{% endif %}
 
 windows_pygit2_failure_workaround:
    cmd.run:
@@ -51,7 +71,7 @@ include:
 
 {% else %}  {# Not Windows #}
 
-{% if grains['mem_total'] < 2000 %}
+{% if grains['mem_total'] < 2000 %}  {# NOTE: k8s will demand NO swap #}
 swapspace:
   pkg.installed:
     - refresh: true
@@ -71,7 +91,6 @@ debian_packages:
       - python3
       - python3-pip
       - tree
-      - virt-what
 {% endif %}
 
 {% if salt['grains.get']('os') == 'Ubuntu' %}
@@ -82,6 +101,7 @@ ubuntu_packages:
       - python-software-properties
       {% endif %}
       - vim-tiny
+      - virt-what
       {% if grains['osrelease'] < '16.04' %}
       - python-git  # fallback package if pygit2 is not found.
       {% elif grains['pythonversion'][0] == 3 %}

@@ -78,16 +78,13 @@ hash_path = File.join(Dir.home, '.ssh', HASHFILE_NAME)  # where you store it ^ ^
 #
 if (RUBY_PLATFORM=~/darwin/i)  # on Mac OS, guess some frequently used ports
   interface_guesses = ['en0: Ethernet', 'en1: Wi-Fi (AirPort)',  'en0: Wi-Fi (Wireless)']
-  gw = `netstat -rn -f inet`[/default.*/][/\d+\.\d+\.\d+\.\d+/]  # xxx
 else  # Windows or Linux
   interface_guesses = settings['vagrant_interface_guess']
-  gw = `ip route show`[/default.*/][/\d+\.\d+\.\d+\.\d+/]  # xxx
 end
 if vagrant_command == "up" or vagrant_command == "reload"
   puts "Running on host #{VAGRANT_HOST_NAME}"
   puts "Will try bridge network using interface(s): #{interface_guesses}"
 end
-  puts "xxx router gateway detected as #{gw}"
 
 max_cpus = Etc.nprocessors / 2 - 1
 max_cpus = 1 if max_cpus < 1
@@ -112,7 +109,8 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
     config.vm.synced_folder ENV["VAGRANT_PWD"], "/vagrant", :owner => "vagrant", :group => "staff", :mount_options => ["umask=0002"]
   end
   if ENV.key?("VAGRANT_CWD")
-    config.vm.synced_folder ENV["VAGRANT_CWD"], "/salt-bevy", :owner => "vagrant", :group => "staff", :mount_options => ["umask=0002"]
+    vcwd = File.expand_path(ENV['VAGRANT_CWD'])
+    config.vm.synced_folder vcwd, "/salt_bevy", :owner => "vagrant", :group => "staff", :mount_options => ["umask=0002"]
   end
   if settings.has_key?('projects_root') and settings['projects_root'] != 'none'
     config.vm.synced_folder settings['projects_root'], "/projects", :owner => "vagrant", :group => "staff", :mount_options => ["umask=0002"]
@@ -273,7 +271,7 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
     master_config.vm.provision "shell", inline: script
     if settings.has_key?('GUEST_MASTER_CONFIG_FILE') and File.exist?(settings['GUEST_MASTER_CONFIG_FILE'])
       master_config.vm.provision "file", source: settings['GUEST_MASTER_CONFIG_FILE'],
-                                destination: "/etc/salt/minion.d/00_vagrant_boot.conf"
+                                destination: "/etc/salt/minion.d/00_bevy_boot.conf"
     end
     master_config.vm.provision :salt do |salt|
        # salt.install_type = "stable 2018.3.3"
@@ -458,7 +456,7 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
     script += "route add 10.0.0.0 mask 255.0.0.0 #{NETWORK}.17.226 -p\r\n"  # route 10. network through host NAT for VPN
     quail_config.vm.provision "shell", inline: script
     if settings.has_key?('WINDOWS_GUEST_CONFIG_FILE') and File.exist?(settings['WINDOWS_GUEST_CONFIG_FILE'])
-      quail_config.vm.provision "file", source: settings['WINDOWS_GUEST_CONFIG_FILE'], destination: "c:\\salt\\conf\\minion.d\\00_vagrant_boot.conf"
+      quail_config.vm.provision "file", source: settings['WINDOWS_GUEST_CONFIG_FILE'], destination: "c:\\salt\\conf\\minion.d\\00_bevy_boot.conf"
     end
     quail_config.vm.provision :salt do |salt|  # salt_cloud cannot push Windows salt
         salt.minion_id = "win16"
@@ -496,7 +494,7 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
     script += "route add 10.0.0.0 mask 255.0.0.0 #{NETWORK}.17.130 -p\r\n"  # route 10. network through host NAT for VPN
     quail_config.vm.provision "shell", inline: script
     if settings.has_key?('WINDOWS_GUEST_CONFIG_FILE') and File.exist?(settings['WINDOWS_GUEST_CONFIG_FILE'])
-      quail_config.vm.provision "file", source: settings['WINDOWS_GUEST_CONFIG_FILE'], destination: "c:\\salt\\conf\\minion.d\\00_vagrant_boot.conf"
+      quail_config.vm.provision "file", source: settings['WINDOWS_GUEST_CONFIG_FILE'], destination: "c:\\salt\\conf\\minion.d\\00_bevy_boot.conf"
     end
     quail_config.vm.provision :salt do |salt|  # salt_cloud cannot push Windows salt
         salt.minion_id = "win12"
@@ -536,7 +534,7 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
       #script += "route add 10.0.0.0 mask 255.0.0.0 #{NETWORK}.18.34 -p\r\n"  # route 10. network through host NAT for VPN
       #quail_config.vm.provision "shell", inline: script
       if settings.has_key?('WINDOWS_GUEST_CONFIG_FILE') and File.exist?(settings['WINDOWS_GUEST_CONFIG_FILE'])
-        quail_config.vm.provision "file", source: settings['WINDOWS_GUEST_CONFIG_FILE'], destination: "c:\\salt\\conf\\minion.d\\00_vagrant_boot.conf"
+        quail_config.vm.provision "file", source: settings['WINDOWS_GUEST_CONFIG_FILE'], destination: "c:\\salt\\conf\\minion.d\\00_bevy_boot.conf"
       end
       quail_config.vm.provision :salt do |salt|  # salt_cloud cannot push Windows salt
           salt.minion_id = "win19"
@@ -548,6 +546,44 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
       end
     end
 
+ # . . . . . . . . . . . . Define machine win7 . . . . . . . . . . . . . .
+ # . this machine bootstraps a salt minion on Windows Server 2012.
+  config.vm.define "win7", autostart: false do |quail_config|
+    quail_config.vm.box = "mrh1997/vanilla-win7-32bit"
+    quail_config.vm.network "public_network", bridge: interface_guesses
+    #quail_config.vm.network "private_network", ip: NETWORK + ".2.7"
+    if vagrant_command == "up" and vagrant_object == "win7"
+      puts "Starting #{vagrant_object} as a Salt minion of #{settings['master_vagrant_ip']}."
+    end
+    quail_config.vm.provider "virtualbox" do |v|
+        v.name = BEVY + '_win7'  # ! N.O.T.E.: name must be unique
+        v.gui = true  # turn on the graphic window
+        v.linked_clone = true
+        v.customize ["modifyvm", :id, "--vram", "27"]  # enough video memory for full screen
+        v.memory = 4096
+        v.cpus = max_cpus
+        #v.customize ["modifyvm", :id, "--natnet1", NETWORK + ".18.96/27"]  # do not use 10.0 network for NAT
+        v.customize ["modifyvm", :id, "--natdnshostresolver1", "on"]  # use host's DNS resolver
+    end
+    quail_config.vm.guest = :windows
+    quail_config.vm.boot_timeout = 900
+    quail_config.vm.graceful_halt_timeout = 60
+    #script = "new-item C:\\salt\\conf\\minion.d -itemtype directory -ErrorAction silentlycontinue\r\n"
+    #script += "route add 10.0.0.0 mask 255.0.0.0 #{NETWORK}.18.98 -p\r\n"  # route 10. network through host NAT for VPN
+    #quail_config.vm.provision "shell", inline: script
+    if settings.has_key?('WINDOWS_GUEST_CONFIG_FILE') and File.exist?(settings['WINDOWS_GUEST_CONFIG_FILE'])
+      quail_config.vm.provision "file", source: settings['WINDOWS_GUEST_CONFIG_FILE'], destination: "c:\\salt\\conf\\minion.d\\00_bevy_boot.conf"
+    end
+    quail_config.vm.provision :salt do |salt|  # salt_cloud cannot push Windows salt
+        salt.minion_id = "win12"
+        salt.master_id = "#{settings['master_vagrant_ip']}"
+        #salt.log_level = "info"
+        salt.verbose = false
+        salt.colorize = true
+        salt.run_highstate = default_run_highstate
+    end
+  end
+
 # . . . . . . .  Define MacOS mac13 with Salt minion installed . . . . . . . . . . . . . .
 # . this machine bootstraps Salt but no states are run or defined.
   config.vm.define "mac13", autostart: false do |quail_config|
@@ -558,10 +594,16 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
     end
     quail_config.vm.hostname = "mac13"
     quail_config.vm.network "private_network", ip: NETWORK + ".2.13"
+
+    # . . . CAUTION: large rsync folders take forever to set up and may overfill VM disk . . .
     if settings.has_key?('projects_root') and settings['projects_root'] != 'none'
-      quail_config.vm.synced_folder settings['projects_root'], "/projects", type: "rsync" # virtualbox shared folders do not work
+      quail_config.vm.synced_folder settings['projects_root'], "/projects", type: "rsync", disabled: true
     end
-    quail_config.vm.synced_folder ".", "/vagrant", type: "rsync"  # disabled: true
+    if ENV.key?("VAGRANT_CWD")
+      config.vm.synced_folder ENV["VAGRANT_CWD"], "/salt-bevy", type: "rsync", disabled: true
+    end
+    quail_config.vm.synced_folder ".", "/vagrant", type: "rsync"
+
     if vagrant_command == "up" and vagrant_object == "mac13"
       puts "Starting #{vagrant_object} at #{NETWORK}.2.13 as a Salt minion with master=#{settings['bevymaster_url']}...\n."
     end
@@ -577,7 +619,7 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
     end
     quail_config.vm.provision "shell", path: "configure_machine/macos_unprotect_dirs.sh"
     if settings.has_key?('MAC_MINION_CONFIG_FILE') and File.exist?(settings['MAC_MINION_CONFIG_FILE'])
-      quail_config.vm.provision "file", source: settings['MAC_MINION_CONFIG_FILE'], destination: "/etc/salt/minion.d/00_vagrant_boot.conf"
+      quail_config.vm.provision "file", source: settings['MAC_MINION_CONFIG_FILE'], destination: "/etc/salt/minion.d/00_bevy_boot.conf"
     end
     # no shared directory on MacOS, so we will make a copy of the bevy settings...
     if File.exist?(BEVY_SETTINGS_FILE_NAME)
@@ -585,6 +627,6 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
     end
     script = "echo mac13 > /etc/salt/minion_id"
     quail_config.vm.provision "shell", inline: script
-    quail_config.vm.provision "shell", path: "configure_machine/macos_install_P3_salt.sh"
+    quail_config.vm.provision "shell", path: "configure_machine/macos_install_P3_and_salt.sh"
   end
 end

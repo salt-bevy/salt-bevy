@@ -30,7 +30,7 @@ def state_apply(salt_state, **kwargs):
           "{file_root} {pillar_root} {config_dir} --log-level=info " \
           "{pillar_data} ".format(**command_args)
 
-    print(cmd)
+    print('(running --> {})'.format(cmd))
     ret = subprocess.call(cmd, shell=True)
     if ret == 0:
         print("Success")
@@ -42,7 +42,7 @@ def state_apply(salt_state, **kwargs):
 def salt_call_json(salt_command):
     import subprocess, json
     cmd = 'salt-call {} --local --out=json'.format(salt_command)
-    print(cmd)
+    print('(running --> {})'.format(cmd))
     try:
         out = subprocess.check_output(cmd, shell=True)
     except subprocess.CalledProcessError as e:
@@ -74,5 +74,5 @@ def salt_minion_version():
         print("salt-minion not installed or no output")
         version = ['', 0, '']
     else:
-        print("Detected installed Salt version={!r}".format(version))
+        print("(Detected installed Salt version={!r})".format(version))
     return version

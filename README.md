@@ -262,7 +262,7 @@ The Vagrantfile defines:
 | win19 | 2.19 | yes | Windows Server 2019 |
 | mac13 | 2.13 | yes | MacOS 10.3 |
 | **generic** | 2.200 * | yes | Ubuntu 18.04 * |
-| **generic_no_salt** | 2.200 * | no | Ubuntu 18.04 * |
+| --no-salt **generic** | 2.200 * | no | Ubuntu 18.04 * |
 
  \* The "generic" machine(s) can be re-configured using environment variables. See below.
 
@@ -333,16 +333,16 @@ ssh vagrant@172.17.2.203 'ls /home'
 The `vgr` and `vgr.bat` script commands are provided for convenience in controlling "generic" VMs
 from the command line.
 
-Use `generic` or `generic_no_salt` as a key word in your command to have the script define the needed environment variables for you.
+Use `generic` as a key word in your command to have the script define the needed environment variables for you.
 The arguments are interpreted as:
 
 `./vgr up generic <node name> <node_address> <node_memory> <node_box> <--switches>`
 
-The `generic_no_salt` keyword is needed only at `vgr up` time to inhibit the provision of a Salt minion.
+The addition of  `--no-salt` like: `vgr --no-salt up` will inhibit the provision of a Salt minion. It must be the first paramater.
 
 ```bash
 ./vgr up generic somename "" "" ubuntu/trusty64 --provision
-./vgr up generic_no_salt another .2.199 8000  # assigns an address and more RAM
+./vgr --no-salt up generic another .2.199 8000  # assigns an address and more RAM
 ./vgr ssh generic another
 ./vgr destroy generic somename
 ```

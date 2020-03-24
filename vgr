@@ -5,15 +5,16 @@ export VAGRANT_PWD=$PWD
 SCRIPTPATH="$( cd "$(dirname "$0")/../salt-bevy" ; pwd -P )"
 echo from $SCRIPTPATH
 export VAGRANT_CWD=$SCRIPTPATH
-arg2="$2"
-if [ "$arg2" == "generic_no_salt" ]
+arg1="$1"
+if [ "$arg1" == "--no-salt" ]
 then
-  arg2="generic"
+  shift 1
+  VAGRANT_SALT=
 else
   export VAGRANT_SALT='true'
 fi
 pushd $SCRIPTPATH
-if [ "$arg2" == "generic" ]
+if [ "$2" == "generic" ]
 then
   export GENERIC='true'
   if [ "$1" == "up" ]

@@ -5,11 +5,29 @@
 # (C) COPYRIGHT © Preston Landers 2010
 # Released under the same license as Python 2.6.5
 #
-# Python3 update and extensive changes by: Vernon Cole 2018, 2019
+# Python3 update and extensive changes by: Vernon Cole 2018, 2019, 2020
 
-import sys, os, traceback, time, json, subprocess
+import sys, os, traceback, time, json, subprocess, shutil
 
-VERSION = 1.0
+if os.name == 'nt':
+    try:
+        # noinspection PyUnresolvedReferences
+        import winreg, win32gui, win32con, win32event, win32process
+        # noinspection PyUnresolvedReferences
+        from win32com.shell import shell, shellcon
+        # noinspection PyUnresolvedReferences
+        from win32com.shell.shell import ShellExecuteEx
+    except ImportError:
+        raise ImportError('PyWin32 module import failure.  Try "pip install pywin32".')
+
+try:
+    # noinspection PyUnresolvedReferences
+    from helpers.argv_quote import quote
+except (ModuleNotFoundError, ImportError):
+    # noinspection PyUnresolvedReferences
+    from argv_quote import quote
+
+VERSION = 1.1
 
 ELEVATION_FLAG = "--_context"  # internal use only. Should never be passed on a user command line
 
@@ -29,7 +47,6 @@ def isUserAdmin():
     if has_context():
         return True
     if os.name == 'nt':
-        from win32com.shell import shell
         try:
             return shell.IsUserAnAdmin()
         except Exception as e:
@@ -53,12 +70,6 @@ def runAsAdmin(commandLine=None, context=None, python_shell=False, wait=True):
     :param wait: bool, wait for command completion. If False, will run the command asynchronously.
     :return: int, the return code from the execution. Will be None for async, 89 for some Windows error conditions.
     '''
-    try:
-        # noinspection PyUnresolvedReferences
-        from helpers.argv_quote import quote
-    except (ModuleNotFoundError, ImportError):
-        from argv_quote import quote
-
     if commandLine is None:
         cmdLine = []
     elif isinstance(commandLine, str):
@@ -85,16 +96,6 @@ def runAsAdmin(commandLine=None, context=None, python_shell=False, wait=True):
         return_code = subprocess.call(cmd, shell=True)
 
     elif os.name == 'nt':  # running Windows -- must use pywin32 to ask for elevation
-        try:
-            # noinspection PyUnresolvedReferences
-            import win32con, win32event, win32process
-        except ImportError:
-            raise ImportError('PyWin32 module has not been installed.')
-        # noinspection PyUnresolvedReferences
-        from win32com.shell.shell import ShellExecuteEx
-        # noinspection PyUnresolvedReferences
-        from win32com.shell import shellcon
-
         showCmd = win32con.SW_SHOWNORMAL
         try:
             params = quote(*cmdLine[1:])
@@ -117,7 +118,7 @@ def runAsAdmin(commandLine=None, context=None, python_shell=False, wait=True):
             procHandle = procInfo['hProcess']
             if procHandle is None:
                 print("Windows Process Handle is Null. RunAsAdmin did not create a child process.")
-                return_code = 89
+                return_code = 89  # Windows ERROR_NO_PROC_SLOTS
             else:
                 win32event.WaitForSingleObject(procHandle, win32event.INFINITE)
                 return_code = win32process.GetExitCodeProcess(procHandle)
@@ -129,18 +130,24 @@ def runAsAdmin(commandLine=None, context=None, python_shell=False, wait=True):
         raise RuntimeError("Unsupported operating system for this module: {}".format(os.name))
     return return_code
 
-def get_context():
+
+def get_context(flag=ELEVATION_FLAG):
     '''
-    parse and return json dictionary from the --_context argument.
+    parse and return json dictionary from the --_context= argument.
     :return: dic
     '''
     for arg in sys.argv:
-        if arg.startswith(ELEVATION_FLAG):
+        if arg.startswith(flag):
             try:
-                ret = json.loads(arg.split('=')[1])
+                ctx = arg.split('=')[1]
+                if not ctx.startswith('{'):
+                    ctx = '{' + ctx
+                if not ctx.endswith('}'):
+                    ctx += '}'
+                ret = json.loads(ctx)
                 return ret
             except (IndexError, json.JSONDecodeError) as e:
-                print("Decode Error in Context=>{}".format(e))
+                print("Decode Error in {}=>{}".format(flag, e))
                 print("sys.argv-->", sys.argv)
                 return {}
     return {}
@@ -163,18 +170,12 @@ def set_env_variables_permanently_win(key_value_pairs, whole_machine = False):
     if os.name != 'nt':
         raise ModuleNotFoundError('Attempting Windows operation on non-Windows')
 
-    # noinspection PyUnresolvedReferences
-    import winreg, win32gui, win32con
-
-    path = r'SYSTEM\CurrentControlSet\Control\Session Manager\Environment' if whole_machine else r'Environment'
+    subkey = r'SYSTEM\CurrentControlSet\Control\Session Manager\Environment' if whole_machine else r'Environment'
 
     with winreg.OpenKeyEx(winreg.HKEY_LOCAL_MACHINE if whole_machine else winreg.HKEY_CURRENT_USER,
-                          path, 0,
-                          #winreg.KEY_READ) as key:
-                          winreg.KEY_ALL_ACCESS) as key:
-
+                          subkey, 0, winreg.KEY_ALL_ACCESS) as key:
         for name, value in key_value_pairs.items():
-            print(name, '=', value)
+            print('  setting environment variable -->', name, '=', value)
             try:
                 present, value_type = winreg.QueryValueEx(key, name)
             except OSError:
@@ -220,8 +221,7 @@ def test(command=None):
     else:
         print("You ARE an admin. You are running PID={} with command-->{}".format(os.getpid(), command))
         if command is not None and len(command) > 1:
-            import subprocess
-            import argv_quote
+            # noinspection PyUnresolvedReferences
             return_code = subprocess.call(argv_quote.quote(*command[1:]), shell=True)
         else:
             return_code = 0
@@ -236,7 +236,10 @@ if __name__ == "__main__":
          sudo <command> <arguments> # will run <command> with elevated priviledges
          sudo --pause <cmd> <args>  # will keep the command screen open until you hit a key
          sudo salt-xxx <cmd> . . .  # will call a command from C:\Salt\salt-xxx and then pause
+         sudo --set-user-env={'arg1':'val1','arg2':'val2'} # adds values to the user's PERMANENT environment vars
+         sudo --set-system-env='arg1':'val1','arg2':'val2' # adds values to the system's PERMANENT environment vars
          sudo --etc-hosts  # will open your /etc/hosts file for editing (on Windows, too)
+         sudo --install-sudo-command  # create a runnable copy of itself in C:\Windows
          sudo bash # starts an Administrator Linux-subsystem-for-Windows window
          sudo cmd  # starts an Administrator command window
          ''')
@@ -259,7 +262,6 @@ if __name__ == "__main__":
             exit(1)
         print('Installing "sudo" command...')
         if isUserAdmin():
-            import shutil
             shutil.copy2(__file__, WINDOWS_PATH)
             shutil.copy2(os.path.dirname(os.path.abspath(__file__)) + r'\argv_quote.py',
                          os.path.dirname(WINDOWS_PATH) + r'\argv_quote.py')
@@ -268,11 +270,11 @@ if __name__ == "__main__":
             set_env_variables_permanently_win({'PATHEXT': r'.PY'}, whole_machine=True)
         else:
             runAsAdmin([os.path.abspath(__file__), '--install-sudo-command'], python_shell=True)
-    elif "--set-environment" in sys.argv and os.name == 'nt':
-        ctx = get_context()
+    elif any([arg.startswith("--set-system-env") for arg in sys.argv]) and os.name == 'nt':
+        ctx = get_context("--set-system-env")
         set_env_variables_permanently_win(ctx, whole_machine=True)
-    elif "--set-user-environment" in sys.argv and os.name == 'nt':
-        ctx = get_context()
+    elif any([arg.startswith("--set-user-env") for arg in sys.argv]) and os.name == 'nt':
+        ctx = get_context("--set-user-env")
         set_env_variables_permanently_win(ctx, whole_machine=False)
     else:
         if sys.argv[1].startswith('salt-'):  # make "sudo salt-call" actually work without being in PATH

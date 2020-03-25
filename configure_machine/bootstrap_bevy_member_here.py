@@ -113,7 +113,7 @@ def my_salt_config_file_path():
 def write_my_config_file():
     conf_file_path = my_salt_config_file_path()
     for other_file in conf_file_path.parent.glob('[0-9][0-9]*.conf'):
-        print('xxx other_file->', other_file)
+        print('(deleting old configuration file -->', other_file)
         other_file.unlink()  # delete other (competing) configuration files.
     write_config_file(conf_file_path,
                       is_master=my_settings.get('master', False),
@@ -967,8 +967,15 @@ if __name__ == '__main__':
             raise RuntimeError('Expected settings[] entry was not found')
     else:  # this is the first run. We will call ourselves soon if needed...
         if interactive:
-            settings['my_linux_user'], settings['linux_password_hash'] = request_linux_username_and_password(user_name)
-            settings['my_windows_user'], settings['my_windows_password'] = request_windows_username_and_password()
+            if bevy == 'local' and platform.system() == 'Windows':
+                settings['my_linux_user'] = settings['linux_password_hash'] = ""
+            else:
+                settings['my_linux_user'], settings['linux_password_hash'] = request_linux_username_and_password(user_name)
+            if bevy == 'local':
+                settings['my_windows_user'] = 'None'
+                settings['my_windows_password'] = ""
+            else:
+                settings['my_windows_user'], settings['my_windows_password'] = request_windows_username_and_password()
         print('(Setting up user "{}" for bevy "{}")'.format(settings['my_linux_user'], settings['bevy']))
         write_bevy_settings_files(try_temp=True)
 
@@ -1056,7 +1063,8 @@ if __name__ == '__main__':
             raise SystemError('Unexpected situation: Expected directory not present -->{}'.format(bevy_root_node))
 
         if my_settings['master'] or my_settings['master_host']:
-            write_ssh_key_file(settings['my_linux_user'])
+            if interactive and settings['my_linux_user']:
+                write_ssh_key_file(settings['my_linux_user'])
 
         # check for use of virtualbox and Vagrant
         vagrant_present = False

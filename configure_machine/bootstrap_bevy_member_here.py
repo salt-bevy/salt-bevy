@@ -355,15 +355,15 @@ def format_additional_roots(settings, virtual):
         if path_dir == 'none':
             path_dir = ''
 
-    def make_the_list(sls_dirs):
+    def make_the_list(sls_dirs, path_dir_string):
+        path_dir = Path(path_dir_string)
         some_roots = []
         some_sls_dirs = sls_dirs if isinstance(sls_dirs, (list, tuple)) else sls_dirs.split(',')
         for sls_dir in some_sls_dirs:
-            if sls_dir.startswith('{path}'):
-                if virtual:
-                    sls_path = Path('/projects') / sls_dir
-                else:
-                    sls_path = Path(path_dir) / sls_dir[6:]
+            if sls_dir.startswith('{path}/'):
+                sls_path = path_dir / sls_dir[7:]
+            elif sls_dir.startswith('{path}'):
+                sls_path = path_dir / sls_dir[6:]
             else:
                 sls_path = Path(sls_dir)
                 if not (sls_path.is_dir and sls_path.exists()):
@@ -371,8 +371,8 @@ def format_additional_roots(settings, virtual):
             some_roots.append(str(sls_path.resolve().as_posix()))
         return some_roots
 
-    more_roots = make_the_list(settings.get('file_roots', []))
-    more_pillars = make_the_list(settings.get('pillar_roots', []))
+    more_roots = make_the_list(settings.get('file_roots', []), path_dir)
+    more_pillars = make_the_list(settings.get('pillar_roots', []), path_dir)
     return more_roots, more_pillars
 
 
@@ -437,7 +437,7 @@ peer:
     newline = '\r\n' if platform=='Windows' else '\n'
 
     os.makedirs(str(config_file_path.parent), exist_ok=True)  # old Python 3.4 method
-    # config_file_path.parent.mkdir(parents=True, exist_ok=True)  # 3.5+
+    # config_file_path.parent.mkdir(parents=True, exist_ok=True)  # TODO: use this Python 3.5+ version of above
 
     with config_file_path.open('w', newline=newline) as config_file:
         config_file.write(template.format(name=config_file_name, this=this_file, master=master,
@@ -810,7 +810,7 @@ def choose_bridge_interface():
 def get_projects_directory():
     # global interactive
     try:
-        default = my_settings.get('projects_root', str(this_file.parents[2]))
+        default = my_settings.get('projects_root', str(this_file.parents[2].absolute()))
     except (IndexError, AttributeError):
         default = '/projects'
     while interactive:
@@ -1248,9 +1248,8 @@ if __name__ == '__main__':
             print('Ready for you to run "{}"'.format(
                 'vgr up bevymaster' if platform.system() == 'Windows' else './vgr up bevymaster'
             ))
-    except Exception as e:
-        _, _, exc_traceback = sys.exc_info()
-        traceback.print_tb(exc_traceback)
+    except Exception:
+        traceback.print_exc()
     if platform.system() == 'Windows':
         input('Hit <Enter> to close this window:')
         print('and ... if you see this message, you may need to hit <Ctrl C>, too.')

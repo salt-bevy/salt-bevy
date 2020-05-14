@@ -1,6 +1,11 @@
 ---
 # salt state file to install the Visual C++ compiler used for Python versions 2.6 thru 3.2
 
+{% if salt['config.get']('file_client') == 'local' or salt['config.get']('master') == 'localhost' %}
+include:
+  - bevy_master.local_windows_repository
+{% endif %}
+
 {% if grains['os_family'] == 'Windows' %}
 pkg.refresh_db_p27:
   module.run:

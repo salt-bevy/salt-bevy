@@ -27,7 +27,7 @@ except (ModuleNotFoundError, ImportError):
     # noinspection PyUnresolvedReferences
     from argv_quote import quote
 
-VERSION = 1.1
+VERSION = 1.3
 
 ELEVATION_FLAG = "--_context"  # internal use only. Should never be passed on a user command line
 
@@ -179,9 +179,9 @@ def set_env_variables_permanently_win(key_value_pairs, whole_machine = False):
             try:
                 present, value_type = winreg.QueryValueEx(key, name)
             except OSError:
-                present = NotImplemented
+                present = '<Not defined>'
                 value_type = winreg.REG_SZ
-            print('{} = {}'.format(name, present))
+            print('old value was {} = {}'.format(name, present))
 
             if name.upper() in ['PATH', 'PATHEXT']:
                 if value.upper() in present.split(';'):  # these two keys will always be present and contain ";"
@@ -192,7 +192,7 @@ def set_env_variables_permanently_win(key_value_pairs, whole_machine = False):
                         name, value))
                     value = '{};{}'.format(present, value)
             if value:
-                print("Setting ENVIRONMENT VARIABLE '{}' to '{}'",format(name, value))
+                print("Setting ENVIRONMENT VARIABLE '{}' to '{}'".format(name, value))
                 winreg.SetValueEx(key, name, 0, value_type, value)
             else:
                 print("Deleting ENV VARIABLE '{}'".format(name))
@@ -204,6 +204,8 @@ def set_env_variables_permanently_win(key_value_pairs, whole_machine = False):
     # tell all the world that a change has been made
     win32gui.SendMessageTimeout(win32con.HWND_BROADCAST, win32con.WM_SETTINGCHANGE, 0, 'Environment',
                                 win32con.SMTO_ABORTIFHUNG, 1000)
+    if has_context():
+        input('Hit <Enter> to continue . . .')
 
 
 def test(command=None):
@@ -238,7 +240,7 @@ if __name__ == "__main__":
          sudo salt-xxx <cmd> . . .  # will call a command from C:\Salt\salt-xxx and then pause
          sudo --set-user-env={'arg1':'val1','arg2':'val2'} # adds values to the user's PERMANENT environment vars
          sudo --set-system-env='arg1':'val1','arg2':'val2' # adds values to the system's PERMANENT environment vars
-         sudo --etc-hosts  # will open your /etc/hosts file for editing (on Windows, too)
+         sudo --hosts  # will open your /etc/hosts file for editing (at the weird Windows location)
          sudo --install-sudo-command  # create a runnable copy of itself in C:\Windows
          sudo bash # starts an Administrator Linux-subsystem-for-Windows window
          sudo cmd  # starts an Administrator command window
@@ -248,8 +250,8 @@ if __name__ == "__main__":
     elif sys.argv[1] == "--test":
         print('......testing.......')
         test(sys.argv)
-    elif sys.argv[1] == "--etc-hosts":
-        print('....... NEXT, a real useful example ... editing the "etc/hosts" file ........')
+    elif sys.argv[1] == "--hosts":
+        print('....... NEXT, a useful example ... editing the "etc/hosts" file ........')
         if os.name == 'nt':
             call = ["notepad", r"C:\Windows\System32\drivers\etc\hosts"]
         else:
@@ -267,7 +269,7 @@ if __name__ == "__main__":
                          os.path.dirname(WINDOWS_PATH) + r'\argv_quote.py')
             shutil.copy2(os.path.dirname(os.path.abspath(__file__)) + r'\pause_after.bat',
                          os.path.dirname(WINDOWS_PATH) + r'\pause_after.bat')
-            set_env_variables_permanently_win({'PATHEXT': r'.PY'}, whole_machine=True)
+            set_env_variables_permanently_win({'PATHEXT': '.PY'}, whole_machine=True)
         else:
             runAsAdmin([os.path.abspath(__file__), '--install-sudo-command'], python_shell=True)
     elif any([arg.startswith("--set-system-env") for arg in sys.argv]) and os.name == 'nt':
@@ -278,11 +280,10 @@ if __name__ == "__main__":
         set_env_variables_permanently_win(ctx, whole_machine=False)
     else:
         if sys.argv[1].startswith('salt-'):  # make "sudo salt-call" actually work without being in PATH
-            sys.argv[1] = os.path.join('c:\\', 'salt', sys.argv[1])
+            sys.argv[1] = os.path.join('c:\\salt', sys.argv[1])  # call .bat file from c:\salt
             sys.argv.insert(1, '--pause')
 
-        pause_after = sys.argv[1] == '--pause'
-        if pause_after:
+        if sys.argv[1] == '--pause':
             sys.argv[1] = 'pause_after'
 
         runAsAdmin(sys.argv[1:])

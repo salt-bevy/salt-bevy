@@ -224,7 +224,7 @@ def test(command=None):
         print("You ARE an admin. You are running PID={} with command-->{}".format(os.getpid(), command))
         if command is not None and len(command) > 1:
             # noinspection PyUnresolvedReferences
-            return_code = subprocess.call(argv_quote.quote(*command[1:]), shell=True)
+            return_code = subprocess.call(quote(*command[1:]), shell=True)
         else:
             return_code = 0
         time.sleep(2)

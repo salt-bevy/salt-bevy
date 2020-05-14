@@ -570,6 +570,7 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
     #quail_config.vm.network "private_network", ip: NETWORK + ".2.7"
     if vagrant_command == "up" and vagrant_object == "win7"
       puts "Starting #{vagrant_object} #{as_minion}."
+      puts "N O T E :  the default keyboard will be German (DE)."
     end
     quail_config.vm.provider "virtualbox" do |v|
         v.name = BEVY + '_win7'  # ! N.O.T.E.: name must be unique
@@ -584,9 +585,6 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
     quail_config.vm.guest = :windows
     quail_config.vm.boot_timeout = 900
     quail_config.vm.graceful_halt_timeout = 60
-    #script = "new-item C:\\salt\\conf\\minion.d -itemtype directory -ErrorAction silentlycontinue\r\n"
-    #script += "route add 10.0.0.0 mask 255.0.0.0 #{NETWORK}.18.98 -p\r\n"  # route 10. network through host NAT for VPN
-    #quail_config.vm.provision "shell", inline: script
     if settings.has_key?('WINDOWS_GUEST_CONFIG_FILE') and File.exist?(settings['WINDOWS_GUEST_CONFIG_FILE'])
       quail_config.vm.provision "file", source: settings['WINDOWS_GUEST_CONFIG_FILE'], destination: "c:\\salt\\conf\\minion.d\\00_bevy_boot.conf"
     end

@@ -218,6 +218,17 @@ The bevy named **local** is special, and sets up a machine for "masterless" Salt
 join_bevy local
 ```
 
+#### An Easter Egg for frustrated Windows Users
+
+Are you tired of having to hide your emotions every time you see a Linux user simply
+type `sudo` to perform system-level commands?  Now you can do it, too.
+```cmd
+# cd to your salt-bevy root directory and . . .
+install_sudo.bat
+```
+When the magic smoke clears, exit your command terminal and start another.
+Then type `sudo --help` and hold your head up high.
+
 ### Vagrant VMs on your workstation
 
 A Vagrantfile is supplied here to create several virtual machines on your workstation.

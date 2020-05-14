@@ -427,7 +427,7 @@ peer:
     other = 'file_client: local\n' if is_master else ''
     other += 'projects_root: {}\n'.format(projects_root)
     other += 'additional_minion_tag: "{}"\n'.format(my_settings.get('additional_minion_tag', ''))
-
+    other += 'enable_salt_minion_service: {}\n'.format(my_settings.get('enable_salt_minion_service', None))
     more_roots, more_pillars = format_additional_roots(settings, virtual)
 
     srv_root = '/srv' if platform!='Darwin' else '/opt/saltdata'
@@ -1018,6 +1018,7 @@ if __name__ == '__main__':
         my_settings.setdefault('master_host',  False)  # assume this machine is NOT the VM host for the Master
         if bevy == "local":
             my_settings['master'] = True  # a masterless system is a master to itself
+            my_settings['enable_salt_minion_service'] = False
             my_settings['projects_root'] = get_projects_directory()
             get_additional_roots('file_roots')
             get_additional_roots('pillar_roots')
@@ -1031,9 +1032,16 @@ if __name__ == '__main__':
             my_settings.setdefault('master', False)
             if platform.system() != 'Windows':
                 my_settings['master'] = get_affirmation('Should this machine BE the master?', my_settings['master'])
-            if not my_settings['master'] and on_a_workstation:
-                my_settings['master_host'] = get_affirmation('Will the Bevy Master be a VM guest of this machine?',
+            if my_settings['master']:
+                my_settings['enable_salt_minion_service'] = True
+            else:
+                if on_a_workstation:
+                    my_settings['master_host'] = get_affirmation('Will the Bevy Master be a VM guest of this machine?',
                                                              my_settings['master_host'])
+                    my_settings['enable_salt_minion_service'] = get_affirmation(
+                        "Do you wish the Salt Minion service to be running on this machine now and at boot up?",
+                        my_settings.get('enable_salt_minion_service', True))
+
             my_settings['projects_root'] = get_projects_directory()
             get_additional_roots('file_roots')
             get_additional_roots('pillar_roots')

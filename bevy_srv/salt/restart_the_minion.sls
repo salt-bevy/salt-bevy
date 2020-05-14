@@ -1,7 +1,8 @@
 ---
 # salt state file to restart the minion
 {% set other_minion = salt['config.get']('additional_minion_tag') or '' %}
-
+{% set enable_salt_minion_service = salt['config.get']('enable_salt_minion_service', None) %}
+  {% if enable_salt_minion_service == True %}
 restart-the-minion:
   cmd.run:
     - bg: true  # do not wait for completion of this command
@@ -14,4 +15,5 @@ restart-the-minion:
     - name: "salt-call service.restart salt{{ other_minion }}-minion"
     - shell: /bin/bash
     {% endif %}
+  {% endif %}
 ...

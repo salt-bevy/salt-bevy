@@ -107,7 +107,8 @@ def runAsAdmin(commandLine=None, context=None, python_shell=False, wait=True):
             cmd = "_No_command_was_supplied_"
         lpVerb = 'runas'  # causes UAC elevation prompt.
         print()
-        print("This window will be waiting while a child window is run as an Administrator...")
+        if wait:
+            print("This window will be waiting while a child window is run as an Administrator...")
         print("(Running command-->{} {})".format(cmd, params))
         procInfo = ShellExecuteEx(nShow=showCmd,
                                   fMask=shellcon.SEE_MASK_NOCLOSEPROCESS,
@@ -124,6 +125,7 @@ def runAsAdmin(commandLine=None, context=None, python_shell=False, wait=True):
                 return_code = win32process.GetExitCodeProcess(procHandle)
                 # print("Process handle %s returned code %s" % (procHandle, return_code))
                 procHandle.Close()
+                print("(Now Returned from waiting...)")
         else:
             return_code = None  # asked not to wait for completion
     else:
@@ -259,9 +261,6 @@ if __name__ == "__main__":
         runAsAdmin(call)
     elif sys.argv[1] == "--install-sudo-command" and os.name == 'nt':
         WINDOWS_PATH = r'C:\Windows\sudo.py'
-        if os.path.abspath(__file__) == os.path.abspath(WINDOWS_PATH):
-            print('No point in installing self.')
-            exit(1)
         print('Installing "sudo" command...')
         if isUserAdmin():
             shutil.copy2(__file__, WINDOWS_PATH)

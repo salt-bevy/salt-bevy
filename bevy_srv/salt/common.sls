@@ -19,7 +19,7 @@ windows_packages:
 
 choco_boot:
   cmd.run:
-    - name: salt-call chocolatey.bootstrap
+    - name: c:/salt/salt-call chocolatey.bootstrap
     - require_in:
       - windows_py3
     - unless:

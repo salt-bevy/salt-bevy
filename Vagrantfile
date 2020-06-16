@@ -320,6 +320,31 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
   end
 
 
+  # . . . . . . . . . . . . Define machine QUAIL20 . . . . . . . . . . . . . .
+  # This Ubuntu 20.04 machine is designed to be run by salt-cloud
+  config.vm.define "quail20", autostart: false do |quail_config|
+    quail_config.vm.box = "grokology/ubuntu20.04server64-base"
+    quail_config.vm.hostname = "quail20" # + DOMAIN
+    quail_config.vm.network "private_network", ip: NETWORK + ".2.220"
+    if vagrant_command == "up" and vagrant_object == "quail20"
+      puts "Starting #{vagrant_object} at #{NETWORK}.2.220..."
+    end
+    quail_config.vm.network "public_network", bridge: interface_guesses
+    quail_config.vm.provider "virtualbox" do |v|
+        v.name = BEVY + '_quai20'  # ! N.O.T.E.: name must be unique
+        v.memory = 1024       # limit memory for the virtual box
+        v.cpus = 1
+        v.linked_clone = true # make a soft copy of the base Vagrant box
+        v.customize ["modifyvm", :id, "--natnet1", NETWORK + ".18.128/27"]  # do not use 10.0 network for NAT
+        v.customize ["modifyvm", :id, "--natdnshostresolver1", "on"]  # use host's DNS resolver
+	  end
+    quail_config.vm.provider vmware do |v|
+        v.vmx["memsize"] = "1024"
+        v.vmx["numvcpus"] = "1"
+	  end
+  end
+
+
   # . . . . . . . . . . . . Define machine QUAIL18 . . . . . . . . . . . . . .
   # This Ubuntu 18.04 machine is designed to be run by salt-cloud
   config.vm.define "quail18", autostart: false do |quail_config|

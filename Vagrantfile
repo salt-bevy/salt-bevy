@@ -118,6 +118,12 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
 
   config.vm.synced_folder File.join(SRV_ROOT, 'pillar'), "/srv/pillar", :owner => "vagrant", :group => "staff", :mount_options => ["umask=0002"]
 
+  if ENV.key?("VAGRANT_SALT")
+    as_minion = "as a Salt minion with master=#{settings['master_vagrant_ip']}"
+  else
+    as_minion = ""
+  end
+
   # . . . . . . . . . . . . Define machine QUAIL1 . . . . . . . . . . . . . .
   # This machine has no Salt provisioning at all. Salt-cloud can provision it.
   config.vm.define "quail1", primary: true do |quail_config|  # this will be the default machine
@@ -151,7 +157,7 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
     quail_config.vm.hostname = "quail2" # + DOMAIN
     quail_config.vm.network "private_network", ip: NETWORK + ".2.202"
     if vagrant_command == "up" and vagrant_object == "quail2"
-      puts "Starting #{vagrant_object} at #{NETWORK}.2.202 as a Salt minion with master=#{settings['master_vagrant_ip']}...\n."
+      puts "Starting #{vagrant_object} at #{NETWORK}.2.202 #{as_minion}...\n."
     end
     quail_config.vm.network "public_network", bridge: interface_guesses
     quail_config.vm.provider "virtualbox" do |v|
@@ -170,7 +176,8 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
     script += "chown -R vagrant:staff /etc/salt/minion.d\n"
     script += "chmod -R 775 /etc/salt/minion.d\n"
     quail_config.vm.provision "shell", inline: script
-    quail_config.vm.provision :salt do |salt|
+    if ENV.key?("VAGRANT_SALT")
+      quail_config.vm.provision :salt do |salt|
        salt.verbose = false
        salt.bootstrap_options = "-A #{settings['master_vagrant_ip']} -i quail2 -F -P #{SALT_BOOTSTRAP_ARGUMENTS}"
        salt.run_highstate = default_run_highstate
@@ -178,6 +185,7 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
        if settings.has_key?('GUEST_MINION_CONFIG_FILE') and File.exist?(settings['GUEST_MINION_CONFIG_FILE'])
          salt.minion_config = settings['GUEST_MINION_CONFIG_FILE']
        end
+      end
     end
   end
 
@@ -204,7 +212,7 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
       quail_config.vm.network "private_network", ip: NETWORK + node_address
       if vagrant_command == "up"
         puts "generic box=#{node_box} memory=#{node_memory}"
-        puts "Starting #{node_id} at #{NETWORK}#{node_address} as a Salt minion with master=#{settings['master_vagrant_ip']}...\n."
+        puts "Starting #{node_id} at #{NETWORK}#{node_address} #{as_minion}...\n."
       end
       quail_config.vm.network "public_network", bridge: interface_guesses
       quail_config.vm.provider "virtualbox" do |v|
@@ -392,7 +400,7 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
     quail_config.vm.network "public_network", bridge: interface_guesses
     quail_config.vm.network "private_network", ip: NETWORK + ".2.10"
     if vagrant_command == "up" and vagrant_object == "win10"
-      puts "Starting #{vagrant_object} as a Salt minion of #{settings['master_vagrant_ip']}."
+      puts "Starting #{vagrant_object} #{as_minion}."
       puts ""
       puts "NOTE: you may need to run \"vagrant up\" twice for this Windows minion."
       puts ""
@@ -415,7 +423,8 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
     #quail_config.winrm.username = "IEUser"
     script = "new-item C:\\salt\\conf\\minion.d -itemtype directory -ErrorAction silentlycontinue\r\n"
     quail_config.vm.provision "shell", inline: script
-    quail_config.vm.provision :salt do |salt|  # salt_cloud cannot push Windows salt
+    if ENV.key?("VAGRANT_SALT")
+      quail_config.vm.provision :salt do |salt|  # salt_cloud cannot push Windows salt
         salt.minion_id = "win10"
         salt.master_id = "#{settings['master_vagrant_ip']}"
         #salt.log_level = "info"
@@ -426,6 +435,7 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
         if settings.has_key?('WINDOWS_GUEST_CONFIG_FILE') and File.exist?(settings['WINDOWS_GUEST_CONFIG_FILE'])
           salt.minion_config = settings['GUEST_MINION_CONFIG_FILE']
         end
+      end
     end
   end
 
@@ -436,7 +446,7 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
     quail_config.vm.network "public_network", bridge: interface_guesses
     quail_config.vm.network "private_network", ip: NETWORK + ".2.16"
     if vagrant_command == "up" and vagrant_object == "win16"
-      puts "Starting #{vagrant_object} as a Salt minion of #{settings['master_vagrant_ip']}."
+      puts "Starting #{vagrant_object} #{as_minion}."
     end
     quail_config.vm.provider "virtualbox" do |v|
         v.name = BEVY + '_win16'  # ! N.O.T.E.: name must be unique
@@ -458,13 +468,15 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
     if settings.has_key?('WINDOWS_GUEST_CONFIG_FILE') and File.exist?(settings['WINDOWS_GUEST_CONFIG_FILE'])
       quail_config.vm.provision "file", source: settings['WINDOWS_GUEST_CONFIG_FILE'], destination: "c:\\salt\\conf\\minion.d\\00_bevy_boot.conf"
     end
-    quail_config.vm.provision :salt do |salt|  # salt_cloud cannot push Windows salt
+    if ENV.key?("VAGRANT_SALT")
+      quail_config.vm.provision :salt do |salt|  # salt_cloud cannot push Windows salt
         salt.minion_id = "win16"
         salt.master_id = "#{settings['master_vagrant_ip']}"
         salt.log_level = "info"
         salt.verbose = true
         salt.colorize = true
         salt.run_highstate = default_run_highstate
+      end
     end
   end
 
@@ -475,7 +487,7 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
     quail_config.vm.network "public_network", bridge: interface_guesses
     quail_config.vm.network "private_network", ip: NETWORK + ".2.12"
     if vagrant_command == "up" and vagrant_object == "win12"
-      puts "Starting #{vagrant_object} as a Salt minion of #{settings['master_vagrant_ip']}."
+      puts "Starting #{vagrant_object} #{as_minion}."
     end
     quail_config.vm.provider "virtualbox" do |v|
         v.name = BEVY + '_win12'  # ! N.O.T.E.: name must be unique
@@ -496,7 +508,8 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
     if settings.has_key?('WINDOWS_GUEST_CONFIG_FILE') and File.exist?(settings['WINDOWS_GUEST_CONFIG_FILE'])
       quail_config.vm.provision "file", source: settings['WINDOWS_GUEST_CONFIG_FILE'], destination: "c:\\salt\\conf\\minion.d\\00_bevy_boot.conf"
     end
-    quail_config.vm.provision :salt do |salt|  # salt_cloud cannot push Windows salt
+    if ENV.key?("VAGRANT_SALT")
+      quail_config.vm.provision :salt do |salt|  # salt_cloud cannot push Windows salt
         salt.minion_id = "win12"
         salt.master_id = "#{settings['master_vagrant_ip']}"
         #salt.log_level = "info"
@@ -504,6 +517,7 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
         salt.colorize = true
         #salt.version = "2018.3.3"  # Example: minimum version needed for chocolatey
         #salt.run_highstate = default_run_highstate
+      end
     end
   end
 
@@ -514,7 +528,7 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
       quail_config.vm.network "public_network", bridge: interface_guesses
       quail_config.vm.network "private_network", ip: NETWORK + ".2.19"
       if vagrant_command == "up" and vagrant_object == "win19"
-        puts "Starting #{vagrant_object} as a Salt minion of #{settings['master_vagrant_ip']}."
+        puts "Starting #{vagrant_object} #{as_minion}."
         puts "NOTE: you may need to hit <Ctrl C> after starting this Windows minion."
       end
       quail_config.vm.provider "virtualbox" do |v|
@@ -536,13 +550,15 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
       if settings.has_key?('WINDOWS_GUEST_CONFIG_FILE') and File.exist?(settings['WINDOWS_GUEST_CONFIG_FILE'])
         quail_config.vm.provision "file", source: settings['WINDOWS_GUEST_CONFIG_FILE'], destination: "c:\\salt\\conf\\minion.d\\00_bevy_boot.conf"
       end
-      quail_config.vm.provision :salt do |salt|  # salt_cloud cannot push Windows salt
+      if ENV.key?("VAGRANT_SALT")
+        quail_config.vm.provision :salt do |salt|  # salt_cloud cannot push Windows salt
           salt.minion_id = "win19"
           salt.master_id = "#{settings['master_vagrant_ip']}"
           salt.log_level = "info"
           salt.verbose = true
           salt.colorize = true
           salt.run_highstate = false  # Vagrant may stall trying to run Highstate for this minion.
+        end
       end
     end
 
@@ -553,7 +569,8 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
     quail_config.vm.network "public_network", bridge: interface_guesses
     #quail_config.vm.network "private_network", ip: NETWORK + ".2.7"
     if vagrant_command == "up" and vagrant_object == "win7"
-      puts "Starting #{vagrant_object} as a Salt minion of #{settings['master_vagrant_ip']}."
+      puts "Starting #{vagrant_object} #{as_minion}."
+      puts "N O T E :  the default keyboard will be German (DE)."
     end
     quail_config.vm.provider "virtualbox" do |v|
         v.name = BEVY + '_win7'  # ! N.O.T.E.: name must be unique
@@ -568,19 +585,18 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
     quail_config.vm.guest = :windows
     quail_config.vm.boot_timeout = 900
     quail_config.vm.graceful_halt_timeout = 60
-    #script = "new-item C:\\salt\\conf\\minion.d -itemtype directory -ErrorAction silentlycontinue\r\n"
-    #script += "route add 10.0.0.0 mask 255.0.0.0 #{NETWORK}.18.98 -p\r\n"  # route 10. network through host NAT for VPN
-    #quail_config.vm.provision "shell", inline: script
     if settings.has_key?('WINDOWS_GUEST_CONFIG_FILE') and File.exist?(settings['WINDOWS_GUEST_CONFIG_FILE'])
       quail_config.vm.provision "file", source: settings['WINDOWS_GUEST_CONFIG_FILE'], destination: "c:\\salt\\conf\\minion.d\\00_bevy_boot.conf"
     end
-    quail_config.vm.provision :salt do |salt|  # salt_cloud cannot push Windows salt
-        salt.minion_id = "win12"
+    if ENV.key?("VAGRANT_SALT")
+      quail_config.vm.provision :salt do |salt|  # salt_cloud cannot push Windows salt
+        salt.minion_id = "win7"
         salt.master_id = "#{settings['master_vagrant_ip']}"
-        #salt.log_level = "info"
-        salt.verbose = false
+        salt.log_level = "info"
+        salt.verbose = true #false
         salt.colorize = true
         salt.run_highstate = default_run_highstate
+      end
     end
   end
 
@@ -605,7 +621,7 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
     quail_config.vm.synced_folder ".", "/vagrant", type: "rsync"
 
     if vagrant_command == "up" and vagrant_object == "mac13"
-      puts "Starting #{vagrant_object} at #{NETWORK}.2.13 as a Salt minion with master=#{settings['bevymaster_url']}...\n."
+      puts "Starting #{vagrant_object} at #{NETWORK}.2.13 #{as_minion}...\n."
     end
     quail_config.vm.network "public_network", bridge: interface_guesses
     quail_config.vm.provider "virtualbox" do |v|
@@ -625,8 +641,10 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
     if File.exist?(BEVY_SETTINGS_FILE_NAME)
       quail_config.vm.provision "file", source: BEVY_SETTINGS_FILE_NAME, destination: name_bevy_settings_file('/opt/saltdata')
     end
-    script = "echo mac13 > /etc/salt/minion_id"
-    quail_config.vm.provision "shell", inline: script
-    quail_config.vm.provision "shell", path: "configure_machine/macos_install_P3_and_salt.sh"
+    if ENV.key?("VAGRANT_SALT")
+      script = "echo mac13 > /etc/salt/minion_id"
+      quail_config.vm.provision "shell", inline: script
+      quail_config.vm.provision "shell", path: "configure_machine/macos_install_P3_and_salt.sh"
+    end
   end
 end

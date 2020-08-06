@@ -19,7 +19,7 @@ windows_packages:
 
 choco_boot:
   cmd.run:
-    - name: salt-call chocolatey.bootstrap
+    - name: c:/salt/salt-call chocolatey.bootstrap
     - require_in:
       - windows_py3
     - unless:
@@ -43,10 +43,6 @@ git.install:
       - git --version
     - package_args: "/GitAndUnixToolsOnPath"
 {% endif %}
-
-windows_pygit2_failure_workaround:
-   cmd.run:
-     - name: c:\salt\bin\python -m pip install pygit2
 
 {# Note: .sls files are interpreted on the Minion, so the environment variables are local to it #}
 {{ salt['environ.get']('SystemRoot') }}/edit.bat:  {# very dirty way to create an "edit" command for all users #}

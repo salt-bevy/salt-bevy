@@ -16,17 +16,8 @@
   file.directory:
     - makedirs: true
 
-{# -- NOTE -- no jinja is used here. The jinja template is expanded on the minion only. #}
-# Sample: use a local definition to find Notepad++
-{{ cs }}/win/repo-ng/npp.sls:
-  file.managed:
-    - source: salt://{{ slspath }}/files/windows/npp.sls.source
-
-{{ cs }}/win/repo-ng/git.sls:
-  file.managed:
-    - source: salt://{{ slspath }}/files/windows/git.sls.source
-
 {{ cs }}/win/repo-ng/VCforPython27.sls:
   file.managed:
-    - source: salt://{{ slspath }}/files/windows/VCforPython27.sls.source
+    - source: salt://bevy_master/files/windows/VCforPython27.sls.source
+    {# do NOT say "- template: jinja". That happens on the minion #}
 ...

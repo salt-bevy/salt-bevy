@@ -135,11 +135,11 @@ edit_salt-minion{{ other_minion }}_service:
     - require_in:
       - service: start-salt{{ other_minion }}-minion
 
-systemctl_reload_{{ other_minion }}:
-  service.running:
-    - name: salt{{ other_minion }}_minion
-    - require:
-      - file: edit_salt-minion{{ other_minion }}_service
+systemd-reload:
+  cmd.run:
+   - name: systemctl --system daemon-reload
+   - onchanges:
+     - file: edit_salt-minion{{ other_minion }}_service
 
 add_salt{{ other_minion }}_command:
   file.blockreplace:
@@ -176,28 +176,29 @@ add_salt{{ other_minion }}_command:
 
 {% endif %} # endif other_minion
 
+{% set enable_salt_minion_service = salt['config.get']('enable_salt_minion_service', None) %}
+
 {% if grains['os_family'] == 'MacOS' %}
-{% set salt_minion_service_name = 'com.saltstack.salt.minion' %}
-install-mac-minion-service:
-{# TODO: this seems to be unneccessary ...
-  file.managed:
-    - name: /Library/LaunchAgents/{{ salt_minion_service_name }}.plist
-    - source: salt://bevy_master/darwin/{{ salt_minion_service_name }}.plist
-    - makedirs: true
-    - template: jinja
-... #}
-  cmd.run:
-    - name: launchctl load /Library/LaunchAgents/{{ salt_minion_service_name }}.plist
+  {% set salt_minion_service_name = 'com.saltstack.salt.minion' %}
+  {% else %}
+  {% set salt_minion_service_name = 'salt' ~ other_minion ~ '-minion' %}
+  {% endif %} {# not MacOS #}
 
-{% else %}
-
+{% if enable_salt_minion_service == True %}  {# it might be '' or None #}
+install-minion-service:
+  service.enabled:
+    - name: {{ salt_minion_service_name }}
 start-salt{{ other_minion }}-minion:
   service.running:
-    - name: salt{{ other_minion }}-minion
-    - enable: true
+    - name: {{ salt_minion_service_name }}
     - require:
       - file: {{ salt['config.get']('salt_config_directory') }}{{ other_minion }}/minion
     - require_in:
       - cmd: restart-the-minion
+{% elif enable_salt_minion_service == False %}
+stop-salt{{ other_minion }}-minion:
+   service.dead:
+     - name: {{ salt_minion_service_name }}
+     - enable: false
 {% endif %}
 ...

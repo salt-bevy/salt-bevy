@@ -26,6 +26,3 @@ base:
     - match: grain
     - manual_bevy_settings
 
-  'roles:*':
-    - match: grain
-    - roles_demo_settings

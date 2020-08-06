@@ -113,7 +113,7 @@ def my_salt_config_file_path():
 def write_my_config_file():
     conf_file_path = my_salt_config_file_path()
     for other_file in conf_file_path.parent.glob('[0-9][0-9]*.conf'):
-        print('xxx other_file->', other_file)
+        print('(deleting old configuration file -->', other_file)
         other_file.unlink()  # delete other (competing) configuration files.
     write_config_file(conf_file_path,
                       is_master=my_settings.get('master', False),
@@ -355,15 +355,15 @@ def format_additional_roots(settings, virtual):
         if path_dir == 'none':
             path_dir = ''
 
-    def make_the_list(sls_dirs):
+    def make_the_list(sls_dirs, path_dir_string):
+        path_dir = Path(path_dir_string)
         some_roots = []
         some_sls_dirs = sls_dirs if isinstance(sls_dirs, (list, tuple)) else sls_dirs.split(',')
         for sls_dir in some_sls_dirs:
-            if sls_dir.startswith('{path}'):
-                if virtual:
-                    sls_path = Path('/projects') / sls_dir
-                else:
-                    sls_path = Path(path_dir) / sls_dir[6:]
+            if sls_dir.startswith('{path}/'):
+                sls_path = path_dir / sls_dir[7:]
+            elif sls_dir.startswith('{path}'):
+                sls_path = path_dir / sls_dir[6:]
             else:
                 sls_path = Path(sls_dir)
                 if not (sls_path.is_dir and sls_path.exists()):
@@ -371,8 +371,8 @@ def format_additional_roots(settings, virtual):
             some_roots.append(str(sls_path.resolve().as_posix()))
         return some_roots
 
-    more_roots = make_the_list(settings.get('file_roots', []))
-    more_pillars = make_the_list(settings.get('pillar_roots', []))
+    more_roots = make_the_list(settings.get('file_roots', []), path_dir)
+    more_pillars = make_the_list(settings.get('pillar_roots', []), path_dir)
     return more_roots, more_pillars
 
 
@@ -427,7 +427,7 @@ peer:
     other = 'file_client: local\n' if is_master else ''
     other += 'projects_root: {}\n'.format(projects_root)
     other += 'additional_minion_tag: "{}"\n'.format(my_settings.get('additional_minion_tag', ''))
-
+    other += 'enable_salt_minion_service: {}\n'.format(my_settings.get('enable_salt_minion_service', None))
     more_roots, more_pillars = format_additional_roots(settings, virtual)
 
     srv_root = '/srv' if platform!='Darwin' else '/opt/saltdata'
@@ -437,7 +437,7 @@ peer:
     newline = '\r\n' if platform=='Windows' else '\n'
 
     os.makedirs(str(config_file_path.parent), exist_ok=True)  # old Python 3.4 method
-    # config_file_path.parent.mkdir(parents=True, exist_ok=True)  # 3.5+
+    # config_file_path.parent.mkdir(parents=True, exist_ok=True)  # TODO: use this Python 3.5+ version of above
 
     with config_file_path.open('w', newline=newline) as config_file:
         config_file.write(template.format(name=config_file_name, this=this_file, master=master,
@@ -810,7 +810,7 @@ def choose_bridge_interface():
 def get_projects_directory():
     # global interactive
     try:
-        default = my_settings.get('projects_root', str(this_file.parents[2]))
+        default = my_settings.get('projects_root', str(this_file.parents[2].absolute()))
     except (IndexError, AttributeError):
         default = '/projects'
     while interactive:
@@ -967,8 +967,15 @@ if __name__ == '__main__':
             raise RuntimeError('Expected settings[] entry was not found')
     else:  # this is the first run. We will call ourselves soon if needed...
         if interactive:
-            settings['my_linux_user'], settings['linux_password_hash'] = request_linux_username_and_password(user_name)
-            settings['my_windows_user'], settings['my_windows_password'] = request_windows_username_and_password()
+            if bevy == 'local' and platform.system() == 'Windows':
+                settings['my_linux_user'] = settings['linux_password_hash'] = ""
+            else:
+                settings['my_linux_user'], settings['linux_password_hash'] = request_linux_username_and_password(user_name)
+            if bevy == 'local':
+                settings['my_windows_user'] = 'None'
+                settings['my_windows_password'] = ""
+            else:
+                settings['my_windows_user'], settings['my_windows_password'] = request_windows_username_and_password()
         print('(Setting up user "{}" for bevy "{}")'.format(settings['my_linux_user'], settings['bevy']))
         write_bevy_settings_files(try_temp=True)
 
@@ -1011,6 +1018,7 @@ if __name__ == '__main__':
         my_settings.setdefault('master_host',  False)  # assume this machine is NOT the VM host for the Master
         if bevy == "local":
             my_settings['master'] = True  # a masterless system is a master to itself
+            my_settings['enable_salt_minion_service'] = False
             my_settings['projects_root'] = get_projects_directory()
             get_additional_roots('file_roots')
             get_additional_roots('pillar_roots')
@@ -1024,9 +1032,16 @@ if __name__ == '__main__':
             my_settings.setdefault('master', False)
             if platform.system() != 'Windows':
                 my_settings['master'] = get_affirmation('Should this machine BE the master?', my_settings['master'])
-            if not my_settings['master'] and on_a_workstation:
-                my_settings['master_host'] = get_affirmation('Will the Bevy Master be a VM guest of this machine?',
+            if my_settings['master']:
+                my_settings['enable_salt_minion_service'] = True
+            else:
+                if on_a_workstation:
+                    my_settings['master_host'] = get_affirmation('Will the Bevy Master be a VM guest of this machine?',
                                                              my_settings['master_host'])
+                    my_settings['enable_salt_minion_service'] = get_affirmation(
+                        "Do you wish the Salt Minion service to be running on this machine now and at boot up?",
+                        my_settings.get('enable_salt_minion_service', True))
+
             my_settings['projects_root'] = get_projects_directory()
             get_additional_roots('file_roots')
             get_additional_roots('pillar_roots')
@@ -1056,7 +1071,8 @@ if __name__ == '__main__':
             raise SystemError('Unexpected situation: Expected directory not present -->{}'.format(bevy_root_node))
 
         if my_settings['master'] or my_settings['master_host']:
-            write_ssh_key_file(settings['my_linux_user'])
+            if interactive and settings['my_linux_user']:
+                write_ssh_key_file(settings['my_linux_user'])
 
         # check for use of virtualbox and Vagrant
         vagrant_present = False
@@ -1240,9 +1256,8 @@ if __name__ == '__main__':
             print('Ready for you to run "{}"'.format(
                 'vgr up bevymaster' if platform.system() == 'Windows' else './vgr up bevymaster'
             ))
-    except Exception as e:
-        _, _, exc_traceback = sys.exc_info()
-        traceback.print_tb(exc_traceback)
+    except Exception:
+        traceback.print_exc()
     if platform.system() == 'Windows':
         input('Hit <Enter> to close this window:')
         print('and ... if you see this message, you may need to hit <Ctrl C>, too.')

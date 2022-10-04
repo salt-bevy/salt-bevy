@@ -27,7 +27,7 @@ except (ModuleNotFoundError, ImportError):
     # noinspection PyUnresolvedReferences
     from argv_quote import quote
 
-VERSION = 1.3
+VERSION = 1.4
 
 ELEVATION_FLAG = "--_context"  # internal use only. Should never be passed on a user command line
 
@@ -97,6 +97,7 @@ def runAsAdmin(commandLine=None, context=None, python_shell=False, wait=True):
 
     elif os.name == 'nt':  # running Windows -- must use pywin32 to ask for elevation
         showCmd = win32con.SW_SHOWNORMAL
+
         try:
             params = quote(*cmdLine[1:])
         except IndexError:
@@ -106,6 +107,7 @@ def runAsAdmin(commandLine=None, context=None, python_shell=False, wait=True):
         except IndexError:
             cmd = "_No_command_was_supplied_"
         lpVerb = 'runas'  # causes UAC elevation prompt.
+
         print()
         if wait:
             print("This window will be waiting while a child window is run as an Administrator...")
@@ -266,8 +268,10 @@ if __name__ == "__main__":
             shutil.copy2(__file__, WINDOWS_PATH)
             shutil.copy2(os.path.dirname(os.path.abspath(__file__)) + r'\argv_quote.py',
                          os.path.dirname(WINDOWS_PATH) + r'\argv_quote.py')
-            shutil.copy2(os.path.dirname(os.path.abspath(__file__)) + r'\pause_after.bat',
-                         os.path.dirname(WINDOWS_PATH) + r'\pause_after.bat')
+            shutil.copy2(os.path.dirname(os.path.abspath(__file__)) + r'\sudo_pause.bat',
+                         os.path.dirname(WINDOWS_PATH) + r'\sudo_pause.bat')
+            shutil.copy2(os.path.dirname(os.path.abspath(__file__)) + r'\sudo_cd.bat',
+                         os.path.dirname(WINDOWS_PATH) + r'\sudo_cd.bat')
             set_env_variables_permanently_win({'PATHEXT': '.PY'}, whole_machine=True)
         else:
             runAsAdmin([os.path.abspath(__file__), '--install-sudo-command'], python_shell=True)
@@ -283,6 +287,9 @@ if __name__ == "__main__":
             sys.argv.insert(1, '--pause')
 
         if sys.argv[1] == '--pause':
-            sys.argv[1] = 'pause_after'
-
+            sys.argv[1] = 'sudo_pause.bat'
+        else:
+            sys.argv.insert(1,'sudo_cd.bat')
+        cwd = os.getcwd()
+        sys.argv.insert(2, cwd)
         runAsAdmin(sys.argv[1:])

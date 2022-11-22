@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 # -*- coding: utf-8; mode: python; py-indent-offset: 4; indent-tabs-mode: nil -*-
 # vim: fileencoding=utf-8 tabstop=4 expandtab shiftwidth=4
 
@@ -7,7 +7,7 @@
 #
 # Python3 update and extensive changes by: Vernon Cole 2018, 2019, 2020
 
-import sys, os, traceback, time, json, subprocess, shutil
+import sys, os, traceback, time, subprocess, shutil
 
 if os.name == 'nt':
     try:
@@ -18,7 +18,7 @@ if os.name == 'nt':
         # noinspection PyUnresolvedReferences
         from win32com.shell.shell import ShellExecuteEx
     except ImportError:
-        raise ImportError('PyWin32 module import failure.  Try "pip install pywin32".')
+        raise ImportError('PyWin32 module import failure.  Try "py -m pip install pywin32 pyyaml".')
 
 try:
     # noinspection PyUnresolvedReferences
@@ -27,7 +27,22 @@ except (ModuleNotFoundError, ImportError):
     # noinspection PyUnresolvedReferences
     from argv_quote import quote
 
-VERSION = 1.3
+try:
+    # noinspection PyUnresolvedReferences
+    import yaml as decoder
+    def loader(s):
+        return decoder.load(s, decoder.Loader)
+    encoder = decoder.dump
+    decodeError = decoder.YAMLError
+except (ModuleNotFoundError, ImportError):
+    # noinspection PyUnresolvedReferences
+    import json as decoder
+    loader = decoder.loads
+    encoder = decoder.dumps
+    decodeError = decoder.JSONDecodeError
+    print('NOTE: no YAML module found, falling back to JSON. Try "pip install pyyaml".')
+
+VERSION = 1.6
 
 ELEVATION_FLAG = "--_context"  # internal use only. Should never be passed on a user command line
 
@@ -84,7 +99,7 @@ def runAsAdmin(commandLine=None, context=None, python_shell=False, wait=True):
         cmdLine.insert(0, python_exe)  # run the Python command with elevation.
 
     if isinstance(context, dict):
-        ctx = json.dumps(context)
+        ctx = encoder(context)
         cmdLine.append(ELEVATION_FLAG + "=" + ctx)
     elif context:
         cmdLine.append(ELEVATION_FLAG)
@@ -146,9 +161,9 @@ def get_context(flag=ELEVATION_FLAG):
                     ctx = '{' + ctx
                 if not ctx.endswith('}'):
                     ctx += '}'
-                ret = json.loads(ctx)
+                ret = loader(ctx)
                 return ret
-            except (IndexError, json.JSONDecodeError) as e:
+            except (IndexError, decodeError) as e:
                 print("Decode Error in {}=>{}".format(flag, e))
                 print("sys.argv-->", sys.argv)
                 return {}
@@ -172,36 +187,55 @@ def set_env_variables_permanently_win(key_value_pairs, whole_machine = False):
     if os.name != 'nt':
         raise ModuleNotFoundError('Attempting Windows operation on non-Windows')
 
-    subkey = r'SYSTEM\CurrentControlSet\Control\Session Manager\Environment' if whole_machine else r'Environment'
+    subkey = r'SYSTEM\CurrentControlSet\Control\Session Manager\Environment' if whole_machine \
+        else r'Environment'
 
     with winreg.OpenKeyEx(winreg.HKEY_LOCAL_MACHINE if whole_machine else winreg.HKEY_CURRENT_USER,
                           subkey, 0, winreg.KEY_ALL_ACCESS) as key:
         for name, value in key_value_pairs.items():
+            try:
+                if value.lower() == "none":
+                    value = None
+            except AttributeError:
+                pass
             print('  setting environment variable -->', name, '=', value)
             try:
                 present, value_type = winreg.QueryValueEx(key, name)
             except OSError:
-                present = '<Not defined>'
-                value_type = winreg.REG_SZ
+                present = ''
+                value_type = winreg.REG_SZ if isinstance(value, str) else \
+                    winreg.REG_BINARY if isinstance(value, bool) else winreg.REG_DWORD
             print('old value was {} = {}'.format(name, present))
-
             if name.upper() in ['PATH', 'PATHEXT']:
-                if value.upper() in present.split(';'):  # these two keys will always be present and contain ";"
-                    print('Value {} already in {}'.format(value, present))
-                    continue
-                else:
-                    print('"{}" will not be entirely changed. "{}" will be appended at the end.'.format(
-                        name, value))
-                    value = '{};{}'.format(present, value)
-            if value:
+                elements = present.upper().split(';')
+                case_elements = present.split(';')
+                if value.startswith('-'):  # remove a path element
+                    value = value[1:]  # remove the '-'
+                    try:
+                        indx = elements.index(value.upper())
+                        removed = case_elements.pop(indx)
+                        print('Removing "{}" from {}'.format(removed, name))
+                    except ValueError:
+                        print('Element "{}" was not found in {}'.format(value, name))
+                        continue
+                else:  # adding a path element
+                    if value.upper() in elements:
+                        print('Value {} already in {}'.format(value, present))
+                        continue
+                    else:
+                        print('"{}" will not be entirely changed. "{}" will be appended at the end.'.format(
+                            name, value))
+                        case_elements.append(value)
+                value = ';'.join(case_elements)
+            if value is not None:
                 print("Setting ENVIRONMENT VARIABLE '{}' to '{}'".format(name, value))
                 winreg.SetValueEx(key, name, 0, value_type, value)
             else:
-                print("Deleting ENV VARIABLE '{}'".format(name))
                 try:
                     winreg.DeleteValue(key, name)
+                    print("Deleting ENV VARIABLE '{}'".format(name))
                 except FileNotFoundError:
-                    pass  # ignore if already deleted
+                    print("ENV VARIABLE '{}' was not present".format(name))
 
     # tell all the world that a change has been made
     win32gui.SendMessageTimeout(win32con.HWND_BROADCAST, win32con.WM_SETTINGCHANGE, 0, 'Environment',
@@ -240,11 +274,11 @@ if __name__ == "__main__":
          sudo <command> <arguments> # will run <command> with elevated priviledges
          sudo --pause <cmd> <args>  # will keep the command screen open until you hit a key
          sudo salt-xxx <cmd> . . .  # will call a command from C:\Salt\salt-xxx and then pause
-         sudo --set-user-env={'arg1':'val1','arg2':'val2'} # adds values to the user's PERMANENT environment vars
-         sudo --set-system-env='arg1':'val1','arg2':'val2' # adds values to the system's PERMANENT environment vars
+         sudo --set-user-env="'arg1': 'val1','arg2': 'val2'" # adds values to the user's PERMANENT environment vars
+         sudo --set-system-env="arg1: val1, arg2: val2" # adds values to the system's PERMANENT environment vars
          sudo --hosts  # will open your /etc/hosts file for editing (at the weird Windows location)
          sudo --install-sudo-command  # create a runnable copy of itself in C:\Windows
-         sudo bash # starts an Administrator Linux-subsystem-for-Windows window
+         sudo bash # starts an Administrator Linux-Subsystem-for-Windows window
          sudo cmd  # starts an Administrator command window
          ''')
     elif sys.argv[1] == "--version":
@@ -266,23 +300,32 @@ if __name__ == "__main__":
             shutil.copy2(__file__, WINDOWS_PATH)
             shutil.copy2(os.path.dirname(os.path.abspath(__file__)) + r'\argv_quote.py',
                          os.path.dirname(WINDOWS_PATH) + r'\argv_quote.py')
-            shutil.copy2(os.path.dirname(os.path.abspath(__file__)) + r'\pause_after.bat',
-                         os.path.dirname(WINDOWS_PATH) + r'\pause_after.bat')
+            shutil.copy2(os.path.dirname(os.path.abspath(__file__)) + r'\sudo_pause.bat',
+                         os.path.dirname(WINDOWS_PATH) + r'\sudo_pause.bat')
+            shutil.copy2(os.path.dirname(os.path.abspath(__file__)) + r'\sudo_cd.bat',
+                         os.path.dirname(WINDOWS_PATH) + r'\sudo_cd.bat')
             set_env_variables_permanently_win({'PATHEXT': '.PY'}, whole_machine=True)
+            time.sleep(5)
         else:
             runAsAdmin([os.path.abspath(__file__), '--install-sudo-command'], python_shell=True)
     elif any([arg.startswith("--set-system-env") for arg in sys.argv]) and os.name == 'nt':
-        ctx = get_context("--set-system-env")
-        set_env_variables_permanently_win(ctx, whole_machine=True)
+        if isUserAdmin():
+            ctx = get_context("--set-system-env")
+            set_env_variables_permanently_win(ctx, whole_machine=True)
+            time.sleep(5)
+        else:
+            runAsAdmin([os.path.abspath(__file__)] + sys.argv[1:], None, python_shell=True)
     elif any([arg.startswith("--set-user-env") for arg in sys.argv]) and os.name == 'nt':
         ctx = get_context("--set-user-env")
         set_env_variables_permanently_win(ctx, whole_machine=False)
-    else:
-        if sys.argv[1].startswith('salt-'):  # make "sudo salt-call" actually work without being in PATH
-            sys.argv[1] = os.path.join('c:\\salt', sys.argv[1])  # call .bat file from c:\salt
+    else:  # normal operation
+        if sys.argv[1].startswith('salt-'):  # make "sudo salt-call" automatically pause
             sys.argv.insert(1, '--pause')
 
         if sys.argv[1] == '--pause':
-            sys.argv[1] = 'pause_after'
-
+            sys.argv[1] = 'sudo_pause.bat'
+        else:
+            sys.argv.insert(1, 'sudo_cd.bat')
+        cwd = os.getcwd()
+        sys.argv.insert(2, cwd)
         runAsAdmin(sys.argv[1:])

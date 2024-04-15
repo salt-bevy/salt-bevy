@@ -70,8 +70,8 @@ GUEST_MINION_CONFIG_FILE = SRV_ROOT + '/guest_config/minion'
 WINDOWS_GUEST_CONFIG_FILE = SRV_ROOT + '/windows_config/minion'
 MAC_GUEST_CONFIG_FILE = SRV_ROOT + '/macos_config/minion'
 
-DEFAULT_VAGRANT_PREFIX = '172.17'  # first two bytes of Vagrant private network
-DEFAULT_VAGRANT_NETWORK = '172.17.0.0/16'  #  Vagrant private network
+DEFAULT_VAGRANT_PREFIX = '192.168'  # first two bytes of Vagrant private network
+DEFAULT_VAGRANT_NETWORK = '192.168.56.0/21'  #  Vagrant private network
 
 minimum_salt_version = MINIMUM_SALT_VERSION.split('.')
 # noinspection PyTypeChecker

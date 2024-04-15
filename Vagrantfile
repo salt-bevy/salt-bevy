@@ -10,7 +10,7 @@ require "yaml"
 require "ipaddr"
 
 SALT_BOOTSTRAP_ARGUMENTS = "" # for example "git v2019.2.0rc1"  # (usually leave blank for latest production Salt version)
-DEFAULT_BOX = "ubuntu/bionic64"  # the vagrantbox to use for most VMs below
+DEFAULT_BOX = "gusztavvargadr/ubuntu-server" # "ubuntu/jammy64"  # the vagrantbox to use for most VMs below
 
 vagrant_command = ARGV[0]
 vagrant_object = ARGV.length > 1 ? ARGV[1] : ""  # the name (if any) of the vagrant VM for this command
@@ -32,7 +32,7 @@ MY_SETTINGS_FILE_NAME = '/etc/salt-bevy/my_settings.conf'  # settings specific t
 if File.exists?(BEVY_SETTINGS_FILE_NAME)
   settings = YAML.load_file(BEVY_SETTINGS_FILE_NAME)  # get your bevy-wide settings
   default_run_highstate = true
-else
+else  # the bevy settings file was not found. We must supply simple default settings here.
   if vagrant_command == "up"
     puts "\n*  ERROR:  Unable to read settings file #{BEVY_SETTINGS_FILE_NAME}."
     puts "*  NOTICE: Using default bevy settings for MASTERLESS Salt operation."
@@ -60,7 +60,7 @@ BEVY = settings["bevy"]  # the name of your bevy
 NETWORK = "#{settings['vagrant_prefix']}"
 # ^ ^ each VM below will have a NAT network in NETWORK.17.x/27 or NETWORK.18.x/27
 puts "Your bevy name:#{BEVY} with host-only network #{NETWORK}.x.x"
-puts "This (the VM host) computer will be at #{NETWORK}.2.1" if ARGV[1] == "up"
+puts "This (the VM host) computer will be at #{NETWORK}.56.1" if ARGV[1] == "up"
 bevy_mac = (BEVY.to_i(36) % 0x1000000).to_s(16)  # a MAC address based on hash of BEVY
 # in Python that would be: bevy_mac = format(int(BEVY, base=36) % 0x1000000, 'x')
 #
@@ -71,7 +71,7 @@ my_linux_user = login if my_linux_user.to_s.empty?  # use current value if setti
 HASHFILE_NAME = 'bevy_linux_password.hash'  # filename for your Linux password hash
 hash_path = File.join(Dir.home, '.ssh', HASHFILE_NAME)  # where you store it ^ ^ ^
 #
-# . v . v . the program starts here . v . v . v . v . v . v . v . v . v .
+# . v . v . the real Vagrantfile program starts here . v . v . v . v . v . v . v . v . v .
 #
 # Bridged networks make the machine appear as another physical device on your network.
 # We try to supply a list of names to avoid Vagrant asking for interactive input
@@ -91,7 +91,7 @@ max_cpus = 1 if max_cpus < 1
 
 Vagrant.configure(2) do |config|  # the literal "2" is required.
 
-  config.ssh.forward_agent = true
+   config.ssh.forward_agent = true
 
   unless vagrant_object.start_with? 'win'
     config.vm.provision "shell", inline: "ifconfig || ip addr", run: "always"  # what did we get?
@@ -116,7 +116,8 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
     config.vm.synced_folder settings['projects_root'], "/projects", :owner => "vagrant", :group => "staff", :mount_options => ["umask=0002"]
   end
 
-  config.vm.synced_folder File.join(SRV_ROOT, 'pillar'), "/srv/pillar", :owner => "vagrant", :group => "staff", :mount_options => ["umask=0002"]
+  config.vm.synced_folder File.join(SRV_ROOT, 'pillar'), "/srv/pillar", :owner => "vagrant", :group => "staff"  #, :mount_options => ["umask=0002"]
+  puts "Syncing host folder #{File.join(SRV_ROOT, 'pillar')} as virtual /srv/pillar"
 
   if ENV.key?("VAGRANT_SALT")
     as_minion = "as a Salt minion with master=#{settings['master_vagrant_ip']}"
@@ -129,9 +130,9 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
   config.vm.define "quail1", primary: true do |quail_config|  # this will be the default machine
     quail_config.vm.box = DEFAULT_BOX
     quail_config.vm.hostname = "quail1" # + DOMAIN
-    quail_config.vm.network "private_network", ip: NETWORK + ".2.201"  # needed so saltify_profiles.conf can find this unit
+    quail_config.vm.network "private_network", ip: NETWORK + ".56.201"  # needed so saltify_profiles.conf can find this unit
     if vagrant_command == "up" and (ARGV.length == 1 or (vagrant_object == "quail1"))
-      puts "Starting 'quail1' at #{NETWORK}.2.201..."
+      puts "Starting 'quail1' at #{NETWORK}.56.201..."
     end
     quail_config.vm.network "public_network", bridge: interface_guesses
     quail_config.vm.provider "virtualbox" do |v|  # only for VirtualBox boxes
@@ -139,7 +140,7 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
         v.memory = 1024       # limit memory for the virtual box
         v.cpus = 1
         v.linked_clone = true # make a soft copy of the base Vagrant box
-        v.customize ["modifyvm", :id, "--natnet1", NETWORK + ".17.0/27"]  # do not use 10.0 network for NAT
+        v.customize ["modifyvm", :id, "--natnet1", NETWORK + ".62.0/27"]  # do not use 10.0 network for NAT
 	    #                                                     ^  ^/27 is the smallest network allowed.
         v.customize ["modifyvm", :id, "--natdnshostresolver1", "on"]  # use host's DNS resolver
     end
@@ -155,9 +156,9 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
   config.vm.define "quail2", autostart: false do |quail_config|
     quail_config.vm.box = DEFAULT_BOX
     quail_config.vm.hostname = "quail2" # + DOMAIN
-    quail_config.vm.network "private_network", ip: NETWORK + ".2.202"
+    quail_config.vm.network "private_network", ip: NETWORK + ".56.202"
     if vagrant_command == "up" and vagrant_object == "quail2"
-      puts "Starting #{vagrant_object} at #{NETWORK}.2.202 #{as_minion}...\n."
+      puts "Starting #{vagrant_object} at #{NETWORK}.56.202 #{as_minion}...\n."
     end
     quail_config.vm.network "public_network", bridge: interface_guesses
     quail_config.vm.provider "virtualbox" do |v|
@@ -165,7 +166,7 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
         v.memory = 4000       # limit memory for the virtual box
         v.cpus = max_cpus
         v.linked_clone = true # make a soft copy of the base Vagrant box
-        v.customize ["modifyvm", :id, "--natnet1", NETWORK + ".17.160/27"]  # do not use 10.0 network for NAT
+        v.customize ["modifyvm", :id, "--natnet1", NETWORK + ".62.160/27"]  # do not use 10.0 network for NAT
         v.customize ["modifyvm", :id, "--natdnshostresolver1", "on"]  # use host's DNS resolver
     end
     quail_config.vm.provider vmware do |v|
@@ -194,7 +195,7 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
 # . created by a command like:
 # . generic=t ./vgr up somename
 # . Define the network address and VM memory size like:
-# . GENERIC=True NODE_ADDRESS=.2.203 NODE_MEMORY=10000 NODE_BOX=boxesio/xenial64-standard ./vgr up somename
+# . GENERIC=True NODE_ADDRESS=.56.203 NODE_MEMORY=10000 NODE_BOX=boxesio/xenial64-standard ./vgr up somename
 #
   generic = ENV["GENERIC"] || ENV['generic']
   if generic and generic.downcase.chars.first == "t" then
@@ -203,7 +204,7 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
       raise "Command Line Error triggered."
     end
     node_id = vagrant_object
-    node_address = ENV.fetch("NODE_ADDRESS", ".2.200")
+    node_address = ENV.fetch("NODE_ADDRESS", ".56.200")
     node_memory = ENV.fetch("NODE_MEMORY", "5000")
     node_box = ENV.fetch("NODE_BOX", DEFAULT_BOX)
     config.vm.define node_id, autostart: false do |quail_config|
@@ -220,7 +221,7 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
           v.memory = node_memory.to_i    # memory size for the virtual box
           v.cpus = max_cpus
           v.linked_clone = true # make a soft copy of the base Vagrant box
-          v.customize ["modifyvm", :id, "--natnet1", NETWORK + ".17.0/27"]  # do not use 10.0 network for NAT
+          v.customize ["modifyvm", :id, "--natnet1", NETWORK + ".62.0/27"]  # do not use 10.0 network for NAT
           v.customize ["modifyvm", :id, "--natdnshostresolver1", "on"]  # use host's DNS resolver
       end
       script = "mkdir -p /etc/salt/minion.d\n"
@@ -247,15 +248,15 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
   config.vm.define "bevymaster", autostart: false do |master_config|
     master_config.vm.box = DEFAULT_BOX
     master_config.vm.hostname = "bevymaster"
-    master_config.vm.network "private_network", ip: NETWORK + ".2.2"
+    master_config.vm.network "private_network", ip: NETWORK + ".56.2"
     if vagrant_command == "up" and vagrant_object == "bevymaster"
-      if settings['master_vagrant_ip'] != NETWORK + ".2.2"
+      if settings['master_vagrant_ip'] != NETWORK + ".56.2"
         # prevent running a Vagrant bevy master if another is in use.
         abort "Sorry. Your master_vagrant_ip setting of '#{settings['master_vagrant_ip']}' suggests that your Bevy Master is not expected to be Virtual here."
       end
-      puts "Starting #{vagrant_object} at #{NETWORK}.2.2..."
+      puts "Starting #{vagrant_object} at #{NETWORK}.56.2..."
     end
-    master_config.vm.network "public_network", bridge: interface_guesses, mac: "be0000" + bevy_mac
+    master_config.vm.network "public_network", bridge: interface_guesses, mac: "ae110000" + bevy_mac
     master_config.vm.synced_folder ".", "/vagrant", :owner => "vagrant", :group => "staff", :mount_options => ["umask=0002"]
     #if vagrant_command == "ssh"
     #  master_config.ssh.username = my_linux_user  # if you type "vagrant ssh", use this username
@@ -266,7 +267,7 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
         v.memory = 1024       # limit memory for the virtual box
         v.cpus = 1
         v.linked_clone = true # make a soft copy of the base Vagrant box
-        v.customize ["modifyvm", :id, "--natnet1", NETWORK + ".17.32/27"]  # do not use 10.0 network for NAT
+        v.customize ["modifyvm", :id, "--natnet1", NETWORK + ".62.32/27"]  # do not use 10.0 network for NAT
         v.customize ["modifyvm", :id, "--natdnshostresolver1", "on"]  # use host's DNS resolver
     end
     master_config.vm.provider vmware do |v|
@@ -282,7 +283,7 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
                                 destination: "/etc/salt/minion.d/00_bevy_boot.conf"
     end
     master_config.vm.provision :salt do |salt|
-       # salt.install_type = "stable 2018.3.3"
+       # salt.install_type = "stable 3006.7"
        salt.verbose = true
        salt.log_level = "info"
        salt.colorize = true
@@ -307,7 +308,7 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
          "my_linux_gid" => gid,
          "bevy_root" => "/vagrant/bevy_srv",
          "bevy" => BEVY,
-         "master_vagrant_ip" => NETWORK + '.2.2',
+         "master_vagrant_ip" => NETWORK + '.56.2',
          "additional_minion_tag" => '',
          "linux_password_hash" => password_hash,
          "force_linux_user_password" => true,
@@ -323,11 +324,11 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
   # . . . . . . . . . . . . Define machine QUAIL18 . . . . . . . . . . . . . .
   # This Ubuntu 18.04 machine is designed to be run by salt-cloud
   config.vm.define "quail18", autostart: false do |quail_config|
-    quail_config.vm.box = "ubuntu/bionic64"
+    quail_config.vm.box = "hashicorp/bionic64"
     quail_config.vm.hostname = "quail18" # + DOMAIN
-    quail_config.vm.network "private_network", ip: NETWORK + ".2.218"
+    quail_config.vm.network "private_network", ip: NETWORK + ".56.218"
     if vagrant_command == "up" and vagrant_object == "quail18"
-      puts "Starting #{vagrant_object} at #{NETWORK}.2.218..."
+      puts "Starting #{vagrant_object} at #{NETWORK}.56.218..."
     end
     quail_config.vm.network "public_network", bridge: interface_guesses
     quail_config.vm.provider "virtualbox" do |v|
@@ -338,7 +339,7 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
         v.customize ["modifyvm", :id, "--natnet1", NETWORK + ".18.0/27"]  # do not use 10.0 network for NAT
         v.customize ["modifyvm", :id, "--natdnshostresolver1", "on"]  # use host's DNS resolver
 	  end
-    quail_config.vm.provider vmware do |v|
+    quail_config.vm.provider "vmware" do |v|
         v.vmx["memsize"] = "1024"
         v.vmx["numvcpus"] = "1"
 	  end
@@ -349,9 +350,9 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
   config.vm.define "quail16", autostart: false do |quail_config|
     quail_config.vm.box = "boxesio/xenial64-standard"  # a public VMware & Virtualbox box
     quail_config.vm.hostname = "quail16" # + DOMAIN
-    quail_config.vm.network "private_network", ip: NETWORK + ".2.216"
+    quail_config.vm.network "private_network", ip: NETWORK + ".56.216"
     if vagrant_command == "up" and vagrant_object == "quail16"
-      puts "Starting #{vagrant_object} at #{NETWORK}.2.216..."
+      puts "Starting #{vagrant_object} at #{NETWORK}.56.216..."
     end
     quail_config.vm.network "public_network", bridge: interface_guesses
     quail_config.vm.provider "virtualbox" do |v|
@@ -359,7 +360,7 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
         v.memory = 3072       # limit memory for the virtual box
         v.cpus = 2
         v.linked_clone = true # make a soft copy of the base Vagrant box
-        v.customize ["modifyvm", :id, "--natnet1", NETWORK + ".17.64/27"]  # do not use 10.0 network for NAT
+        v.customize ["modifyvm", :id, "--natnet1", NETWORK + ".62.64/27"]  # do not use 10.0 network for NAT
         v.customize ["modifyvm", :id, "--natdnshostresolver1", "on"]  # use host's DNS resolver
 	  end
     quail_config.vm.provider vmware do |v|
@@ -368,22 +369,22 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
 	  end
   end
 
-# . . . . . . . . . . . . Define machine QUAIL14 . . . . . . . . . . . . . .
+# . . . . . . . . . . . . Define machine QUAIL20 . . . . . . . . . . . . . .
 # This Ubuntu 14.04 machine is designed to be run by salt-cloud
   config.vm.define "quail14", autostart: false do |quail_config|
-    quail_config.vm.box = "boxesio/trusty64-standard"  # a public VMware & Virtualbox box
-    quail_config.vm.hostname = "quail14" # + DOMAIN
-    quail_config.vm.network "private_network", ip: NETWORK + ".2.214"
-    if vagrant_command == "up" and vagrant_object == "quail14"
-      puts "Starting #{vagrant_object} at #{NETWORK}.2.214..."
+    quail_config.vm.box = "ubuntu/focal64"
+    quail_config.vm.hostname = "quail20" # + DOMAIN
+    quail_config.vm.network "private_network", ip: NETWORK + ".56.220"
+    if vagrant_command == "up" and vagrant_object == "quail20"
+      puts "Starting #{vagrant_object} at #{NETWORK}.56.214..."
     end
     quail_config.vm.network "public_network", bridge: interface_guesses
     quail_config.vm.provider "virtualbox" do |v|
-        v.name = BEVY + '_quail14'  # ! N.O.T.E.: name must be unique
+        v.name = BEVY + '_quail20'  # ! N.O.T.E.: name must be unique
         v.memory = 1024       # limit memory for the virtual box
         v.cpus = 1
         v.linked_clone = true # make a soft copy of the base Vagrant box
-        v.customize ["modifyvm", :id, "--natnet1", NETWORK + ".17.96/27"]  # do not use 10.0 network for NAT
+        v.customize ["modifyvm", :id, "--natnet1", NETWORK + ".62.96/27"]  # do not use 10.0 network for NAT
         v.customize ["modifyvm", :id, "--natdnshostresolver1", "on"]  # use host's DNS resolver
 	end
     quail_config.vm.provider vmware do |v|
@@ -398,7 +399,7 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
     quail_config.vm.box = "StefanScherer/windows_10"  #"Microsoft/EdgeOnWindows10"
     # <#this causes Windows to restart#> # quail_config.vm.hostname = 'win10'
     quail_config.vm.network "public_network", bridge: interface_guesses
-    quail_config.vm.network "private_network", ip: NETWORK + ".2.10"
+    quail_config.vm.network "private_network", ip: NETWORK + ".56.10"
     if vagrant_command == "up" and vagrant_object == "win10"
       puts "Starting #{vagrant_object} #{as_minion}."
       puts ""
@@ -412,7 +413,7 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
         v.customize ["modifyvm", :id, "--vram", "33"]  # enough video memory for full screen
         v.memory = 4096
         v.cpus = max_cpus
-        v.customize ["modifyvm", :id, "--natnet1", NETWORK + ".17.192/27"]  # do not use 10.0 network for NAT
+        v.customize ["modifyvm", :id, "--natnet1", NETWORK + ".62.192/27"]  # do not use 10.0 network for NAT
         v.customize ["modifyvm", :id, "--natdnshostresolver1", "on"]  # use host's DNS resolver
         v.customize ["storageattach", :id, "--storagectl", "IDE Controller", "--port", "1", "--device", "0", "--type", "dvddrive", "--medium", "emptydrive"]
     end
@@ -444,7 +445,7 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
   config.vm.define "win16", autostart: false do |quail_config|
     quail_config.vm.box = "cdaf/WindowsServer" #gusztavvargadr/w16s" # Windows Server 2016 standard
     quail_config.vm.network "public_network", bridge: interface_guesses
-    quail_config.vm.network "private_network", ip: NETWORK + ".2.16"
+    quail_config.vm.network "private_network", ip: NETWORK + ".56.16"
     if vagrant_command == "up" and vagrant_object == "win16"
       puts "Starting #{vagrant_object} #{as_minion}."
     end
@@ -455,7 +456,7 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
         v.customize ["modifyvm", :id, "--vram", "27"]  # enough video memory for full screen
         v.memory = 4096
         v.cpus = max_cpus
-        v.customize ["modifyvm", :id, "--natnet1", NETWORK + ".17.224/27"]  # do not use 10.0 network for NAT
+        v.customize ["modifyvm", :id, "--natnet1", NETWORK + ".62.224/27"]  # do not use 10.0 network for NAT
         v.customize ["modifyvm", :id, "--natdnshostresolver1", "on"]  # use host's DNS resolver
     end
     quail_config.vm.guest = :windows
@@ -463,7 +464,7 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
     quail_config.vm.graceful_halt_timeout = 60
     quail_config.vm.communicator = "winrm"
     script = "new-item C:\\salt\\conf\\minion.d -itemtype directory\r\n" # -ErrorAction silentlycontinue\r\n"
-    script += "route add 10.0.0.0 mask 255.0.0.0 #{NETWORK}.17.226 -p\r\n"  # route 10. network through host NAT for VPN
+    script += "route add 10.0.0.0 mask 255.0.0.0 #{NETWORK}.62.226 -p\r\n"  # route 10. network through host NAT for VPN
     quail_config.vm.provision "shell", inline: script
     if settings.has_key?('WINDOWS_GUEST_CONFIG_FILE') and File.exist?(settings['WINDOWS_GUEST_CONFIG_FILE'])
       quail_config.vm.provision "file", source: settings['WINDOWS_GUEST_CONFIG_FILE'], destination: "c:\\salt\\conf\\minion.d\\00_bevy_boot.conf"
@@ -485,7 +486,7 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
   config.vm.define "win12", autostart: false do |quail_config|
     quail_config.vm.box = "devopsguys/Windows2012R2Eval"
     quail_config.vm.network "public_network", bridge: interface_guesses
-    quail_config.vm.network "private_network", ip: NETWORK + ".2.12"
+    quail_config.vm.network "private_network", ip: NETWORK + ".56.12"
     if vagrant_command == "up" and vagrant_object == "win12"
       puts "Starting #{vagrant_object} #{as_minion}."
     end
@@ -496,14 +497,14 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
         v.customize ["modifyvm", :id, "--vram", "27"]  # enough video memory for full screen
         v.memory = 4096
         v.cpus = max_cpus
-        v.customize ["modifyvm", :id, "--natnet1", NETWORK + ".17.128/27"]  # do not use 10.0 network for NAT
+        v.customize ["modifyvm", :id, "--natnet1", NETWORK + ".62.128/27"]  # do not use 10.0 network for NAT
         v.customize ["modifyvm", :id, "--natdnshostresolver1", "on"]  # use host's DNS resolver
     end
     quail_config.vm.guest = :windows
     quail_config.vm.boot_timeout = 900
     quail_config.vm.graceful_halt_timeout = 60
     script = "new-item C:\\salt\\conf\\minion.d -itemtype directory -ErrorAction silentlycontinue\r\n"
-    script += "route add 10.0.0.0 mask 255.0.0.0 #{NETWORK}.17.130 -p\r\n"  # route 10. network through host NAT for VPN
+    script += "route add 10.0.0.0 mask 255.0.0.0 #{NETWORK}.62.130 -p\r\n"  # route 10. network through host NAT for VPN
     quail_config.vm.provision "shell", inline: script
     if settings.has_key?('WINDOWS_GUEST_CONFIG_FILE') and File.exist?(settings['WINDOWS_GUEST_CONFIG_FILE'])
       quail_config.vm.provision "file", source: settings['WINDOWS_GUEST_CONFIG_FILE'], destination: "c:\\salt\\conf\\minion.d\\00_bevy_boot.conf"
@@ -526,7 +527,7 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
     config.vm.define "win19", autostart: false do |quail_config|
       quail_config.vm.box = "StefanScherer/windows_2019"
       quail_config.vm.network "public_network", bridge: interface_guesses
-      quail_config.vm.network "private_network", ip: NETWORK + ".2.19"
+      quail_config.vm.network "private_network", ip: NETWORK + ".56.19"
       if vagrant_command == "up" and vagrant_object == "win19"
         puts "Starting #{vagrant_object} #{as_minion}."
         puts "NOTE: you may need to hit <Ctrl C> after starting this Windows minion."
@@ -538,14 +539,14 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
           v.customize ["modifyvm", :id, "--vram", "27"]  # enough video memory for full screen
           v.memory = 4096
           v.cpus = max_cpus
-          v.customize ["modifyvm", :id, "--natnet1", NETWORK + ".18.32/27"]  # do not use 10.0 network for NAT
+          v.customize ["modifyvm", :id, "--natnet1", NETWORK + ".63.32/27"]  # do not use 10.0 network for NAT
           v.customize ["modifyvm", :id, "--natdnshostresolver1", "on"]  # use host's DNS resolver
       end
       quail_config.vm.guest = :windows
       quail_config.vm.boot_timeout = 300
       quail_config.vm.graceful_halt_timeout = 60
       #script = "new-item C:\\salt\\conf\\minion.d -itemtype directory -ErrorAction silentlycontinue\r\n"
-      #script += "route add 10.0.0.0 mask 255.0.0.0 #{NETWORK}.18.34 -p\r\n"  # route 10. network through host NAT for VPN
+      #script += "route add 10.0.0.0 mask 255.0.0.0 #{NETWORK}.63.34 -p\r\n"  # route 10. network through host NAT for VPN
       #quail_config.vm.provision "shell", inline: script
       if settings.has_key?('WINDOWS_GUEST_CONFIG_FILE') and File.exist?(settings['WINDOWS_GUEST_CONFIG_FILE'])
         quail_config.vm.provision "file", source: settings['WINDOWS_GUEST_CONFIG_FILE'], destination: "c:\\salt\\conf\\minion.d\\00_bevy_boot.conf"
@@ -567,7 +568,7 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
   config.vm.define "win7", autostart: false do |quail_config|
     quail_config.vm.box = "mrh1997/vanilla-win7-32bit"
     quail_config.vm.network "public_network", bridge: interface_guesses
-    #quail_config.vm.network "private_network", ip: NETWORK + ".2.7"
+    #quail_config.vm.network "private_network", ip: NETWORK + ".56.7"
     if vagrant_command == "up" and vagrant_object == "win7"
       puts "Starting #{vagrant_object} #{as_minion}."
       puts "N O T E :  the default keyboard will be German (DE)."
@@ -579,7 +580,7 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
         v.customize ["modifyvm", :id, "--vram", "27"]  # enough video memory for full screen
         v.memory = 4096
         v.cpus = max_cpus
-        #v.customize ["modifyvm", :id, "--natnet1", NETWORK + ".18.96/27"]  # do not use 10.0 network for NAT
+        #v.customize ["modifyvm", :id, "--natnet1", NETWORK + ".63.96/27"]  # do not use 10.0 network for NAT
         v.customize ["modifyvm", :id, "--natdnshostresolver1", "on"]  # use host's DNS resolver
     end
     quail_config.vm.guest = :windows
@@ -609,7 +610,7 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
       quail_config.vm.box = "mcandre/palindrome-buildbot-macos"
     end
     quail_config.vm.hostname = "mac13"
-    quail_config.vm.network "private_network", ip: NETWORK + ".2.13"
+    quail_config.vm.network "private_network", ip: NETWORK + ".56.13"
 
     # . . . CAUTION: large rsync folders take forever to set up and may overfill VM disk . . .
     if settings.has_key?('projects_root') and settings['projects_root'] != 'none'
@@ -621,7 +622,7 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
     quail_config.vm.synced_folder ".", "/vagrant", type: "rsync"
 
     if vagrant_command == "up" and vagrant_object == "mac13"
-      puts "Starting #{vagrant_object} at #{NETWORK}.2.13 #{as_minion}...\n."
+      puts "Starting #{vagrant_object} at #{NETWORK}.56.13 #{as_minion}...\n."
     end
     quail_config.vm.network "public_network", bridge: interface_guesses
     quail_config.vm.provider "virtualbox" do |v|
@@ -630,7 +631,7 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
         v.memory = 6000       # limit memory for the virtual box
         v.cpus = max_cpus
         v.linked_clone = true # make a soft copy of the base Vagrant box
-        v.customize ["modifyvm", :id, "--natnet1", NETWORK + ".18.64/27"]  # do not use 10.0 network for NAT
+        v.customize ["modifyvm", :id, "--natnet1", NETWORK + ".63.64/27"]  # do not use 10.0 network for NAT
         v.customize ["modifyvm", :id, "--natdnshostresolver1", "on"]  # use host's DNS resolver
     end
     quail_config.vm.provision "shell", path: "configure_machine/macos_unprotect_dirs.sh"

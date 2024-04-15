@@ -260,21 +260,21 @@ vgr destroy quail1
 
 The Vagrantfile defines:
 
-| Name | ip | minion? | OS version |
-| ---- | -- | ------- | ---------- |
-| bevymaster | 2.2 | master | Ubuntu 18.04 |
-| quail1 | 2.201 | no | Ubuntu 18.04 |
-| quail2 | 2.202 | yes | Ubuntu 18.04 |
-| quail14 | 2.214 | no | Ubuntu 14.04 |
-| quail16 | 2.216 | no | Ubuntu 16.04 |
-| quail18 | 2.218 | no | Ubuntu 18.04 |
-| win10 | 2.10 | yes | Windows 10 |
-| win12 | 2.12 | yes | Windows Server 2012 |
-| win16 | 2.16 | yes | Windows Server 2016 |
-| win19 | 2.19 | yes | Windows Server 2019 |
-| mac13 | 2.13 | yes | MacOS 10.3 |
-| **generic** | 2.200 * | yes | Ubuntu 18.04 * |
-| --no-salt **generic** | 2.200 * | no | Ubuntu 18.04 * |
+| Name                  | ip      | minion? | OS version          |
+|-----------------------|---------| ------- |---------------------|
+| bevymaster            | 2.2     | master | Ubuntu 22.04        |
+| quail1                | 2.201   | no | Ubuntu 22.04        |
+| quail2                | 2.202   | yes | Ubuntu 22.04        |
+| quail20               | 2.220   | no | Ubuntu 20.04        |
+| quail16               | 2.216   | no | Ubuntu 16.04        |
+| quail18               | 2.218   | no | Ubuntu 18.04        |
+| win10                 | 2.10    | yes | Windows 10          |
+| win12                 | 2.12    | yes | Windows Server 2012 |
+| win16                 | 2.16    | yes | Windows Server 2016 |
+| win19                 | 2.19    | yes | Windows Server 2019 |
+| mac13                 | 2.13    | yes | MacOS 10.3          |
+| **generic**           | 2.200 * | yes | Ubuntu 22.04 *      |
+| --no-salt **generic** | 2.200 * | no | Ubuntu 18.04 *      |
 
  \* The "generic" machine(s) can be re-configured using environment variables. See below.
 
@@ -284,15 +284,15 @@ Each machine has three virtual network ports:
 - One has a pre-defined IP address range used for a Vagrant host-only network adapter,
 which used to connect a to a Vagrant shared directory,
 for Vagrant to ssh connect to the machine, and for NAT networking.
-As supplied, these will use small subnets of 172.17.17.0. 
-(Assuming that "Vagrant internal network" is set for '172.17.0.0/16')
+As supplied, these will use small subnets of 192.168.62.0. 
+(Assuming that "Vagrant internal network" is set for '192.168.56.0/21')
 
 - A second has a fixed hard-wired address for a
 [private network](https://www.vagrantup.com/docs/networking/private_network.html)
 which can be used for intercommunication amoung the host and its virtual machines,
 (and the VMs to each other) but cannot be seen outside the host environment.
-These will be in the 172.17.2.0 network, with the host at 172.17.2.1,
-and the Bevy Master (if a VM is used) at 172.17.2.2.
+These will be in the 192.168.56.0 network, with the host at 192.168.56.1,
+and the Bevy Master (if a VM is used) at 192.168.56.2.
 This network can be changed by [the confguration script](configure_machine/README.md).
 
 - The third is a [bridged network](https://www.vagrantup.com/docs/networking/public_network.html)
@@ -333,13 +333,13 @@ You will need to use the `vagrant global-status` command to see your generic VMs
 
 Other environment variables can be used to further define the operation of your generic VMs.
 
-- **NODE_ADDRESS** (default=.2.200) the last two octets for the IP address of the machine's host-only network inderface.
+- **NODE_ADDRESS** (default=.2.200) the last two octets for the IP address of the machine's host-only network interface.
 - **NODE_MEMORY** (default=5000) the size of virtual memory to allocate for the VM.
 - **NODE_BOX** (default= Ubuntu LTS) the Vagrant Box definition for the VM.
 ```
-GENERIC=True NODE_ADDRESS=.2.203 NODE_MEMORY=10000 NODE_BOX=boxesio/xenial64-standard vagrant up anothername
+GENERIC=True NODE_ADDRESS=.56.203 NODE_MEMORY=10000 NODE_BOX=boxesio/xenial64-standard vagrant up anothername
 generic=t vagrant ssh anothername
-ssh vagrant@172.17.2.203 'ls /home'
+ssh vagrant@192.168.56.203 'ls /home'
 ```
 
 The `vgr` and `vgr.bat` script commands are provided for convenience in controlling "generic" VMs
@@ -392,7 +392,7 @@ If you change it, search for all occurrances.
 ### A Private Test Network
 
 Most lessons presented here are designed to be good network citizens.
-If you keep your bevy names uinque, several bevys can co-exist on a network with no problems.
+If you keep your bevy names unique, several bevys can co-exist on a network with no problems.
 Even hardware MAC addresses (where needed) are hashed by the bevy name.
 
 However, if you wish to run the more advanced network infrastructure lessons
@@ -401,7 +401,7 @@ However, if you wish to run the more advanced network infrastructure lessons
 Some lessons will contain warnings if they cannot be run on a corporate or
 school network without messing something up.
 \[Trust me, I know about messing things up -- I once killed the then-experimental
-Internet in all of Utah and Colorado by misconfiguring a router. -- Vernon\]
+Internet in all of Utah and Colorado by misconfiguration a router. -- Vernon\]
 
 If you are working from a home office, you should be okay using your home router
 for the advanced lessons (but not while your spouse is streaming a movie).

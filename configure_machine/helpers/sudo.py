@@ -5,7 +5,7 @@
 # (C) COPYRIGHT © Preston Landers 2010
 # Released under the same license as Python 2.6.5
 #
-# Python3 update and extensive changes by: Vernon Cole 2018, 2019, 2020
+# Python3 update and extensive changes by: Vernon Cole 2018, 2019, 2020, 2024
 
 import sys, os, traceback, time, json, subprocess, shutil
 
@@ -27,7 +27,7 @@ except (ModuleNotFoundError, ImportError):
     # noinspection PyUnresolvedReferences
     from argv_quote import quote
 
-VERSION = 1.3
+VERSION = '1.3.3'
 
 ELEVATION_FLAG = "--_context"  # internal use only. Should never be passed on a user command line
 
@@ -236,7 +236,7 @@ def test(command=None):
 
 if __name__ == "__main__":
     if len(sys.argv) == 1 or sys.argv[1] in ["--help", "-h", "su", "/?", "/help"]:
-        print('''usage:
+        print(r'''usage:
          sudo <command> <arguments> # will run <command> with elevated priviledges
          sudo --pause <cmd> <args>  # will keep the command screen open until you hit a key
          sudo salt-xxx <cmd> . . .  # will call a command from C:\Salt\salt-xxx and then pause
@@ -248,12 +248,12 @@ if __name__ == "__main__":
          sudo cmd  # starts an Administrator command window
          ''')
     elif sys.argv[1] == "--version":
-        print('sudo version', VERSION)
+        print('Windows sudo version', VERSION)
     elif sys.argv[1] == "--test":
         print('......testing.......')
         test(sys.argv)
     elif sys.argv[1] == "--hosts":
-        print('....... NEXT, a useful example ... editing the "etc/hosts" file ........')
+        print('....... NEXT, a useful feature ... editing the "etc/hosts" file ........')
         if os.name == 'nt':
             call = ["notepad", r"C:\Windows\System32\drivers\etc\hosts"]
         else:
@@ -269,8 +269,9 @@ if __name__ == "__main__":
             shutil.copy2(os.path.dirname(os.path.abspath(__file__)) + r'\pause_after.bat',
                          os.path.dirname(WINDOWS_PATH) + r'\pause_after.bat')
             set_env_variables_permanently_win({'PATHEXT': '.PY'}, whole_machine=True)
+
         else:
-            runAsAdmin([os.path.abspath(__file__), '--install-sudo-command'], python_shell=True)
+            runAsAdmin([os.path.realpath(__file__), '--install-sudo-command'], python_shell=True)
     elif any([arg.startswith("--set-system-env") for arg in sys.argv]) and os.name == 'nt':
         ctx = get_context("--set-system-env")
         set_env_variables_permanently_win(ctx, whole_machine=True)
@@ -278,10 +279,8 @@ if __name__ == "__main__":
         ctx = get_context("--set-user-env")
         set_env_variables_permanently_win(ctx, whole_machine=False)
     else:
-        if sys.argv[1].startswith('salt-'):  # make "sudo salt-call" actually work without being in PATH
-            sys.argv[1] = os.path.join('c:\\salt', sys.argv[1])  # call .bat file from c:\salt
+        if sys.argv[1].startswith('salt-'):  # make "sudo salt-call" pause and log
             sys.argv.insert(1, '--pause')
-
         if sys.argv[1] == '--pause':
             sys.argv[1] = 'pause_after'
 

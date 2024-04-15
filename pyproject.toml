@@ -1,0 +1,45 @@
+[project]
+name = 'salt_bevy'
+version = '1.0.0'
+description = 'A self-installing Salt system to manage a complete Salt master-minion environment.'
+authors = [{name = 'Vernon Cole'},{email = "vernondcole@gmail.com"}]
+dependencies = ['pyyaml', 'ifaddr', 'passlib']
+keywords = ["Salt", "saltproject", "provision", "manage", "remote"]
+classifiers = [
+            'Development Status :: 4 - Beta',
+            'Environment :: Console',
+            'Intended Audience :: System Administrators',
+            'License :: OSI Approved :: Apache Software License',
+            'Programming Language :: Python',
+            'Natural Language :: English',
+            'Operating System :: OS Independent',
+            'Topic :: System :: Installation/Setup',
+            'Topic :: System :: Systems Administration'
+            ]
+requires-dist = 'salt'
+
+[project.urls]
+repository = "https://github.com/salt-bevy/salt-bevy"
+documentation = "https://github.com/selt-bevy/treining"
+
+[project.readme]
+content-type = "text/x-rst"
+text = """\
+    a salt-bevy is a conglomeration of computers (possibly but not necessarily a network) which are managed by \
+    a Salt master (or combination of masters). Bevys are named to provide convenience. \
+    \
+    The "join-bevy" shell command starts a script to 1) create a new named bevy, or \
+    2) connect an additional computer (or VM) to a named bevy. \
+    This script will request enhanced (sudo) priviliges as needed when needed. \
+    \
+    Included are working sample scripts to: \
+    * bootstrap an Ubuntu image onto an empty computer using PXE bootstrap. \
+    * push Salt onto a Linux machine using ssh access. \
+    * spin up a Virtual Machine on an example cloud service (or two). \
+    * spin up any of several Virtual Machines on a Linux, MacOS, or Windows workstation using vagrant and virtualbox - \
+    * - running several versions of Windows and/or Linux. \
+    """
+
+[build-system]
+requires = ["setuptools>65.0.0", "wheel", "build"]
+build-backend = "setuptools.build_meta"

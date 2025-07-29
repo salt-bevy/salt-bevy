@@ -369,18 +369,18 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
 	  end
   end
 
-# . . . . . . . . . . . . Define machine QUAIL20 . . . . . . . . . . . . . .
-# This Ubuntu 14.04 machine is designed to be run by salt-cloud
-  config.vm.define "quail14", autostart: false do |quail_config|
-    quail_config.vm.box = "ubuntu/focal64"
-    quail_config.vm.hostname = "quail20" # + DOMAIN
-    quail_config.vm.network "private_network", ip: NETWORK + ".56.220"
-    if vagrant_command == "up" and vagrant_object == "quail20"
-      puts "Starting #{vagrant_object} at #{NETWORK}.56.214..."
+# . . . . . . . . . . . . Define machine QUAIL24 . . . . . . . . . . . . . .
+# This Ubuntu 24.04 machine is designed to be run by salt-cloud
+  config.vm.define "quail24", autostart: false do |quail_config|
+    quail_config.vm.box = "alvistack/ubuntu-24.04"
+    quail_config.vm.hostname = "quail24" # + DOMAIN
+    quail_config.vm.network "private_network", ip: NETWORK + ".56.224"
+    if vagrant_command == "up" and vagrant_object == "quail24"
+      puts "Starting #{vagrant_object} at #{NETWORK}.56.224..."
     end
     quail_config.vm.network "public_network", bridge: interface_guesses
     quail_config.vm.provider "virtualbox" do |v|
-        v.name = BEVY + '_quail20'  # ! N.O.T.E.: name must be unique
+        v.name = BEVY + '_quail24'  # ! N.O.T.E.: name must be unique
         v.memory = 1024       # limit memory for the virtual box
         v.cpus = 1
         v.linked_clone = true # make a soft copy of the base Vagrant box

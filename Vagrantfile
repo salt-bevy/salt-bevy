@@ -14,6 +14,16 @@ DEFAULT_BOX = "gusztavvargadr/ubuntu-server" # "ubuntu/jammy64"  # the vagrantbo
 
 vagrant_command = ARGV[0]
 vagrant_object = ARGV.length > 1 ? ARGV[1] : ""  # the name (if any) of the vagrant VM for this command
+
+def requested_provider(argv)  # best-effort guess at which provider "vagrant up" will use
+  argv.each_with_index do |arg, i|
+    return arg.split('=', 2)[1] if arg.start_with?('--provider=')
+    return argv[i + 1] if arg == '--provider' and argv.length > i + 1
+  end
+  return ENV['VAGRANT_DEFAULT_PROVIDER'] unless ENV['VAGRANT_DEFAULT_PROVIDER'].to_s.empty?
+  'virtualbox'  # Vagrant's traditional default when nothing else says otherwise
+end
+ACTIVE_PROVIDER = requested_provider(ARGV)
 #
 # under the DRY principle, the most important setting are stored
 # in a Salt 'pillar' file. Vagrant has to look them up there...
@@ -59,6 +69,14 @@ BEVY = settings["bevy"]  # the name of your bevy
 # the first two bytes of your Vagrant host-only network IP ("192.168.x.x")
 NETWORK = "#{settings['vagrant_prefix']}"
 # ^ ^ each VM below will have a NAT network in NETWORK.17.x/27 or NETWORK.18.x/27
+#
+# . v . v . Hyper-V settings (no well-maintained Ubuntu 24.04 box exists with a hyperv
+# provider as of 2026, so we use a small community-published one that has both) . v . v .
+HYPERV_BOX = "gigix74/ubuntu2404"  # Ubuntu 24.04, publishes both virtualbox and hyperv providers
+# Hyper-V cannot create switches from Vagrant and ignores static private_network IPs, so we
+# bridge to an existing External Virtual Switch instead (create it first in Hyper-V Manager
+# > Virtual Switch Manager) and let DHCP assign the guest's address.
+HYPERV_SWITCH = ENV['HYPERV_SWITCH'] || settings['hyperv_switch'] || "Default Switch"
 puts "Your bevy name:#{BEVY} with host-only network #{NETWORK}.x.x"
 puts "This (the VM host) computer will be at #{NETWORK}.56.1" if ARGV[1] == "up"
 bevy_mac = (BEVY.to_i(36) % 0x1000000).to_s(16)  # a MAC address based on hash of BEVY
@@ -128,13 +146,21 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
   # . . . . . . . . . . . . Define machine QUAIL1 . . . . . . . . . . . . . .
   # This machine has no Salt provisioning at all. Salt-cloud can provision it.
   config.vm.define "quail1", primary: true do |quail_config|  # this will be the default machine
-    quail_config.vm.box = DEFAULT_BOX
     quail_config.vm.hostname = "quail1" # + DOMAIN
-    quail_config.vm.network "private_network", ip: NETWORK + ".56.201"  # needed so saltify_profiles.conf can find this unit
-    if vagrant_command == "up" and (ARGV.length == 1 or (vagrant_object == "quail1"))
-      puts "Starting 'quail1' at #{NETWORK}.56.201..."
+    if ACTIVE_PROVIDER == "hyperv"
+      quail_config.vm.box = HYPERV_BOX
+      quail_config.vm.network "public_network", bridge: HYPERV_SWITCH
+      if vagrant_command == "up" and (ARGV.length == 1 or (vagrant_object == "quail1"))
+        puts "Starting 'quail1' under Hyper-V, bridged to switch '#{HYPERV_SWITCH}'..."
+      end
+    else
+      quail_config.vm.box = DEFAULT_BOX
+      quail_config.vm.network "private_network", ip: NETWORK + ".56.201"  # needed so saltify_profiles.conf can find this unit
+      quail_config.vm.network "public_network", bridge: interface_guesses
+      if vagrant_command == "up" and (ARGV.length == 1 or (vagrant_object == "quail1"))
+        puts "Starting 'quail1' at #{NETWORK}.56.201..."
+      end
     end
-    quail_config.vm.network "public_network", bridge: interface_guesses
     quail_config.vm.provider "virtualbox" do |v|  # only for VirtualBox boxes
         v.name = BEVY + '_quail1'  # ! N.O.T.E.: name must be unique
         v.memory = 1024       # limit memory for the virtual box
@@ -148,6 +174,12 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
         v.vmx["memsize"] = "1024"
         v.vmx["numvcpus"] = "1"
 	  end
+    quail_config.vm.provider "hyperv" do |v|  # only for Hyper-V boxes
+        v.vmname = BEVY + '_quail1'  # ! N.O.T.E.: name must be unique
+        v.memory = 1024       # limit memory for the VM
+        v.cpus = 1
+        v.linked_clone = true # use a differencing disk instead of a full copy
+    end
   end
 
 # . . . . . . .  Define quail2 with Salt minion installed . . . . . . . . . . . . . .

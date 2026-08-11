@@ -39,7 +39,7 @@ def name_bevy_settings_file(rootpath)
 end
 BEVY_SETTINGS_FILE_NAME = name_bevy_settings_file(SRV_ROOT)  # settings for the entire bevy
 MY_SETTINGS_FILE_NAME = '/etc/salt-bevy/my_settings.conf'  # settings specific to the current host machine
-if File.exists?(BEVY_SETTINGS_FILE_NAME)
+if File.exist?(BEVY_SETTINGS_FILE_NAME)
   settings = YAML.load_file(BEVY_SETTINGS_FILE_NAME)  # get your bevy-wide settings
   default_run_highstate = true
 else  # the bevy settings file was not found. We must supply simple default settings here.
@@ -58,7 +58,7 @@ else  # the bevy settings file was not found. We must supply simple default sett
    }
   default_run_highstate = false
 end
-if File.exists?(MY_SETTINGS_FILE_NAME)
+if File.exist?(MY_SETTINGS_FILE_NAME)
   my_settings = YAML.load_file(MY_SETTINGS_FILE_NAME)  # get your local settings
   settings.merge!(my_settings)  # local settings override the bevy settings.
 else
@@ -70,9 +70,11 @@ BEVY = settings["bevy"]  # the name of your bevy
 NETWORK = "#{settings['vagrant_prefix']}"
 # ^ ^ each VM below will have a NAT network in NETWORK.17.x/27 or NETWORK.18.x/27
 #
-# . v . v . Hyper-V settings (no well-maintained Ubuntu 24.04 box exists with a hyperv
-# provider as of 2026, so we use a small community-published one that has both) . v . v .
-HYPERV_BOX = "gigix74/ubuntu2404"  # Ubuntu 24.04, publishes both virtualbox and hyperv providers
+# . v . v . Hyper-V settings . v . v .
+# "gigix74/ubuntu2404" was tried here for a Hyper-V-capable Ubuntu 24.04 box, but its published
+# hyperv artifact fails its own checksum on Vagrant Cloud (confirmed by hand, not just transient
+# corruption) so it was dropped. quail22 uses QUAIL22_BOX instead, which verifies correctly.
+QUAIL22_BOX = "generic/ubuntu2204"  # Ubuntu 22.04, actively maintained; publishes virtualbox, vmware, hyperv, libvirt & qemu providers
 # Hyper-V cannot create switches from Vagrant and ignores static private_network IPs, so we
 # bridge to an existing External Virtual Switch instead (create it first in Hyper-V Manager
 # > Virtual Switch Manager) and let DHCP assign the guest's address.
@@ -135,7 +137,6 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
   end
 
   config.vm.synced_folder File.join(SRV_ROOT, 'pillar'), "/srv/pillar", :owner => "vagrant", :group => "staff"  #, :mount_options => ["umask=0002"]
-  puts "Syncing host folder #{File.join(SRV_ROOT, 'pillar')} as virtual /srv/pillar"
 
   if ENV.key?("VAGRANT_SALT")
     as_minion = "as a Salt minion with master=#{settings['master_vagrant_ip']}"
@@ -145,21 +146,14 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
 
   # . . . . . . . . . . . . Define machine QUAIL1 . . . . . . . . . . . . . .
   # This machine has no Salt provisioning at all. Salt-cloud can provision it.
+  # No Hyper-V provider here — see quail22 for a Hyper-V-capable machine.
   config.vm.define "quail1", primary: true do |quail_config|  # this will be the default machine
     quail_config.vm.hostname = "quail1" # + DOMAIN
-    if ACTIVE_PROVIDER == "hyperv"
-      quail_config.vm.box = HYPERV_BOX
-      quail_config.vm.network "public_network", bridge: HYPERV_SWITCH
-      if vagrant_command == "up" and (ARGV.length == 1 or (vagrant_object == "quail1"))
-        puts "Starting 'quail1' under Hyper-V, bridged to switch '#{HYPERV_SWITCH}'..."
-      end
-    else
-      quail_config.vm.box = DEFAULT_BOX
-      quail_config.vm.network "private_network", ip: NETWORK + ".56.201"  # needed so saltify_profiles.conf can find this unit
-      quail_config.vm.network "public_network", bridge: interface_guesses
-      if vagrant_command == "up" and (ARGV.length == 1 or (vagrant_object == "quail1"))
-        puts "Starting 'quail1' at #{NETWORK}.56.201..."
-      end
+    quail_config.vm.box = DEFAULT_BOX
+    quail_config.vm.network "private_network", ip: NETWORK + ".56.201"  # needed so saltify_profiles.conf can find this unit
+    quail_config.vm.network "public_network", bridge: interface_guesses
+    if vagrant_command == "up" and (ARGV.length == 1 or (vagrant_object == "quail1"))
+      puts "Starting 'quail1' at #{NETWORK}.56.201..."
     end
     quail_config.vm.provider "virtualbox" do |v|  # only for VirtualBox boxes
         v.name = BEVY + '_quail1'  # ! N.O.T.E.: name must be unique
@@ -174,11 +168,57 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
         v.vmx["memsize"] = "1024"
         v.vmx["numvcpus"] = "1"
 	  end
+  end
+
+  # . . . . . . . . . . . . Define machine QUAIL22 . . . . . . . . . . . . . .
+  # Same idea as quail1 (no Salt provisioning), but pinned to QUAIL22_BOX
+  # (Ubuntu 22.04) instead of switching boxes by provider, since that one
+  # box already publishes a real Hyper-V provider on its own.
+  config.vm.define "quail22", autostart: false do |quail_config|
+    quail_config.vm.hostname = "quail22" # + DOMAIN
+    quail_config.vm.box = QUAIL22_BOX
+    # Disable the synced folders set up above (config.vm.synced_folder on the top-level `config`).
+    # Under Hyper-V, Vagrant falls back to an SMB-backed synced folder, which requires interactively
+    # creating a host SMB share and entering credentials — skip that entirely for this machine.
+    quail_config.vm.synced_folder ".", "/vagrant", disabled: true
+    quail_config.vm.synced_folder ".", "/salt_bevy", disabled: true
+    quail_config.vm.synced_folder ".", "/projects", disabled: true
+    quail_config.vm.synced_folder ".", "/srv/pillar", disabled: true
+    if ACTIVE_PROVIDER == "hyperv"
+      quail_config.vm.network "public_network", bridge: HYPERV_SWITCH
+      if vagrant_command == "up" and vagrant_object == "quail22"
+        puts "Starting 'quail22' under Hyper-V, bridged to switch '#{HYPERV_SWITCH}'..."
+      end
+    else
+      quail_config.vm.network "private_network", ip: NETWORK + ".56.222"
+      quail_config.vm.network "public_network", bridge: interface_guesses
+      if vagrant_command == "up" and vagrant_object == "quail22"
+        puts "Starting 'quail22' at #{NETWORK}.56.222..."
+      end
+    end
+    quail_config.vm.provider "virtualbox" do |v|  # only for VirtualBox boxes
+        v.name = BEVY + '_quail22'  # ! N.O.T.E.: name must be unique
+        v.memory = 1024       # limit memory for the virtual box
+        v.cpus = 1
+        v.linked_clone = true # make a soft copy of the base Vagrant box
+        v.customize ["modifyvm", :id, "--natnet1", NETWORK + ".63.0/27"]  # do not use 10.0 network for NAT
+        v.customize ["modifyvm", :id, "--natdnshostresolver1", "on"]  # use host's DNS resolver
+    end
+    quail_config.vm.provider vmware do |v|  # only for VMware boxes
+        v.vmx["memsize"] = "1024"
+        v.vmx["numvcpus"] = "1"
+	  end
     quail_config.vm.provider "hyperv" do |v|  # only for Hyper-V boxes
-        v.vmname = BEVY + '_quail1'  # ! N.O.T.E.: name must be unique
+        v.vmname = BEVY + '_quail22'  # ! N.O.T.E.: name must be unique
         v.memory = 1024       # limit memory for the VM
         v.cpus = 1
         v.linked_clone = true # use a differencing disk instead of a full copy
+    end
+    # /srv/pillar isn't synced-folder-mounted here (see the disabled synced folders above), so
+    # copy the host's pillar tree in as a one-time upload instead of a live mount.
+    if Dir.exist?(File.join(SRV_ROOT, 'pillar'))
+      quail_config.vm.provision "file", source: File.join(SRV_ROOT, 'pillar'), destination: "/tmp/host_pillar"
+      quail_config.vm.provision "shell", path: "configure_machine/copy_host_pillar_to_guest.sh"
     end
   end
 
@@ -403,7 +443,7 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
 
 # . . . . . . . . . . . . Define machine QUAIL20 . . . . . . . . . . . . . .
 # This Ubuntu 14.04 machine is designed to be run by salt-cloud
-  config.vm.define "quail14", autostart: false do |quail_config|
+  config.vm.define "quail20", autostart: false do |quail_config|
     quail_config.vm.box = "ubuntu/focal64"
     quail_config.vm.hostname = "quail20" # + DOMAIN
     quail_config.vm.network "private_network", ip: NETWORK + ".56.220"

@@ -260,23 +260,40 @@ vgr destroy quail1
 
 The Vagrantfile defines:
 
-| Name                  | ip      | minion? | OS version          |
-|-----------------------|---------| ------- |---------------------|
-| bevymaster            | 2.2     | master | Ubuntu 22.04        |
-| quail1                | 2.201   | no | Ubuntu 22.04        |
-| quail2                | 2.202   | yes | Ubuntu 22.04        |
-| quail20               | 2.220   | no | Ubuntu 20.04        |
-| quail16               | 2.216   | no | Ubuntu 16.04        |
-| quail18               | 2.218   | no | Ubuntu 18.04        |
-| win10                 | 2.10    | yes | Windows 10          |
-| win12                 | 2.12    | yes | Windows Server 2012 |
-| win16                 | 2.16    | yes | Windows Server 2016 |
-| win19                 | 2.19    | yes | Windows Server 2019 |
-| mac13                 | 2.13    | yes | MacOS 10.3          |
-| **generic**           | 2.200 * | yes | Ubuntu 22.04 *      |
-| --no-salt **generic** | 2.200 * | no | Ubuntu 18.04 *      |
+| Name                     | ip       | minion? | OS version                                           |
+|--------------------------|----------|---------|-------------------------------------------------------|
+| bevymaster               | 56.2     | master  | Ubuntu Server, latest LTS ‡                            |
+| quail1                   | 56.201   | no      | Ubuntu Server, latest LTS ‡ (no Hyper-V provider — use quail22) |
+| quail2                   | 56.202   | yes     | Ubuntu Server, latest LTS ‡                            |
+| quail22 ‖                | 56.222 † | no      | Ubuntu 22.04 (`generic/ubuntu2204`, has a real Hyper-V provider) |
+| quail20                  | 56.220   | no      | Ubuntu 20.04                                           |
+| quail16                  | 56.216   | no      | Ubuntu 16.04                                           |
+| quail18                  | 56.218   | no      | Ubuntu 18.04                                           |
+| win7                     | —        | yes     | Windows 7 (32-bit)                                     |
+| win10                    | 56.10    | yes     | Windows 10                                             |
+| win12                    | 56.12    | yes     | Windows Server 2012                                    |
+| win16                    | 56.16    | yes     | Windows Server 2016                                    |
+| win19                    | 56.19    | yes     | Windows Server 2019                                    |
+| mac13                    | 56.13    | yes     | macOS 10.13 §                                          |
+| **generic**              | 56.200 * | yes     | Ubuntu Server, latest LTS * ‡                          |
+| --no-salt **generic**    | 56.200 * | no      | Ubuntu Server, latest LTS * ‡                          |
 
  \* The "generic" machine(s) can be re-configured using environment variables. See below.
+
+ † Under the Hyper-V provider, `quail22` has no host-only `private_network` entry at all —
+ it gets a DHCP-assigned address from the bridged switch (`HYPERV_SWITCH`, default `"Default Switch"`)
+ instead of this fixed IP.
+
+ ‡ Uses `DEFAULT_BOX` (currently `gusztavvargadr/ubuntu-server`), a rolling "latest Ubuntu Server"
+ box rather than one pinned to a specific release.
+
+ § On non-macOS hosts this box is unavailable; `mac13` falls back to `mcandre/palindrome-buildbot-macos`.
+
+ ‖ `quail22` has its `/srv/pillar` synced folder disabled (Hyper-V would otherwise fall back to an
+ SMB-backed sync, which requires interactively creating a host SMB share). Instead, the host's pillar
+ directory is uploaded into `/srv/pillar` **once**, during provisioning. This is a one-time copy, not
+ a live sync — if you edit files under your host's pillar directory afterward, run
+ `vgr provision quail22` (or `vgr up quail22 --provision`) to re-copy them into the VM.
 
 ---
 Each machine has three virtual network ports:

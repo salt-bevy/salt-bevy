@@ -1,4 +1,5 @@
 rem running Vagrant using salt-bevy definitions
+echo on
 @setlocal
 @set VAGRANT_CWD=..\salt-bevy
 @set VAGRANT_PWD=%CD%
@@ -18,5 +19,7 @@ vagrant.exe %1 %3 %7 %8 %9
 vagrant.exe %1 %3 %4 %5 %6 %7 %8 %9
 @goto exit
 :normal
+@set VAGRANT_DEFAULT_PROVIDER=
+@if %1==up (set VAGRANT_DEFAULT_PROVIDER=hyperv) else if %1==status (set VAGRANT_DEFAULT_PROVIDER=hyperv)
 vagrant.exe %1 %2 %3 %4 %5 %6 %7 %8 %9
 :exit

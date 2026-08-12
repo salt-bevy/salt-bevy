@@ -222,6 +222,74 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
     end
   end
 
+  # . . . . . . . . . . . . Define machine SALT22 . . . . . . . . . . . . . .
+  # A copy of quail22 (same QUAIL22_BOX, same disabled-synced-folder / one-time
+  # pillar-copy setup) plus a masterless Salt minion — since it's masterless,
+  # the pillar copy above is what makes its pillar_roots data available at all.
+  config.vm.define "salt22", autostart: false do |quail_config|
+    quail_config.vm.hostname = "salt22" # + DOMAIN
+    quail_config.vm.box = QUAIL22_BOX
+    # Disable the synced folders set up above (config.vm.synced_folder on the top-level `config`).
+    # Under Hyper-V, Vagrant falls back to an SMB-backed synced folder, which requires interactively
+    # creating a host SMB share and entering credentials — skip that entirely for this machine.
+    quail_config.vm.synced_folder ".", "/vagrant", disabled: true
+    quail_config.vm.synced_folder ".", "/salt_bevy", disabled: true
+    quail_config.vm.synced_folder ".", "/projects", disabled: true
+    quail_config.vm.synced_folder ".", "/srv/pillar", disabled: true
+    if ACTIVE_PROVIDER == "hyperv"
+      quail_config.vm.network "public_network", bridge: HYPERV_SWITCH
+      if vagrant_command == "up" and vagrant_object == "salt22"
+        puts "Starting 'salt22' under Hyper-V, bridged to switch '#{HYPERV_SWITCH}'..."
+      end
+    else
+      quail_config.vm.network "private_network", ip: NETWORK + ".56.223"
+      quail_config.vm.network "public_network", bridge: interface_guesses
+      if vagrant_command == "up" and vagrant_object == "salt22"
+        puts "Starting 'salt22' at #{NETWORK}.56.223..."
+      end
+    end
+    quail_config.vm.provider "virtualbox" do |v|  # only for VirtualBox boxes
+        v.name = BEVY + '_salt22'  # ! N.O.T.E.: name must be unique
+        v.memory = 1024       # limit memory for the virtual box
+        v.cpus = 1
+        v.linked_clone = true # make a soft copy of the base Vagrant box
+        v.customize ["modifyvm", :id, "--natnet1", NETWORK + ".63.96/27"]  # do not use 10.0 network for NAT
+        v.customize ["modifyvm", :id, "--natdnshostresolver1", "on"]  # use host's DNS resolver
+    end
+    quail_config.vm.provider vmware do |v|  # only for VMware boxes
+        v.vmx["memsize"] = "1024"
+        v.vmx["numvcpus"] = "1"
+	  end
+    quail_config.vm.provider "hyperv" do |v|  # only for Hyper-V boxes
+        v.vmname = BEVY + '_salt22'  # ! N.O.T.E.: name must be unique
+        v.memory = 1024       # limit memory for the VM
+        v.cpus = 1
+        v.linked_clone = true # use a differencing disk instead of a full copy
+    end
+    # /srv/pillar isn't synced-folder-mounted here (see the disabled synced folders above), so
+    # copy the host's pillar tree in as a one-time upload instead of a live mount — the masterless
+    # minion below reads its pillar from here.
+    if Dir.exist?(File.join(SRV_ROOT, 'pillar'))
+      quail_config.vm.provision "file", source: File.join(SRV_ROOT, 'pillar'), destination: "/tmp/host_pillar"
+      quail_config.vm.provision "shell", path: "configure_machine/copy_host_pillar_to_guest.sh"
+    end
+    script = "mkdir -p /etc/salt/minion.d\n"
+    script += "chown -R vagrant:staff /etc/salt/minion.d\n"
+    script += "chmod -R 775 /etc/salt/minion.d\n"
+    quail_config.vm.provision "shell", inline: script
+    if ENV.key?("VAGRANT_SALT")
+      quail_config.vm.provision :salt do |salt|
+       salt.verbose = false
+       salt.bootstrap_options = "-A #{settings['master_vagrant_ip']} -i salt22 -F -P #{SALT_BOOTSTRAP_ARGUMENTS}"
+       salt.run_highstate = default_run_highstate
+       salt.masterless = true
+       if settings.has_key?('GUEST_MINION_CONFIG_FILE') and File.exist?(settings['GUEST_MINION_CONFIG_FILE'])
+         salt.minion_config = settings['GUEST_MINION_CONFIG_FILE']
+       end
+      end
+    end
+  end
+
 # . . . . . . .  Define quail2 with Salt minion installed . . . . . . . . . . . . . .
 # . this machine bootstraps Salt but no states are run or defined.
 # . Its master is "bevymaster".

@@ -266,6 +266,7 @@ The Vagrantfile defines:
 | quail1                   | 56.201   | no      | Ubuntu Server, latest LTS ‡ (no Hyper-V provider — use quail22) |
 | quail2                   | 56.202   | yes     | Ubuntu Server, latest LTS ‡                            |
 | quail22 ‖                | 56.222 † | no      | Ubuntu 22.04 (`generic/ubuntu2204`, has a real Hyper-V provider) |
+| salt22 ‖                 | 56.223 † | yes     | Ubuntu 22.04, masterless minion (copy of quail22)      |
 | quail20                  | 56.220   | no      | Ubuntu 20.04                                           |
 | quail16                  | 56.216   | no      | Ubuntu 16.04                                           |
 | quail18                  | 56.218   | no      | Ubuntu 18.04                                           |
@@ -280,8 +281,8 @@ The Vagrantfile defines:
 
  \* The "generic" machine(s) can be re-configured using environment variables. See below.
 
- † Under the Hyper-V provider, `quail22` has no host-only `private_network` entry at all —
- it gets a DHCP-assigned address from the bridged switch (`HYPERV_SWITCH`, default `"Default Switch"`)
+ † Under the Hyper-V provider, `quail22`/`salt22` have no host-only `private_network` entry at all —
+ they get a DHCP-assigned address from the bridged switch (`HYPERV_SWITCH`, default `"Default Switch"`)
  instead of this fixed IP.
 
  ‡ Uses `DEFAULT_BOX` (currently `gusztavvargadr/ubuntu-server`), a rolling "latest Ubuntu Server"
@@ -289,11 +290,12 @@ The Vagrantfile defines:
 
  § On non-macOS hosts this box is unavailable; `mac13` falls back to `mcandre/palindrome-buildbot-macos`.
 
- ‖ `quail22` has its `/srv/pillar` synced folder disabled (Hyper-V would otherwise fall back to an
- SMB-backed sync, which requires interactively creating a host SMB share). Instead, the host's pillar
- directory is uploaded into `/srv/pillar` **once**, during provisioning. This is a one-time copy, not
- a live sync — if you edit files under your host's pillar directory afterward, run
- `vgr provision quail22` (or `vgr up quail22 --provision`) to re-copy them into the VM.
+ ‖ `quail22`/`salt22` have their `/srv/pillar` synced folder disabled (Hyper-V would otherwise fall
+ back to an SMB-backed sync, which requires interactively creating a host SMB share). Instead, the
+ host's pillar directory is uploaded into `/srv/pillar` **once**, during provisioning. This is a
+ one-time copy, not a live sync — if you edit files under your host's pillar directory afterward,
+ run `vgr provision <name>` (or `vgr up <name> --provision`) to re-copy them into the VM. `salt22`'s
+ masterless minion reads its pillar from this copy, so it needs a re-provision to see host-side edits.
 
 ---
 Each machine has three virtual network ports:

@@ -277,6 +277,12 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
     script += "chown -R vagrant:staff /etc/salt/minion.d\n"
     script += "chmod -R 775 /etc/salt/minion.d\n"
     quail_config.vm.provision "shell", inline: script
+    # Refresh /srv/salt and /srv/pillar/django.sls (what the masterless minion
+    # actually reads) from the app repo's own checked-in copy at
+    # /opt/palmtree/srv, which the salt provisioner below updates via
+    # git.latest. Must run before the salt provisioner, and every time (not
+    # just on first boot) -- see the script for why.
+    quail_config.vm.provision "shell", path: "configure_machine/sync_app_salt_states.sh", run: "always"
     if ENV.key?("VAGRANT_SALT")
       quail_config.vm.provision :salt do |salt|
        salt.verbose = false

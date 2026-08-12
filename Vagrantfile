@@ -217,8 +217,8 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
     # /srv/pillar isn't synced-folder-mounted here (see the disabled synced folders above), so
     # copy the host's pillar tree in as a one-time upload instead of a live mount.
     if Dir.exist?(File.join(SRV_ROOT, 'pillar'))
-      quail_config.vm.provision "file", source: File.join(SRV_ROOT, 'pillar'), destination: "/tmp/host_pillar"
-      quail_config.vm.provision "shell", path: "configure_machine/copy_host_pillar_to_guest.sh"
+      quail_config.vm.provision "file", source: File.join(SRV_ROOT, 'pillar'), destination: "/tmp/host_pillar", run: "always"
+      quail_config.vm.provision "shell", path: "configure_machine/copy_host_pillar_to_guest.sh", run: "always"
     end
   end
 
@@ -270,8 +270,8 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
     # copy the host's pillar tree in as a one-time upload instead of a live mount — the masterless
     # minion below reads its pillar from here.
     if Dir.exist?(File.join(SRV_ROOT, 'pillar'))
-      quail_config.vm.provision "file", source: File.join(SRV_ROOT, 'pillar'), destination: "/tmp/host_pillar"
-      quail_config.vm.provision "shell", path: "configure_machine/copy_host_pillar_to_guest.sh"
+      quail_config.vm.provision "file", source: File.join(SRV_ROOT, 'pillar'), destination: "/tmp/host_pillar", run: "always"
+      quail_config.vm.provision "shell", path: "configure_machine/copy_host_pillar_to_guest.sh", run: "always"
     end
     script = "mkdir -p /etc/salt/minion.d\n"
     script += "chown -R vagrant:staff /etc/salt/minion.d\n"

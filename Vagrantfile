@@ -80,6 +80,13 @@ QUAIL22_BOX = "generic/ubuntu2204"  # Ubuntu 22.04, actively maintained; publish
 # bridge to an existing External Virtual Switch instead (create it first in Hyper-V Manager
 # > Virtual Switch Manager) and let DHCP assign the guest's address.
 HYPERV_SWITCH = ENV['HYPERV_SWITCH'] || settings['hyperv_switch'] || "Default Switch"
+# salt22's masterless minion reads /srv/salt + /srv/pillar/django.sls from
+# the palmtree/django app repo -- see the sync provisioner in salt22's
+# block for why this can't rely on that repo's own git.latest state
+# anymore. Sibling checkout by default (this repo and django live next to
+# each other under PycharmProjects on vcole-admin's workstation);
+# overridable since that layout isn't guaranteed elsewhere.
+DJANGO_REPO_ROOT = ENV['DJANGO_REPO_ROOT'] || settings['django_repo_root'] || File.expand_path('../django', __dir__)
 puts "Your bevy name:#{BEVY} with host-only network #{NETWORK}.x.x"
 puts "This (the VM host) computer will be at #{NETWORK}.56.1" if ARGV[1] == "up"
 bevy_mac = (BEVY.to_i(36) % 0x1000000).to_s(16).rjust(6, '0')  # a MAC address based on hash of BEVY
@@ -308,12 +315,32 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
     script += "chown -R vagrant:staff /etc/salt/minion.d\n"
     script += "chmod -R 775 /etc/salt/minion.d\n"
     quail_config.vm.provision "shell", inline: script
-    # Refresh /srv/salt and /srv/pillar/django.sls (what the masterless minion
-    # actually reads) from the app repo's own checked-in copy at
-    # /opt/palmtree/srv, which the salt provisioner below updates via
-    # git.latest. Must run before the salt provisioner, and every time (not
-    # just on first boot) -- see the script for why.
-    quail_config.vm.provision "shell", path: "configure_machine/sync_app_salt_states.sh", run: "always"
+    # Refresh /srv/salt + /srv/pillar (what the masterless minion actually
+    # reads) directly from DJANGO_REPO_ROOT on the host. Used to go through
+    # configure_machine/sync_app_salt_states.sh, copying from
+    # /opt/palmtree/srv on the guest -- but that only ever gets created by
+    # the django app's own git.latest state, which is scoped to
+    # ndf.2tst.xyz only (see django/srv/salt/top.sls), so it never ran here
+    # and /srv/salt silently never got refreshed at all. Copying straight
+    # from the host sidesteps needing the app deployed here in the first
+    # place. Must run before the salt provisioner, and every time (not
+    # just on first boot).
+    if Dir.exist?(File.join(DJANGO_REPO_ROOT, 'srv', 'salt'))
+      quail_config.vm.provision "file", source: File.join(DJANGO_REPO_ROOT, 'srv', 'salt'),
+                                destination: "/tmp/django_srv_salt", run: "always"
+      quail_config.vm.provision "file", source: File.join(DJANGO_REPO_ROOT, 'srv', 'pillar', 'django.sls'),
+                                destination: "/tmp/django_pillar_django.sls", run: "always"
+      quail_config.vm.provision "file", source: File.join(DJANGO_REPO_ROOT, 'srv', 'pillar', 'top.sls'),
+                                destination: "/tmp/django_pillar_top.sls", run: "always"
+      quail_config.vm.provision "shell", run: "always", inline: <<-SHELL
+        set -e
+        sudo mkdir -p /srv/salt /srv/pillar
+        sudo cp -a /tmp/django_srv_salt/. /srv/salt/
+        sudo cp /tmp/django_pillar_django.sls /srv/pillar/django.sls
+        sudo cp /tmp/django_pillar_top.sls /srv/pillar/top.sls
+        rm -rf /tmp/django_srv_salt /tmp/django_pillar_django.sls /tmp/django_pillar_top.sls
+      SHELL
+    end
     if ENV.key?("VAGRANT_SALT")
       quail_config.vm.provision :salt do |salt|
        salt.verbose = false

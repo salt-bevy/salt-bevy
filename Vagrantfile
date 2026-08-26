@@ -467,6 +467,21 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
         master_config.vm.provision "file", source: File.join(SRV_ROOT, 'pillar'), destination: "/tmp/host_pillar", run: "always"
         master_config.vm.provision "shell", path: "configure_machine/copy_host_pillar_to_guest.sh", run: "always"
       end
+      # Install/refresh ddclient for HE dynamic DNS (configure_machine/install_ddclient.sh),
+      # publishing this VM's WireGuard-mesh address (eth0) to #{BEVY}_bevymaster.2tst.xyz
+      # (the record name includes the bevy name, unlike quail22/salt22's fixed hostnames).
+      # Key comes from configure_machine/ddns_secrets.sh, tracked in git (see the "Dynamic
+      # DNS setup" project memory for why that's an accepted risk here).
+      master_config.vm.provision "file", source: "configure_machine/install_ddclient.sh",
+                                destination: "/tmp/install_ddclient.sh", run: "always"
+      master_config.vm.provision "file", source: "configure_machine/ddns_secrets.sh",
+                                destination: "/tmp/ddns_secrets.sh", run: "always"
+      master_config.vm.provision "shell", run: "always", inline: <<-SHELL
+        set -e
+        . /tmp/ddns_secrets.sh
+        chmod +x /tmp/install_ddclient.sh
+        /tmp/install_ddclient.sh #{BEVY}_bevymaster.2tst.xyz "$ddns_key_bevymaster" eth0
+      SHELL
     else
       master_config.vm.network "private_network", ip: NETWORK + ".56.2"
       master_config.vm.network "public_network", bridge: interface_guesses, mac: "ae1100" + bevy_mac

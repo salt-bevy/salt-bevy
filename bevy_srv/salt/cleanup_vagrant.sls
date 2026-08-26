@@ -12,7 +12,9 @@ kill_default_route_{{ net.interface }}:
         - route delete 0.0.0.0 mask 0.0.0.0 {{ net.gateway }}
         - route add -p 0.0.0.0 mask 0.0.0.0 {{ net.gateway }} metric 9999  {# so that the other route is preferred #}
       {% else %}
-    - name: ip route del default via {{ net.gateway }}
+    - names:
+        - ip route del default via {{ net.gateway }}
+        - ip route add default via {{ net.gateway }} dev {{ net.interface }} metric 9999  {# so that the other route is preferred #}
       {% endif %}
     {% endif %}
   {% endfor %}

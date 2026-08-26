@@ -222,19 +222,17 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
     end
     # Install/refresh ddclient for HE dynamic DNS (configure_machine/install_ddclient.sh),
     # publishing this VM's WireGuard-mesh address (eth0) to quail22.2tst.xyz. The update key
-    # comes from /srv/pillar/ddns_secrets.sh, just copied above -- not tracked in git (see the
-    # "Dynamic DNS setup" project memory).
+    # comes from configure_machine/ddns_secrets.sh, tracked in git (see the "Dynamic DNS
+    # setup" project memory for why that's an accepted risk here).
     quail_config.vm.provision "file", source: "configure_machine/install_ddclient.sh",
                               destination: "/tmp/install_ddclient.sh", run: "always"
+    quail_config.vm.provision "file", source: "configure_machine/ddns_secrets.sh",
+                              destination: "/tmp/ddns_secrets.sh", run: "always"
     quail_config.vm.provision "shell", run: "always", inline: <<-SHELL
       set -e
-      if [ -f /srv/pillar/ddns_secrets.sh ]; then
-        . /srv/pillar/ddns_secrets.sh
-        chmod +x /tmp/install_ddclient.sh
-        /tmp/install_ddclient.sh quail22.2tst.xyz "$ddns_key_quail22" eth0
-      else
-        echo "WARNING: /srv/pillar/ddns_secrets.sh not found -- skipping ddclient setup." >&2
-      fi
+      . /tmp/ddns_secrets.sh
+      chmod +x /tmp/install_ddclient.sh
+      /tmp/install_ddclient.sh quail22.2tst.xyz "$ddns_key_quail22" eth0
     SHELL
   end
 
@@ -291,20 +289,18 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
     end
     # Install/refresh ddclient for HE dynamic DNS (configure_machine/install_ddclient.sh),
     # publishing this VM's WireGuard-mesh address (eth0) to salt22.2tst.xyz. The update key
-    # comes from /srv/pillar/ddns_secrets.sh, just copied above -- not tracked in git (see the
-    # "Dynamic DNS setup" project memory). Independent of the masterless Salt minion below --
-    # runs whether or not VAGRANT_SALT is set.
+    # comes from configure_machine/ddns_secrets.sh, tracked in git (see the "Dynamic DNS
+    # setup" project memory for why that's an accepted risk here). Independent of the
+    # masterless Salt minion below -- runs whether or not VAGRANT_SALT is set.
     quail_config.vm.provision "file", source: "configure_machine/install_ddclient.sh",
                               destination: "/tmp/install_ddclient.sh", run: "always"
+    quail_config.vm.provision "file", source: "configure_machine/ddns_secrets.sh",
+                              destination: "/tmp/ddns_secrets.sh", run: "always"
     quail_config.vm.provision "shell", run: "always", inline: <<-SHELL
       set -e
-      if [ -f /srv/pillar/ddns_secrets.sh ]; then
-        . /srv/pillar/ddns_secrets.sh
-        chmod +x /tmp/install_ddclient.sh
-        /tmp/install_ddclient.sh salt22.2tst.xyz "$ddns_key_salt22" eth0
-      else
-        echo "WARNING: /srv/pillar/ddns_secrets.sh not found -- skipping ddclient setup." >&2
-      fi
+      . /tmp/ddns_secrets.sh
+      chmod +x /tmp/install_ddclient.sh
+      /tmp/install_ddclient.sh salt22.2tst.xyz "$ddns_key_salt22" eth0
     SHELL
     script = "mkdir -p /etc/salt/minion.d\n"
     script += "chown -R vagrant:staff /etc/salt/minion.d\n"

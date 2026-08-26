@@ -60,7 +60,11 @@ else  # the bevy settings file was not found. We must supply simple default sett
 end
 if File.exist?(MY_SETTINGS_FILE_NAME)
   my_settings = YAML.load_file(MY_SETTINGS_FILE_NAME)  # get your local settings
-  settings.merge!(my_settings)  # local settings override the bevy settings.
+  # YAML.load_file returns nil for a file with only comments/no data (e.g. a
+  # bootstrap_bevy_member_here.py run that never got any actual settings
+  # written in) -- merge! would raise "no implicit conversion of nil into
+  # Hash" in that case, so only merge when there's really a Hash to merge.
+  settings.merge!(my_settings) if my_settings.is_a?(Hash)  # local settings override the bevy settings.
 else
   puts "  NOTICE: Unable to read local settings file #{MY_SETTINGS_FILE_NAME}."
 end

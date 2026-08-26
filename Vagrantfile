@@ -71,9 +71,6 @@ NETWORK = "#{settings['vagrant_prefix']}"
 # ^ ^ each VM below will have a NAT network in NETWORK.17.x/27 or NETWORK.18.x/27
 #
 # . v . v . Hyper-V settings . v . v .
-# "gigix74/ubuntu2404" was tried here for a Hyper-V-capable Ubuntu 24.04 box, but its published
-# hyperv artifact fails its own checksum on Vagrant Cloud (confirmed by hand, not just transient
-# corruption) so it was dropped. quail22 uses QUAIL22_BOX instead, which verifies correctly.
 QUAIL22_BOX = "generic/ubuntu2204"  # Ubuntu 22.04, actively maintained; publishes virtualbox, vmware, hyperv, libvirt & qemu providers
 # Hyper-V cannot create switches from Vagrant and ignores static private_network IPs, so we
 # bridge to an existing External Virtual Switch instead (create it first in Hyper-V Manager
@@ -422,9 +419,11 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
 # This is the Vagrant version of a Bevy Salt-master.
 # You cannot run it if you are using an external bevymaster.
   config.vm.define "bevymaster", autostart: false do |master_config|
-    master_config.vm.box = DEFAULT_BOX
+    # DEFAULT_BOX ("gusztavvargadr/ubuntu-server") has no Hyper-V provider
+    # (see quail1's comment above) -- fall back to QUAIL22_BOX, which does,
+    # when Hyper-V is what's actually going to be used.
+    master_config.vm.box = (ACTIVE_PROVIDER == "hyperv") ? QUAIL22_BOX : DEFAULT_BOX
     master_config.vm.hostname = "bevymaster"
-    master_config.vm.network "private_network", ip: NETWORK + ".56.2"
     if vagrant_command == "up" and vagrant_object == "bevymaster"
       if settings['master_vagrant_ip'] != NETWORK + ".56.2"
         # prevent running a Vagrant bevy master if another is in use.
@@ -432,8 +431,30 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
       end
       puts "Starting #{vagrant_object} at #{NETWORK}.56.2..."
     end
-    master_config.vm.network "public_network", bridge: interface_guesses, mac: "ae110000" + bevy_mac
-    master_config.vm.synced_folder ".", "/vagrant", :owner => "vagrant", :group => "staff", :mount_options => ["umask=0002"]
+    if ACTIVE_PROVIDER == "hyperv"
+      # Same reasoning as quail22/salt22: Hyper-V cannot create switches from
+      # Vagrant and ignores static private_network IPs, so bridge to an
+      # existing External Virtual Switch instead of the private_network call
+      # below.
+      master_config.vm.network "public_network", bridge: HYPERV_SWITCH
+      if vagrant_command == "up" and vagrant_object == "bevymaster"
+        puts "Starting 'bevymaster' under Hyper-V, bridged to switch '#{HYPERV_SWITCH}'..."
+      end
+      # Also as with quail22/salt22: under Hyper-V, Vagrant falls back to an
+      # SMB-backed synced folder, which requires interactively creating a
+      # host SMB share and entering credentials -- skip that, but this VM's
+      # own salt provisioner (bevy_root pillar below) actually needs the
+      # repo at /vagrant, unlike quail22/salt22 -- so copy it in as a
+      # one-time upload instead of a live mount.
+      master_config.vm.synced_folder ".", "/vagrant", disabled: true
+      master_config.vm.provision "file", source: ".", destination: "/tmp/salt_bevy_repo", run: "always"
+      master_config.vm.provision "shell", run: "always", inline:
+        "sudo mkdir -p /vagrant && sudo cp -a /tmp/salt_bevy_repo/. /vagrant/ && rm -rf /tmp/salt_bevy_repo"
+    else
+      master_config.vm.network "private_network", ip: NETWORK + ".56.2"
+      master_config.vm.network "public_network", bridge: interface_guesses, mac: "ae110000" + bevy_mac
+      master_config.vm.synced_folder ".", "/vagrant", :owner => "vagrant", :group => "staff", :mount_options => ["umask=0002"]
+    end
     #if vagrant_command == "ssh"
     #  master_config.ssh.username = my_linux_user  # if you type "vagrant ssh", use this username
     #  master_config.ssh.private_key_path = Dir.home() + "/.ssh/id_rsa"
@@ -450,6 +471,15 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
         v.vmx["memsize"] = "1024"
         v.vmx["numvcpus"] = "1"
 	  end
+    master_config.vm.provider "hyperv" do |v|  # only for Hyper-V boxes
+        v.vmname = BEVY + '_bevymaster'  # ! N.O.T.E.: name must be unique
+        v.memory = 1024       # limit memory for the VM
+        v.maxmemory = 1024    # see quail22's maxmemory comment: avoids a
+                               # Vagrant 2.4.9 hyperv provider scoping bug
+        v.cpus = 1
+        v.mac = "ae110000" + bevy_mac
+        v.linked_clone = true # use a differencing disk instead of a full copy
+    end
     script = "mkdir -p /etc/salt/minion.d\n"
     script += "chown -R vagrant:staff /etc/salt/minion.d\n"
     script += "chmod -R 775 /etc/salt/minion.d\n"

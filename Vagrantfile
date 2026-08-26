@@ -445,14 +445,25 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
       end
       # Also as with quail22/salt22: under Hyper-V, Vagrant falls back to an
       # SMB-backed synced folder, which requires interactively creating a
-      # host SMB share and entering credentials -- skip that, but this VM's
-      # own salt provisioner (bevy_root pillar below) actually needs the
-      # repo at /vagrant, unlike quail22/salt22 -- so copy it in as a
-      # one-time upload instead of a live mount.
+      # host SMB share and entering credentials -- skip that for ALL FOUR
+      # top-level synced folders defined above (/vagrant, /salt_bevy,
+      # /projects, /srv/pillar), not just /vagrant. /salt_bevy and
+      # /projects are pure developer-convenience mounts nothing here reads,
+      # safe to just drop. /vagrant and /srv/pillar are actually needed
+      # (this VM's own salt provisioner reads bevy_root from /vagrant/
+      # bevy_srv; other pillar files may be read from /srv/pillar), so
+      # copy those in as one-time uploads instead of live mounts.
       master_config.vm.synced_folder ".", "/vagrant", disabled: true
+      master_config.vm.synced_folder ".", "/salt_bevy", disabled: true
+      master_config.vm.synced_folder ".", "/projects", disabled: true
+      master_config.vm.synced_folder ".", "/srv/pillar", disabled: true
       master_config.vm.provision "file", source: ".", destination: "/tmp/salt_bevy_repo", run: "always"
       master_config.vm.provision "shell", run: "always", inline:
         "sudo mkdir -p /vagrant && sudo cp -a /tmp/salt_bevy_repo/. /vagrant/ && rm -rf /tmp/salt_bevy_repo"
+      if Dir.exist?(File.join(SRV_ROOT, 'pillar'))
+        master_config.vm.provision "file", source: File.join(SRV_ROOT, 'pillar'), destination: "/tmp/host_pillar", run: "always"
+        master_config.vm.provision "shell", path: "configure_machine/copy_host_pillar_to_guest.sh", run: "always"
+      end
     else
       master_config.vm.network "private_network", ip: NETWORK + ".56.2"
       master_config.vm.network "public_network", bridge: interface_guesses, mac: "ae1100" + bevy_mac

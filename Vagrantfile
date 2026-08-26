@@ -449,17 +449,20 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
       # top-level synced folders defined above (/vagrant, /salt_bevy,
       # /projects, /srv/pillar), not just /vagrant. /salt_bevy and
       # /projects are pure developer-convenience mounts nothing here reads,
-      # safe to just drop. /vagrant and /srv/pillar are actually needed
-      # (this VM's own salt provisioner reads bevy_root from /vagrant/
-      # bevy_srv; other pillar files may be read from /srv/pillar), so
-      # copy those in as one-time uploads instead of live mounts.
+      # safe to just drop. /srv/pillar gets the same one-time host-pillar
+      # copy quail22/salt22 already use. /vagrant itself is NOT needed
+      # wholesale -- only bevy_root (/vagrant/bevy_srv, see the pillar
+      # below) is ever actually read -- so copy just that subdirectory
+      # rather than the whole repo (SCPing the full checkout, including
+      # .git/.vagrant/.idea, was too much for a single "file" provisioner
+      # upload and failed outright).
       master_config.vm.synced_folder ".", "/vagrant", disabled: true
       master_config.vm.synced_folder ".", "/salt_bevy", disabled: true
       master_config.vm.synced_folder ".", "/projects", disabled: true
       master_config.vm.synced_folder ".", "/srv/pillar", disabled: true
-      master_config.vm.provision "file", source: ".", destination: "/tmp/salt_bevy_repo", run: "always"
+      master_config.vm.provision "file", source: "./bevy_srv", destination: "/tmp/bevy_srv_copy", run: "always"
       master_config.vm.provision "shell", run: "always", inline:
-        "sudo mkdir -p /vagrant && sudo cp -a /tmp/salt_bevy_repo/. /vagrant/ && rm -rf /tmp/salt_bevy_repo"
+        "sudo mkdir -p /vagrant/bevy_srv && sudo cp -a /tmp/bevy_srv_copy/. /vagrant/bevy_srv/ && rm -rf /tmp/bevy_srv_copy"
       if Dir.exist?(File.join(SRV_ROOT, 'pillar'))
         master_config.vm.provision "file", source: File.join(SRV_ROOT, 'pillar'), destination: "/tmp/host_pillar", run: "always"
         master_config.vm.provision "shell", path: "configure_machine/copy_host_pillar_to_guest.sh", run: "always"

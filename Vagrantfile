@@ -510,7 +510,18 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
        salt.verbose = true
        salt.log_level = "info"
        salt.colorize = true
-       salt.bootstrap_options = "-P -M -L #{SALT_BOOTSTRAP_ARGUMENTS}"  # install salt-cloud and salt-master
+       # -i bevymaster: every other :salt provisioner block in this file pins
+       # its minion id explicitly -- this one didn't, and Salt caches
+       # whatever id it derives (from the hostname at first bootstrap) into
+       # /etc/salt/minion_id permanently, never re-deriving it later even if
+       # the hostname is fixed afterward. Confirmed on a live box: the OS
+       # hostname was correctly "bevymaster" (config.vm.hostname took
+       # effect), but salt-call still reported id "ubuntu2204.localdomain"
+       # (QUAIL22_BOX's default) because bootstrap had already run and
+       # cached it before hostname-setting ever got there -- so top.sls's
+       # 'bevymaster'/'local' entries never matched, and the actual
+       # salt-master/cloud-controller setup never ran.
+       salt.bootstrap_options = "-i bevymaster -P -M -L #{SALT_BOOTSTRAP_ARGUMENTS}"  # install salt-cloud and salt-master
        salt.masterless = true  # the provisioning script for the master is masterless
        salt.run_highstate = true
        password_hash = settings['linux_password_hash']

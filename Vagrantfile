@@ -211,6 +211,18 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
     quail_config.vm.provider "hyperv" do |v|  # only for Hyper-V boxes
         v.vmname = BEVY + '_quail22'  # ! N.O.T.E.: name must be unique
         v.memory = 10240      # limit memory for the VM
+        # Also set explicitly (equal to v.memory, so effectively static) --
+        # Vagrant 2.4.9's hyperv provider (VagrantVM.psm1's
+        # Set-VagrantVMMemory) only ever assigns $DynamicMemory inside its
+        # "if($MaxMemory)" branch; leaving maxmemory unset meant that
+        # variable was undefined in this function's scope and PowerShell
+        # fell back to reading a truthy leftover from an outer scope
+        # (likely from QUAIL22_BOX's own exported Dynamic Memory config),
+        # taking the dynamic-memory branch with inconsistent bounds and
+        # throwing "Maximum memory value is less than required minimum
+        # memory value." Setting maxmemory explicitly forces consistent,
+        # self-defined Minimum/Maximum/Startup bounds instead.
+        v.maxmemory = 10240
         v.cpus = 6
         v.linked_clone = true # use a differencing disk instead of a full copy
     end

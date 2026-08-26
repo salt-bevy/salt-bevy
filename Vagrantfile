@@ -82,7 +82,7 @@ QUAIL22_BOX = "generic/ubuntu2204"  # Ubuntu 22.04, actively maintained; publish
 HYPERV_SWITCH = ENV['HYPERV_SWITCH'] || settings['hyperv_switch'] || "Default Switch"
 puts "Your bevy name:#{BEVY} with host-only network #{NETWORK}.x.x"
 puts "This (the VM host) computer will be at #{NETWORK}.56.1" if ARGV[1] == "up"
-bevy_mac = (BEVY.to_i(36) % 0x1000000).to_s(16)  # a MAC address based on hash of BEVY
+bevy_mac = (BEVY.to_i(36) % 0x1000000).to_s(16).rjust(6, '0')  # a MAC address based on hash of BEVY
 # in Python that would be: bevy_mac = format(int(BEVY, base=36) % 0x1000000, 'x')
 #
 VAGRANT_HOST_NAME = Socket.gethostname
@@ -428,12 +428,11 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
     # when Hyper-V is what's actually going to be used.
     master_config.vm.box = (ACTIVE_PROVIDER == "hyperv") ? QUAIL22_BOX : DEFAULT_BOX
     master_config.vm.hostname = "bevymaster"
-    if vagrant_command == "up" and vagrant_object == "bevymaster"
+    if vagrant_command == "up" and vagrant_object == "bevymaster" and ACTIVE_PROVIDER != 'hyperv'
       if settings['master_vagrant_ip'] != NETWORK + ".56.2"
         # prevent running a Vagrant bevy master if another is in use.
         abort "Sorry. Your master_vagrant_ip setting of '#{settings['master_vagrant_ip']}' suggests that your Bevy Master is not expected to be Virtual here."
       end
-      puts "Starting #{vagrant_object} at #{NETWORK}.56.2..."
     end
     if ACTIVE_PROVIDER == "hyperv"
       # Same reasoning as quail22/salt22: Hyper-V cannot create switches from
@@ -456,7 +455,7 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
         "sudo mkdir -p /vagrant && sudo cp -a /tmp/salt_bevy_repo/. /vagrant/ && rm -rf /tmp/salt_bevy_repo"
     else
       master_config.vm.network "private_network", ip: NETWORK + ".56.2"
-      master_config.vm.network "public_network", bridge: interface_guesses, mac: "ae110000" + bevy_mac
+      master_config.vm.network "public_network", bridge: interface_guesses, mac: "ae1100" + bevy_mac
       master_config.vm.synced_folder ".", "/vagrant", :owner => "vagrant", :group => "staff", :mount_options => ["umask=0002"]
     end
     #if vagrant_command == "ssh"
@@ -481,7 +480,7 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
         v.maxmemory = 1024    # see quail22's maxmemory comment: avoids a
                                # Vagrant 2.4.9 hyperv provider scoping bug
         v.cpus = 1
-        v.mac = "ae110000" + bevy_mac
+        v.mac = "ae1100" + bevy_mac
         v.linked_clone = true # use a differencing disk instead of a full copy
     end
     script = "mkdir -p /etc/salt/minion.d\n"

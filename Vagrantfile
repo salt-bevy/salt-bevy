@@ -198,20 +198,20 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
     end
     quail_config.vm.provider "virtualbox" do |v|  # only for VirtualBox boxes
         v.name = BEVY + '_quail22'  # ! N.O.T.E.: name must be unique
-        v.memory = 1024       # limit memory for the virtual box
-        v.cpus = 1
+        v.memory = 10240      # limit memory for the virtual box
+        v.cpus = 6
         v.linked_clone = true # make a soft copy of the base Vagrant box
         v.customize ["modifyvm", :id, "--natnet1", NETWORK + ".63.0/27"]  # do not use 10.0 network for NAT
         v.customize ["modifyvm", :id, "--natdnshostresolver1", "on"]  # use host's DNS resolver
     end
     quail_config.vm.provider vmware do |v|  # only for VMware boxes
-        v.vmx["memsize"] = "1024"
-        v.vmx["numvcpus"] = "1"
+        v.vmx["memsize"] = "10240"
+        v.vmx["numvcpus"] = "6"
 	  end
     quail_config.vm.provider "hyperv" do |v|  # only for Hyper-V boxes
         v.vmname = BEVY + '_quail22'  # ! N.O.T.E.: name must be unique
-        v.memory = 1024       # limit memory for the VM
-        v.cpus = 1
+        v.memory = 10240      # limit memory for the VM
+        v.cpus = 6
         v.linked_clone = true # use a differencing disk instead of a full copy
     end
     # /srv/pillar isn't synced-folder-mounted here (see the disabled synced folders above), so

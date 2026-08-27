@@ -240,7 +240,13 @@ def read_bevy_settings_files(context=None, try_temp=False) -> (str, bool):  # (n
                 print("Your settings have changed.")
                 ok_update = affirmative(input('Save updated settings for "{}"? [Y/n]:'.format(present_bevy)), True)
         if ok_update:
-            write_bevy_settings_files(bevy_extension=present_bevy)
+            try:
+                write_bevy_settings_files(bevy_extension=present_bevy)
+            except FileNotFoundError:
+                print("** NOTICE:")
+                print(f'** Could not write to "{BEVY_SETTINGS_FILE_NAME}".')
+                print('** Please create a directory which you can write into, and rerun this script.')
+                exit(2)
         print('Now switching to bevy "{}"'.format(new_bevy))
         settings = new_settings.copy()
         my_settings = my_new_settings.copy()
@@ -384,7 +390,7 @@ def write_config_file(config_file_path, is_master: bool, virtual=True, platform=
     '''
     path_maker = PureWindowsPath if platform=='Windows' else PurePosixPath
     config_file_name = str(config_file_path)
-    template = """
+    template = r"""
 # initial configuration file for a bevy member.
 # from file: {name}
 # written by: {this}

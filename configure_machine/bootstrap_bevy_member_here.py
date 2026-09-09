@@ -18,24 +18,25 @@ from urllib.request import urlopen
 try:
     import yaml  # actually imports the PyYAML module
     import ifaddr
+    from windows_sudo import sudo
     if platform.system() != 'Linux':
         import passlib
 except ImportError:
     print('\nERROR: Python3 setup incomplete. You are missing required prerequisite modules.')
     if platform.system() == 'Windows':
-        print('Try something like: "py -3 -m pip install pyyaml ifaddr passlib"')
+        print('Try something like: "py -3 -m pip install pyyaml ifaddr passlib windows-sudo"')
         print('If "pip" is not found, you may need to exit and re-open your console window.')
     elif platform.system() == 'Darwin':  # MacOS
-        print('Try something like: "sudo -H pip3 install pyyaml ifaddr passlib"')
+        print('Try something like: "sudo -H pip3 install pyyaml ifaddr passlib windows-sudo"')
     else:  # Linux
-        print('Try something like: "sudo -H pip3 install pyyaml ifaddr"')
+        print('Try something like: "sudo -H pip3 install pyyaml ifaddr windows-sudo"')
         print('If you are using Ubuntu (Debian, etc), you may need to "sudo apt install python3-pip" first.')
     print('Then re-run your command.')
     sys.exit(10)  # Windows ERROR_BAD_ENVIRONMENT
 
 # import my helper modules
 #noinspection PyUnresolvedReferences
-from helpers import pwd_hash, sudo, salt_call_local, provisioner
+from helpers import pwd_hash, salt_call_local, provisioner
 
 # # # # #
 # This program attempts to establish a DRY single source of truth in the following files . . .

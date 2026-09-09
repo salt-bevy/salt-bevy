@@ -3,7 +3,7 @@ name = 'salt_bevy'
 version = '1.0.0'
 description = 'A self-installing Salt system to manage a complete Salt master-minion environment.'
 authors = [{name = 'Vernon Cole'},{email = "vernondcole@gmail.com"}]
-dependencies = ['pyyaml', 'ifaddr', 'passlib']
+dependencies = ['pyyaml', 'ifaddr', 'passlib', 'windows-sudo']
 keywords = ["Salt", "saltproject", "provision", "manage", "remote"]
 classifiers = [
             'Development Status :: 4 - Beta',

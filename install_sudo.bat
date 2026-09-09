@@ -1,1 +1,2 @@
-py -3 configure_machine\helpers\sudo.py --install-sudo-command
+py -3 -m pip install windows-sudo
+windows-sudo-install

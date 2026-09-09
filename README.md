@@ -262,11 +262,12 @@ The Vagrantfile defines:
 | Name                     | ip       | minion? | OS version                                           |
 |--------------------------|----------|---------|-------------------------------------------------------|
 | bevymaster               | 56.2     | master  | Ubuntu Server, latest LTS ‡                            |
-| quail1                   | 56.201   | no      | Ubuntu Server, latest LTS ‡ (no Hyper-V provider — use quail22) |
-| quail2                   | 56.202   | yes     | Ubuntu Server, latest LTS ‡                            |
-| quail22 ‖                | 56.222 † | no      | Ubuntu 22.04 (`generic/ubuntu2204`, has a real Hyper-V provider) |
-| salt22 ‖                 | 56.223 † | yes     | Ubuntu 22.04, masterless minion (copy of quail22)      |
+| quail1 †                 | 56.201   | no      | Ubuntu Server, latest LTS ‡                            |
+| quail2 †                 | 56.202   | yes     | Ubuntu Server, latest LTS ‡                            |
+| quail22 ‖ †              | 56.222   | no      | Ubuntu 22.04 (`generic/ubuntu2204`, has a real Hyper-V provider) |
+| salt22 ‖ †               | 56.223   | yes     | Ubuntu 22.04, masterless minion (copy of quail22)      |
 | quail20                  | 56.220   | no      | Ubuntu 20.04                                           |
+| quail24 †                | 56.224   | no      | Ubuntu 24.04, self-built ‡                             |
 | win7                     | —        | yes     | Windows 7 (32-bit)                                     |
 | win10                    | 56.10    | yes     | Windows 10                                             |
 | win12                    | 56.12    | yes     | Windows Server 2012                                    |
@@ -278,12 +279,17 @@ The Vagrantfile defines:
 
  \* The "generic" machine(s) can be re-configured using environment variables. See below.
 
- † Under the Hyper-V provider, `quail22`/`salt22` have no host-only `private_network` entry at all —
- they get a DHCP-assigned address from the bridged switch (`HYPERV_SWITCH`, default `"Default Switch"`)
- instead of this fixed IP.
+ † Under the Hyper-V provider, this machine has no host-only `private_network` entry at all — it
+ gets a DHCP-assigned address from the bridged switch (`HYPERV_SWITCH`, default `"Default Switch"`)
+ instead of the fixed IP shown here.
 
- ‡ Uses `DEFAULT_BOX` (currently `gusztavvargadr/ubuntu-server`), a rolling "latest Ubuntu Server"
- box rather than one pinned to a specific release.
+ ‡ Uses `DEFAULT_BOX` (currently `salt-bevy/ubuntu-26.04`), built locally via
+ `packer/build_boxes.py` rather than pulled from Vagrant Cloud (which is being retired -- see
+ [`packer/README.md`](packer/README.md)) for whichever of Hyper-V/VirtualBox/VMware you actually
+ have installed. `quail24` is the same idea, pinned to Ubuntu 24.04 instead of the rolling default.
+ You don't need to pre-build these yourself: `vgr`/`vgr.bat` builds a missing box the first time
+ you actually use a machine that needs it (expect the first `vgr up quail24`, for example, to take
+ 20-40 minutes while its box is built).
 
  § On non-macOS hosts this box is unavailable; `mac13` falls back to `mcandre/palindrome-buildbot-macos`.
 

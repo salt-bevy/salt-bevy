@@ -114,8 +114,7 @@ or even [Notepad++](https://notepad-plus-plus.org/).
 But do yourself a favor and select an environment from early, rather than late, in the list.
 - Workstation Operating System. Why would anyone want to use Windows for a programmer's workstation?
 But we test with (as of this writing): Ubuntu Server (latest LTS), and MacOS Mojave, and Windows 10.
-- Your Bevy_Master machine. As of this writing, we test with Ubuntu Server (latest LTS) on a Vagrant VM,
-and Raspbian Stretch on a Raspberry Pi 3.
+- Your Bevy_Master machine. As of this writing, we test with Ubuntu Server (latest LTS) on a Vagrant VM.
 - Your Internet Router.
 Most lessons will be runnable from a large corporate router or an inexpensive home router.
 For some lessons, you will need control over who runs your PXE, DHCP and/or DNS servers.
@@ -176,7 +175,7 @@ You should always be able to read the lessons directly from the links on GitHub 
 but will probably have a better experience if you install software on your own
 workstation to display the documents locally. Lessons are provided for installing
 appropriate programs on Windows and MacOS as well as Linux.  The Linux examples
-will assume Ubuntu (or another Debain-based distro such as Raspbian.) If you use a
+will assume Ubuntu (or another Debian-based distro.) If you use a
 different POSIX system, we hope that you are fimiliar with the translation from
 Debian commands (apt) to your preferred OS's way of saying the same thing (yum, zypper,
 emerge). *NIX and *BSD users are also invited to read the Linux pages and translate.
@@ -429,7 +428,7 @@ Consider ordering a special router soon. I use a RouterBoard / Mikrotik
 Their RouterOS operating system has professional features lacking in most popular home routers.
 I found mine on Amazon for less than $30 USD. Buy some CAT-5 cables, too.
 
-For test computers on my private network, I use an old HP laptop that once ran Windows Vista, and a Raspberry Pi 3.
+For test computers on my private network, I use an old HP laptop that once ran Windows Vista.
 Also running on my test net, I have two development Ubuntu laptops, a Windows 10 laptop,
 an old MacBook, and my Android phone.
 

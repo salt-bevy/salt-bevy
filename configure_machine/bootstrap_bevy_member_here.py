@@ -60,7 +60,7 @@ VAGRANT_PROJECTS_ROOT = '/projects'
 # # # # #
 MY_SETTINGS_FILE_NAME = '/etc/salt-bevy/my_settings.conf'  # settings specific to the currant machine
 MINIMUM_SALT_VERSION = "2018.3.0"  # ... as a string... the month will be converted to an integer below
-SALT_BOOTSTRAP_URL = "http://bootstrap.saltstack.com/stable/bootstrap-salt.sh"
+SALT_BOOTSTRAP_URL = "https://github.com/saltstack/salt-bootstrap/releases/latest/download/bootstrap-salt.sh"
 SALT_DOWNLOAD_SOURCE = "stable"
 
 SALT_SRV_ROOT = SRV_ROOT + '/salt'
@@ -104,9 +104,19 @@ def minion_tag():
     return amt
 
 
+def windows_salt_root_dir(tag=''):
+    '''
+    The root_dir the modern Salt Windows installer uses by default (recorded in the
+    registry at HKLM:\\SOFTWARE\\Salt Project\\Salt as "root_dir"). Replaces the old
+    "C:\\salt" convention from the retired NSIS installer (pre-3004).
+    :return: Path
+    '''
+    return Path(os.environ.get('ProgramData', r'C:\ProgramData')) / 'Salt Project' / ('Salt' + tag)
+
+
 def my_salt_config_file_path():
     if platform.system() == 'Windows':  # TODO: minion_tag not yet actually supported
-        return Path('c:\\salt\\conf{}\\minion.d\\00_bevy_boot.conf'.format(minion_tag()))
+        return windows_salt_root_dir(minion_tag()) / 'conf' / 'minion.d' / '00_bevy_boot.conf'
     # else:
     return Path('/etc/salt{}/minion.d/00_bevy_boot.conf'.format(minion_tag()))
 
@@ -836,7 +846,7 @@ def get_projects_directory():
 
 def clear_master_pub_key(force=False):
     if platform.system() == 'Windows':
-        master_pub = Path(r'C:\salt{}\conf\pki\minion\minion_master.pub'.format(minion_tag()))
+        master_pub = windows_salt_root_dir(minion_tag()) / 'conf' / 'pki' / 'minion' / 'minion_master.pub'
     else:
         master_pub = Path('/etc/salt{}/pki/minion/minion_master.pub'.format(minion_tag()))
 

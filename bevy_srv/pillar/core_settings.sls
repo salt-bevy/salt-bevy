@@ -7,7 +7,7 @@ salt_managed_message: "## This file managed by SaltStack. Any changes may be ove
 salt_managed_directory: "## Some contents of this directory are managed by SaltStack. Changes to supplied files may be overwritten."
 
 {% if grains['os_family'] == "Windows" %}
-salt_config_directory: "C:/salt/conf"
+salt_config_directory: "C:/ProgramData/Salt Project/Salt/conf"
 {% else %}
 salt_config_directory: "/etc/salt"
 {% endif %}

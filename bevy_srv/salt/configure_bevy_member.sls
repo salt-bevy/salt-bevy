@@ -68,7 +68,7 @@ pyvmomi_module:
 {% endif %} {# vbox_api_install #}
 
 {% if salt['grains.get']('os_family') == 'Windows' %}
-  {% set my_salt_config = 'C:/salt/conf/minion.d/' %}
+  {% set my_salt_config = 'C:/ProgramData/Salt Project/Salt/conf/minion.d/' %}
 {% else %}
   {% set my_salt_config = '/etc/salt' ~ other_minion ~ '/minion.d/' %}
 {% endif %}

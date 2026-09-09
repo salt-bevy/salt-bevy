@@ -20,7 +20,7 @@ requires-dist = 'salt'
 
 [project.urls]
 repository = "https://github.com/salt-bevy/salt-bevy"
-documentation = "https://github.com/selt-bevy/treining"
+documentation = "https://github.com/salt-bevy/training"
 
 [project.readme]
 content-type = "text/x-rst"

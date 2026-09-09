@@ -1,0 +1,1 @@
+py -3 configure_machine\helpers\install_vgr.py

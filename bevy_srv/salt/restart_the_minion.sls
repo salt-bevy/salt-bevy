@@ -8,7 +8,7 @@ restart-the-minion:
     - bg: true  # do not wait for completion of this command
     - order: last
     {% if  grains['os_family'] == 'Windows' %}
-    - name: 'C:\salt\salt-call.bat service.restart salt-minion'
+    - name: '"C:\Program Files\Salt Project\Salt\salt-call.bat" service.restart salt-minion'
     {% elif grains['os_family'] == 'MacOS' %}
     - name: "salt-call service.restart com.saltstack.salt.minion"
     {% else %}

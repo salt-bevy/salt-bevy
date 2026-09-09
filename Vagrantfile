@@ -11,6 +11,11 @@ require "ipaddr"
 
 SALT_BOOTSTRAP_ARGUMENTS = "" # for example "git v2019.2.0rc1"  # (usually leave blank for latest production Salt version)
 DEFAULT_BOX = "gusztavvargadr/ubuntu-server" # "ubuntu/jammy64"  # the vagrantbox to use for most VMs below
+# a local, BOM-free copy of salt-bootstrap's windows script -- Vagrant 2.4.9's built-in
+# downloader has a UTF-8 BOM baked into its WINDOWS_URL constant, which makes Ruby's
+# URI parser choke with "URI must be ascii only"; pointing bootstrap_script at this file
+# skips that downloader entirely.
+WINDOWS_SALT_BOOTSTRAP_SCRIPT = File.expand_path('windows_bootstrap_salt.ps1', __dir__)
 
 vagrant_command = ARGV[0]
 vagrant_object = ARGV.length > 1 ? ARGV[1] : ""  # the name (if any) of the vagrant VM for this command
@@ -87,6 +92,10 @@ HYPERV_SWITCH = ENV['HYPERV_SWITCH'] || settings['hyperv_switch'] || "Default Sw
 # each other under PycharmProjects on vcole-admin's workstation);
 # overridable since that layout isn't guaranteed elsewhere.
 DJANGO_REPO_ROOT = ENV['DJANGO_REPO_ROOT'] || settings['django_repo_root'] || File.expand_path('../django', __dir__)
+# Same idea as DJANGO_REPO_ROOT, for win11's masterless minion -- see win11's
+# block for why it copies this repo's srv/salt + srv/pillar in directly
+# rather than relying on the shared bevy_srv tree.
+WINDOWS_SUDO_REPO_ROOT = ENV['WINDOWS_SUDO_REPO_ROOT'] || settings['windows_sudo_repo_root'] || File.expand_path('../windows-sudo', __dir__)
 puts "Your bevy name:#{BEVY} with host-only network #{NETWORK}.x.x"
 puts "This (the VM host) computer will be at #{NETWORK}.56.1" if ARGV[1] == "up"
 bevy_mac = (BEVY.to_i(36) % 0x1000000).to_s(16).rjust(6, '0')  # a MAC address based on hash of BEVY
@@ -700,10 +709,37 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
     #quail_config.winrm.username = "IEUser"
     script = "new-item C:\\salt\\conf\\minion.d -itemtype directory -ErrorAction silentlycontinue\r\n"
     quail_config.vm.provision "shell", inline: script
+    # masterless_minion.conf (uploaded below as the main minion config) points
+    # file_roots/pillar_roots at POSIX paths (/srv/salt, /vagrant/bevy_srv/salt)
+    # that don't exist on a Windows guest, which is why highstate reports "No
+    # Top file... found" -- copy this repo's own bevy_srv/salt + bevy_srv/pillar
+    # in directly and override file_roots/pillar_roots via a minion.d drop-in,
+    # the same pattern win11 uses for its own state tree (see win11's comments).
+    if Dir.exist?(File.join(__dir__, 'bevy_srv', 'salt'))
+      quail_config.vm.provision "file", source: File.join(__dir__, 'bevy_srv', 'salt'),
+                                destination: "C:\\tmp\\bevy_srv_salt", run: "always"
+      quail_config.vm.provision "file", source: File.join(__dir__, 'bevy_srv', 'pillar'),
+                                destination: "C:\\tmp\\bevy_srv_pillar", run: "always"
+      quail_config.vm.provision "shell", run: "always", inline: <<-SHELL
+        New-Item -ItemType Directory -Force -Path C:\\srv\\salt, C:\\srv\\pillar | Out-Null
+        Copy-Item -Path C:\\tmp\\bevy_srv_salt\\* -Destination C:\\srv\\salt -Recurse -Force
+        Copy-Item -Path C:\\tmp\\bevy_srv_pillar\\* -Destination C:\\srv\\pillar -Recurse -Force
+        Remove-Item -Recurse -Force C:\\tmp\\bevy_srv_salt, C:\\tmp\\bevy_srv_pillar
+        @"
+file_roots:
+  base:
+    - C:\\srv\\salt
+pillar_roots:
+  base:
+    - C:\\srv\\pillar
+"@ | Set-Content -Path C:\\salt\\conf\\minion.d\\01_bevy_srv.conf
+      SHELL
+    end
     if ENV.key?("VAGRANT_SALT")
       quail_config.vm.provision :salt do |salt|  # salt_cloud cannot push Windows salt
         salt.minion_id = "win10"
         salt.master_id = "#{settings['master_vagrant_ip']}"
+        salt.bootstrap_script = WINDOWS_SALT_BOOTSTRAP_SCRIPT
         #salt.log_level = "info"
         salt.verbose = false
         salt.colorize = true
@@ -749,6 +785,7 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
       quail_config.vm.provision :salt do |salt|  # salt_cloud cannot push Windows salt
         salt.minion_id = "win16"
         salt.master_id = "#{settings['master_vagrant_ip']}"
+        salt.bootstrap_script = WINDOWS_SALT_BOOTSTRAP_SCRIPT
         salt.log_level = "info"
         salt.verbose = true
         salt.colorize = true
@@ -789,6 +826,7 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
       quail_config.vm.provision :salt do |salt|  # salt_cloud cannot push Windows salt
         salt.minion_id = "win12"
         salt.master_id = "#{settings['master_vagrant_ip']}"
+        salt.bootstrap_script = WINDOWS_SALT_BOOTSTRAP_SCRIPT
         #salt.log_level = "info"
         salt.verbose = false
         salt.colorize = true
@@ -831,6 +869,7 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
         quail_config.vm.provision :salt do |salt|  # salt_cloud cannot push Windows salt
           salt.minion_id = "win19"
           salt.master_id = "#{settings['master_vagrant_ip']}"
+          salt.bootstrap_script = WINDOWS_SALT_BOOTSTRAP_SCRIPT
           salt.log_level = "info"
           salt.verbose = true
           salt.colorize = true
@@ -869,8 +908,115 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
       quail_config.vm.provision :salt do |salt|  # salt_cloud cannot push Windows salt
         salt.minion_id = "win7"
         salt.master_id = "#{settings['master_vagrant_ip']}"
+        salt.bootstrap_script = WINDOWS_SALT_BOOTSTRAP_SCRIPT
         salt.log_level = "info"
         salt.verbose = true #false
+        salt.colorize = true
+        salt.run_highstate = default_run_highstate
+      end
+    end
+  end
+
+ # . . . . . . . . . . . . Define machine win11 . . . . . . . . . . . . . .
+ # . this Windows 11 machine tests the windows-sudo package itself (see
+ # . ../windows-sudo). Sourced from a Packer-built, Vagrant-ready box
+ # . (WinRM preconfigured) rather than one of the older hand-patched boxes
+ # . used by win10/win7 above.
+ #
+ # . Its masterless minion doesn't share bevy_srv/salt like its siblings --
+ # . it copies windows-sudo/srv/salt + srv/pillar straight from
+ # . WINDOWS_SUDO_REPO_ROOT into fixed guest paths (C:\srv\salt,
+ # . C:\srv\pillar) and points file_roots/pillar_roots at those via its own
+ # . minion.d drop-in, the same pattern salt22 uses for DJANGO_REPO_ROOT
+ # . (see that block's comments) -- self-contained, no dependency on
+ # . whatever the host's real WINDOWS_GUEST_CONFIG_FILE sets.
+ #
+ # . Runs under Hyper-V on this machine -- same reasoning as quail22/salt22/
+ # . bevymaster above: Hyper-V can't create switches from Vagrant and
+ # . ignores static private_network IPs (bridge to an existing External
+ # . Virtual Switch instead), and its synced-folder fallback needs an
+ # . interactive SMB share/credential prompt, so the four top-level synced
+ # . folders are disabled here too. Neither of those matters for the
+ # . srv/salt + srv/pillar copy-in below, or the WINDOWS_GUEST_CONFIG_FILE
+ # . push -- both already go over WinRM's "file" provisioner, not a synced
+ # . folder, so they work unchanged under Hyper-V.
+  config.vm.define "win11", autostart: false do |quail_config|
+    quail_config.vm.box = "gusztavvargadr/windows-11-25h2-enterprise"
+    quail_config.vm.synced_folder ".", "/vagrant", disabled: true
+    quail_config.vm.synced_folder ".", "/salt_bevy", disabled: true
+    quail_config.vm.synced_folder ".", "/projects", disabled: true
+    quail_config.vm.synced_folder ".", "/srv/pillar", disabled: true
+    if ACTIVE_PROVIDER == "hyperv"
+      quail_config.vm.network "public_network", bridge: HYPERV_SWITCH
+      if vagrant_command == "up" and vagrant_object == "win11"
+        puts "Starting 'win11' under Hyper-V, bridged to switch '#{HYPERV_SWITCH}'..."
+      end
+    else
+      quail_config.vm.network "private_network", ip: NETWORK + ".56.11"
+      quail_config.vm.network "public_network", bridge: interface_guesses
+      if vagrant_command == "up" and vagrant_object == "win11"
+        puts "Starting #{vagrant_object} #{as_minion}."
+      end
+    end
+    quail_config.vm.provider "virtualbox" do |v|
+        v.name = BEVY + '_win11'  # ! N.O.T.E.: name must be unique
+        v.gui = true  # turn on the graphic window
+        v.linked_clone = true
+        v.customize ["modifyvm", :id, "--vram", "27"]  # enough video memory for full screen
+        v.memory = 4096
+        v.cpus = max_cpus
+        v.customize ["modifyvm", :id, "--natnet1", NETWORK + ".63.128/27"]  # do not use 10.0 network for NAT
+        v.customize ["modifyvm", :id, "--natdnshostresolver1", "on"]  # use host's DNS resolver
+    end
+    quail_config.vm.provider "hyperv" do |v|  # only for Hyper-V boxes
+        v.vmname = BEVY + '_win11'  # ! N.O.T.E.: name must be unique
+        v.memory = 4096
+        v.maxmemory = 4096    # see quail22's maxmemory comment: avoids a
+                               # Vagrant 2.4.9 hyperv provider scoping bug
+        v.cpus = max_cpus
+        v.linked_clone = true # use a differencing disk instead of a full copy
+    end
+    quail_config.vm.guest = :windows
+    quail_config.vm.boot_timeout = 600  # first boot / box setup can run long
+    quail_config.vm.graceful_halt_timeout = 60
+    quail_config.vm.communicator = "winrm"
+    script = "new-item C:\\salt\\conf\\minion.d -itemtype directory -ErrorAction silentlycontinue\r\n"
+    quail_config.vm.provision "shell", inline: script
+    if settings.has_key?('WINDOWS_GUEST_CONFIG_FILE') and File.exist?(settings['WINDOWS_GUEST_CONFIG_FILE'])
+      quail_config.vm.provision "file", source: settings['WINDOWS_GUEST_CONFIG_FILE'], destination: "c:\\salt\\conf\\minion.d\\00_bevy_boot.conf"
+    end
+    # Copy this repo's own srv/salt + srv/pillar in directly (see the block
+    # comment above) -- copy to a temp spot first, then move into place with
+    # a shell step, same two-step dance salt22 uses for DJANGO_REPO_ROOT
+    # (a single big "file" upload of a whole tree needs somewhere to land
+    # before it can overwrite a possibly-already-populated destination).
+    if Dir.exist?(File.join(WINDOWS_SUDO_REPO_ROOT, 'srv', 'salt'))
+      quail_config.vm.provision "file", source: File.join(WINDOWS_SUDO_REPO_ROOT, 'srv', 'salt'),
+                                destination: "C:\\tmp\\windows_sudo_srv_salt", run: "always"
+      quail_config.vm.provision "file", source: File.join(WINDOWS_SUDO_REPO_ROOT, 'srv', 'pillar'),
+                                destination: "C:\\tmp\\windows_sudo_srv_pillar", run: "always"
+      quail_config.vm.provision "shell", run: "always", inline: <<-SHELL
+        New-Item -ItemType Directory -Force -Path C:\\srv\\salt, C:\\srv\\pillar | Out-Null
+        Copy-Item -Path C:\\tmp\\windows_sudo_srv_salt\\* -Destination C:\\srv\\salt -Recurse -Force
+        Copy-Item -Path C:\\tmp\\windows_sudo_srv_pillar\\* -Destination C:\\srv\\pillar -Recurse -Force
+        Remove-Item -Recurse -Force C:\\tmp\\windows_sudo_srv_salt, C:\\tmp\\windows_sudo_srv_pillar
+        @"
+file_roots:
+  base:
+    - C:\\srv\\salt
+pillar_roots:
+  base:
+    - C:\\srv\\pillar
+"@ | Set-Content -Path C:\\salt\\conf\\minion.d\\01_windows_sudo.conf
+      SHELL
+    end
+    if ENV.key?("VAGRANT_SALT")
+      quail_config.vm.provision :salt do |salt|  # salt_cloud cannot push Windows salt
+        salt.minion_id = "win11"
+        salt.master_id = "#{settings['master_vagrant_ip']}"
+        salt.bootstrap_script = WINDOWS_SALT_BOOTSTRAP_SCRIPT
+        salt.log_level = "info"
+        salt.verbose = true
         salt.colorize = true
         salt.run_highstate = default_run_highstate
       end

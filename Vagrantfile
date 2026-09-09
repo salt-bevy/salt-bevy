@@ -408,7 +408,7 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
 # . created by a command like:
 # . generic=t ./vgr up somename
 # . Define the network address and VM memory size like:
-# . GENERIC=True NODE_ADDRESS=.56.203 NODE_MEMORY=10000 NODE_BOX=boxesio/xenial64-standard ./vgr up somename
+# . GENERIC=True NODE_ADDRESS=.56.203 NODE_MEMORY=10000 NODE_BOX=ubuntu/jammy64 ./vgr up somename
 #
   generic = ENV["GENERIC"] || ENV['generic']
   if generic and generic.downcase.chars.first == "t" then
@@ -605,54 +605,6 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
     end
   end
 
-
-  # . . . . . . . . . . . . Define machine QUAIL18 . . . . . . . . . . . . . .
-  # This Ubuntu 18.04 machine is designed to be run by salt-cloud
-  config.vm.define "quail18", autostart: false do |quail_config|
-    quail_config.vm.box = "hashicorp/bionic64"
-    quail_config.vm.hostname = "quail18" # + DOMAIN
-    quail_config.vm.network "private_network", ip: NETWORK + ".56.218"
-    if vagrant_command == "up" and vagrant_object == "quail18"
-      puts "Starting #{vagrant_object} at #{NETWORK}.56.218..."
-    end
-    quail_config.vm.network "public_network", bridge: interface_guesses
-    quail_config.vm.provider "virtualbox" do |v|
-        v.name = BEVY + '_quai18'  # ! N.O.T.E.: name must be unique
-        v.memory = 1024       # limit memory for the virtual box
-        v.cpus = 1
-        v.linked_clone = true # make a soft copy of the base Vagrant box
-        v.customize ["modifyvm", :id, "--natnet1", NETWORK + ".18.0/27"]  # do not use 10.0 network for NAT
-        v.customize ["modifyvm", :id, "--natdnshostresolver1", "on"]  # use host's DNS resolver
-	  end
-    quail_config.vm.provider "vmware" do |v|
-        v.vmx["memsize"] = "1024"
-        v.vmx["numvcpus"] = "1"
-	  end
-  end
-
-  # . . . . . . . . . . . . Define machine QUAIL16 . . . . . . . . . . . . . .
-  # This Ubuntu 16.04 machine is designed to be run by salt-cloud
-  config.vm.define "quail16", autostart: false do |quail_config|
-    quail_config.vm.box = "boxesio/xenial64-standard"  # a public VMware & Virtualbox box
-    quail_config.vm.hostname = "quail16" # + DOMAIN
-    quail_config.vm.network "private_network", ip: NETWORK + ".56.216"
-    if vagrant_command == "up" and vagrant_object == "quail16"
-      puts "Starting #{vagrant_object} at #{NETWORK}.56.216..."
-    end
-    quail_config.vm.network "public_network", bridge: interface_guesses
-    quail_config.vm.provider "virtualbox" do |v|
-        v.name = BEVY + '_quail16'  # ! N.O.T.E.: name must be unique
-        v.memory = 3072       # limit memory for the virtual box
-        v.cpus = 2
-        v.linked_clone = true # make a soft copy of the base Vagrant box
-        v.customize ["modifyvm", :id, "--natnet1", NETWORK + ".62.64/27"]  # do not use 10.0 network for NAT
-        v.customize ["modifyvm", :id, "--natdnshostresolver1", "on"]  # use host's DNS resolver
-	  end
-    quail_config.vm.provider vmware do |v|
-        v.vmx["memsize"] = "3072"
-        v.vmx["numvcpus"] = "2"
-	  end
-  end
 
 # . . . . . . . . . . . . Define machine QUAIL20 . . . . . . . . . . . . . .
 # This Ubuntu 14.04 machine is designed to be run by salt-cloud

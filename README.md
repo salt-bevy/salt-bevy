@@ -113,8 +113,8 @@ Pythonwin from [pywin32](https://github.com/mhammond/pywin32),
 or even [Notepad++](https://notepad-plus-plus.org/).
 But do yourself a favor and select an environment from early, rather than late, in the list.
 - Workstation Operating System. Why would anyone want to use Windows for a programmer's workstation?
-But we test with (as of this writing): Ubuntu 18.04, and MacOS Mojave, and Windows 10.
-- Your Bevy_Master machine. As of this writing, we test with Ubuntu 18.04 on a Vagrant VM,
+But we test with (as of this writing): Ubuntu Server (latest LTS), and MacOS Mojave, and Windows 10.
+- Your Bevy_Master machine. As of this writing, we test with Ubuntu Server (latest LTS) on a Vagrant VM,
 and Raspbian Stretch on a Raspberry Pi 3.
 - Your Internet Router.
 Most lessons will be runnable from a large corporate router or an inexpensive home router.
@@ -268,8 +268,6 @@ The Vagrantfile defines:
 | quail22 ‖                | 56.222 † | no      | Ubuntu 22.04 (`generic/ubuntu2204`, has a real Hyper-V provider) |
 | salt22 ‖                 | 56.223 † | yes     | Ubuntu 22.04, masterless minion (copy of quail22)      |
 | quail20                  | 56.220   | no      | Ubuntu 20.04                                           |
-| quail16                  | 56.216   | no      | Ubuntu 16.04                                           |
-| quail18                  | 56.218   | no      | Ubuntu 18.04                                           |
 | win7                     | —        | yes     | Windows 7 (32-bit)                                     |
 | win10                    | 56.10    | yes     | Windows 10                                             |
 | win12                    | 56.12    | yes     | Windows Server 2012                                    |
@@ -356,7 +354,7 @@ Other environment variables can be used to further define the operation of your 
 - **NODE_MEMORY** (default=5000) the size of virtual memory to allocate for the VM.
 - **NODE_BOX** (default= Ubuntu LTS) the Vagrant Box definition for the VM.
 ```
-GENERIC=True NODE_ADDRESS=.56.203 NODE_MEMORY=10000 NODE_BOX=boxesio/xenial64-standard vagrant up anothername
+GENERIC=True NODE_ADDRESS=.56.203 NODE_MEMORY=10000 NODE_BOX=ubuntu/jammy64 vagrant up anothername
 generic=t vagrant ssh anothername
 ssh vagrant@192.168.56.203 'ls /home'
 ```

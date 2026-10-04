@@ -238,20 +238,9 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
       quail_config.vm.provision "file", source: File.join(SRV_ROOT, 'pillar'), destination: "/tmp/host_pillar", run: "always"
       quail_config.vm.provision "shell", path: "configure_machine/copy_host_pillar_to_guest.sh", run: "always"
     end
-    # Install/refresh ddclient for HE dynamic DNS (configure_machine/install_ddclient.sh),
-    # publishing this VM's WireGuard-mesh address (eth0) to quail22.2tst.xyz. The update key
-    # comes from configure_machine/ddns_secrets.sh, tracked in git (see the "Dynamic DNS
-    # setup" project memory for why that's an accepted risk here).
-    quail_config.vm.provision "file", source: "configure_machine/install_ddclient.sh",
-                              destination: "/tmp/install_ddclient.sh", run: "always"
-    quail_config.vm.provision "file", source: "configure_machine/ddns_secrets.sh",
-                              destination: "/tmp/ddns_secrets.sh", run: "always"
-    quail_config.vm.provision "shell", run: "always", inline: <<-SHELL
-      set -e
-      . /tmp/ddns_secrets.sh
-      chmod +x /tmp/install_ddclient.sh
-      /tmp/install_ddclient.sh quail22.2tst.xyz "$ddns_key_quail22" eth0
-    SHELL
+    # ddclient/DDNS provisioning for quail22.2tst.xyz was removed 2026-10-04: the 2tst.xyz
+    # zone moved to PowerDNS-primary-on-fremont on 2026-09-16, which silently broke HE.net
+    # dyndns2 updates, and quail22 itself is inactive. See the "Dynamic DNS setup" memory.
   end
 
   # . . . . . . . . . . . . Define machine SALT22 . . . . . . . . . . . . . .
@@ -305,21 +294,9 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
       quail_config.vm.provision "file", source: File.join(SRV_ROOT, 'pillar'), destination: "/tmp/host_pillar", run: "always"
       quail_config.vm.provision "shell", path: "configure_machine/copy_host_pillar_to_guest.sh", run: "always"
     end
-    # Install/refresh ddclient for HE dynamic DNS (configure_machine/install_ddclient.sh),
-    # publishing this VM's WireGuard-mesh address (eth0) to salt22.2tst.xyz. The update key
-    # comes from configure_machine/ddns_secrets.sh, tracked in git (see the "Dynamic DNS
-    # setup" project memory for why that's an accepted risk here). Independent of the
-    # masterless Salt minion below -- runs whether or not VAGRANT_SALT is set.
-    quail_config.vm.provision "file", source: "configure_machine/install_ddclient.sh",
-                              destination: "/tmp/install_ddclient.sh", run: "always"
-    quail_config.vm.provision "file", source: "configure_machine/ddns_secrets.sh",
-                              destination: "/tmp/ddns_secrets.sh", run: "always"
-    quail_config.vm.provision "shell", run: "always", inline: <<-SHELL
-      set -e
-      . /tmp/ddns_secrets.sh
-      chmod +x /tmp/install_ddclient.sh
-      /tmp/install_ddclient.sh salt22.2tst.xyz "$ddns_key_salt22" eth0
-    SHELL
+    # ddclient/DDNS provisioning for salt22.2tst.xyz was removed 2026-10-04: the 2tst.xyz
+    # zone moved to PowerDNS-primary-on-fremont on 2026-09-16, which silently broke HE.net
+    # dyndns2 updates, and salt22 itself is inactive. See the "Dynamic DNS setup" memory.
     script = "mkdir -p /etc/salt/minion.d\n"
     script += "chown -R vagrant:staff /etc/salt/minion.d\n"
     script += "chmod -R 775 /etc/salt/minion.d\n"
@@ -503,21 +480,10 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
         master_config.vm.provision "file", source: File.join(SRV_ROOT, 'pillar'), destination: "/tmp/host_pillar", run: "always"
         master_config.vm.provision "shell", path: "configure_machine/copy_host_pillar_to_guest.sh", run: "always"
       end
-      # Install/refresh ddclient for HE dynamic DNS (configure_machine/install_ddclient.sh),
-      # publishing this VM's WireGuard-mesh address (eth0) to #{BEVY}_bevymaster.2tst.xyz
-      # (the record name includes the bevy name, unlike quail22/salt22's fixed hostnames).
-      # Key comes from configure_machine/ddns_secrets.sh, tracked in git (see the "Dynamic
-      # DNS setup" project memory for why that's an accepted risk here).
-      master_config.vm.provision "file", source: "configure_machine/install_ddclient.sh",
-                                destination: "/tmp/install_ddclient.sh", run: "always"
-      master_config.vm.provision "file", source: "configure_machine/ddns_secrets.sh",
-                                destination: "/tmp/ddns_secrets.sh", run: "always"
-      master_config.vm.provision "shell", run: "always", inline: <<-SHELL
-        set -e
-        . /tmp/ddns_secrets.sh
-        chmod +x /tmp/install_ddclient.sh
-        /tmp/install_ddclient.sh #{BEVY}_bevymaster.2tst.xyz "$ddns_key_bevymaster" eth0
-      SHELL
+      # ddclient/DDNS provisioning for #{BEVY}_bevymaster.2tst.xyz was removed 2026-10-04:
+      # the 2tst.xyz zone moved to PowerDNS-primary-on-fremont on 2026-09-16, which silently
+      # broke HE.net dyndns2 updates, and this bevymaster test VM itself is inactive. See the
+      # "Dynamic DNS setup" project memory.
     else
       master_config.vm.network "private_network", ip: NETWORK + ".56.2"
       master_config.vm.network "public_network", bridge: interface_guesses, mac: "ae1100" + bevy_mac

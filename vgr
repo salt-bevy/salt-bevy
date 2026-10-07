@@ -13,6 +13,7 @@ then
 else
   export VAGRANT_SALT='true'
 fi
+python3 "$SCRIPTPATH/configure_machine/helpers/ensure_vagrant_box.py" "$@"
 pushd $SCRIPTPATH
 if [ "$2" == "generic" ]
 then

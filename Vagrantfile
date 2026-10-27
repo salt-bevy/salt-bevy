@@ -10,7 +10,11 @@ require "yaml"
 require "ipaddr"
 
 SALT_BOOTSTRAP_ARGUMENTS = "" # for example "git v2019.2.0rc1"  # (usually leave blank for latest production Salt version)
-DEFAULT_BOX = "gusztavvargadr/ubuntu-server" # "ubuntu/jammy64"  # the vagrantbox to use for most VMs below
+DEFAULT_BOX = "salt-bevy/ubuntu-26.04"  # the vagrantbox to use for most VMs below
+# ^ built locally via "packer/build_boxes.py" (see packer/README.md) rather than pulled from
+# Vagrant Cloud, which is being retired. Register it for whichever provider(s) you use --
+# build_boxes.py auto-detects installed hypervisors and builds/registers all of them under
+# this same box name, so Vagrant picks the right one automatically based on --provider.
 # a local, BOM-free copy of salt-bootstrap's windows script -- Vagrant 2.4.9's built-in
 # downloader has a UTF-8 BOM baked into its WINDOWS_URL constant, which makes Ruby's
 # URI parser choke with "URI must be ascii only"; pointing bootstrap_script at this file
@@ -163,14 +167,22 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
 
   # . . . . . . . . . . . . Define machine QUAIL1 . . . . . . . . . . . . . .
   # This machine has no Salt provisioning at all. Salt-cloud can provision it.
-  # No Hyper-V provider here — see quail22 for a Hyper-V-capable machine.
   config.vm.define "quail1", primary: true do |quail_config|  # this will be the default machine
     quail_config.vm.hostname = "quail1" # + DOMAIN
     quail_config.vm.box = DEFAULT_BOX
-    quail_config.vm.network "private_network", ip: NETWORK + ".56.201"  # needed so saltify_profiles.conf can find this unit
-    quail_config.vm.network "public_network", bridge: interface_guesses
-    if vagrant_command == "up" and (ARGV.length == 1 or (vagrant_object == "quail1"))
-      puts "Starting 'quail1' at #{NETWORK}.56.201..."
+    if ACTIVE_PROVIDER == "hyperv"
+      # Hyper-V cannot create switches from Vagrant and ignores static private_network IPs
+      # (see HYPERV_SWITCH above) -- bridge to the configured Hyper-V switch instead.
+      quail_config.vm.network "public_network", bridge: HYPERV_SWITCH
+      if vagrant_command == "up" and (ARGV.length == 1 or (vagrant_object == "quail1"))
+        puts "Starting 'quail1' under Hyper-V, bridged to switch '#{HYPERV_SWITCH}'..."
+      end
+    else
+      quail_config.vm.network "private_network", ip: NETWORK + ".56.201"  # needed so saltify_profiles.conf can find this unit
+      quail_config.vm.network "public_network", bridge: interface_guesses
+      if vagrant_command == "up" and (ARGV.length == 1 or (vagrant_object == "quail1"))
+        puts "Starting 'quail1' at #{NETWORK}.56.201..."
+      end
     end
     quail_config.vm.provider "virtualbox" do |v|  # only for VirtualBox boxes
         v.name = BEVY + '_quail1'  # ! N.O.T.E.: name must be unique
@@ -185,6 +197,13 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
         v.vmx["memsize"] = "1024"
         v.vmx["numvcpus"] = "1"
 	  end
+    quail_config.vm.provider "hyperv" do |v|  # only for Hyper-V boxes
+        v.vmname = BEVY + '_quail1'  # ! N.O.T.E.: name must be unique
+        v.memory = 1024
+        v.maxmemory = 1024
+        v.cpus = 1
+        v.linked_clone = true # use a differencing disk instead of a full copy
+    end
   end
 
   # . . . . . . . . . . . . Define machine QUAIL22 . . . . . . . . . . . . . .
@@ -346,11 +365,20 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
   config.vm.define "quail2", autostart: false do |quail_config|
     quail_config.vm.box = DEFAULT_BOX
     quail_config.vm.hostname = "quail2" # + DOMAIN
-    quail_config.vm.network "private_network", ip: NETWORK + ".56.202"
-    if vagrant_command == "up" and vagrant_object == "quail2"
-      puts "Starting #{vagrant_object} at #{NETWORK}.56.202 #{as_minion}...\n."
+    if ACTIVE_PROVIDER == "hyperv"
+      # Hyper-V cannot create switches from Vagrant and ignores static private_network IPs
+      # (see HYPERV_SWITCH above) -- bridge to the configured Hyper-V switch instead.
+      quail_config.vm.network "public_network", bridge: HYPERV_SWITCH
+      if vagrant_command == "up" and vagrant_object == "quail2"
+        puts "Starting #{vagrant_object} under Hyper-V, bridged to switch '#{HYPERV_SWITCH}' #{as_minion}..."
+      end
+    else
+      quail_config.vm.network "private_network", ip: NETWORK + ".56.202"
+      quail_config.vm.network "public_network", bridge: interface_guesses
+      if vagrant_command == "up" and vagrant_object == "quail2"
+        puts "Starting #{vagrant_object} at #{NETWORK}.56.202 #{as_minion}...\n."
+      end
     end
-    quail_config.vm.network "public_network", bridge: interface_guesses
     quail_config.vm.provider "virtualbox" do |v|
         v.name = BEVY + '_quail2'  # ! N.O.T.E.: name must be unique
         v.memory = 4000       # limit memory for the virtual box
@@ -362,6 +390,13 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
     quail_config.vm.provider vmware do |v|
         v.vmx["memsize"] = "5000"
         v.vmx["numvcpus"] = "2"
+    end
+    quail_config.vm.provider "hyperv" do |v|
+        v.vmname = BEVY + '_quail2'  # ! N.O.T.E.: name must be unique
+        v.memory = 4000
+        v.maxmemory = 4000
+        v.cpus = max_cpus
+        v.linked_clone = true # use a differencing disk instead of a full copy
     end
     script = "mkdir -p /etc/salt/minion.d\n"
     script += "chown -R vagrant:staff /etc/salt/minion.d\n"
@@ -385,7 +420,7 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
 # . created by a command like:
 # . generic=t ./vgr up somename
 # . Define the network address and VM memory size like:
-# . GENERIC=True NODE_ADDRESS=.56.203 NODE_MEMORY=10000 NODE_BOX=boxesio/xenial64-standard ./vgr up somename
+# . GENERIC=True NODE_ADDRESS=.56.203 NODE_MEMORY=10000 NODE_BOX=ubuntu/jammy64 ./vgr up somename
 #
   generic = ENV["GENERIC"] || ENV['generic']
   if generic and generic.downcase.chars.first == "t" then
@@ -436,10 +471,7 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
 # This is the Vagrant version of a Bevy Salt-master.
 # You cannot run it if you are using an external bevymaster.
   config.vm.define "bevymaster", autostart: false do |master_config|
-    # DEFAULT_BOX ("gusztavvargadr/ubuntu-server") has no Hyper-V provider
-    # (see quail1's comment above) -- fall back to QUAIL22_BOX, which does,
-    # when Hyper-V is what's actually going to be used.
-    master_config.vm.box = (ACTIVE_PROVIDER == "hyperv") ? QUAIL22_BOX : DEFAULT_BOX
+    master_config.vm.box = DEFAULT_BOX  # self-built for hyperv/virtualbox/vmware -- see DEFAULT_BOX above
     master_config.vm.hostname = "bevymaster"
     if vagrant_command == "up" and vagrant_object == "bevymaster" and ACTIVE_PROVIDER != 'hyperv'
       if settings['master_vagrant_ip'] != NETWORK + ".56.2"
@@ -572,54 +604,6 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
   end
 
 
-  # . . . . . . . . . . . . Define machine QUAIL18 . . . . . . . . . . . . . .
-  # This Ubuntu 18.04 machine is designed to be run by salt-cloud
-  config.vm.define "quail18", autostart: false do |quail_config|
-    quail_config.vm.box = "hashicorp/bionic64"
-    quail_config.vm.hostname = "quail18" # + DOMAIN
-    quail_config.vm.network "private_network", ip: NETWORK + ".56.218"
-    if vagrant_command == "up" and vagrant_object == "quail18"
-      puts "Starting #{vagrant_object} at #{NETWORK}.56.218..."
-    end
-    quail_config.vm.network "public_network", bridge: interface_guesses
-    quail_config.vm.provider "virtualbox" do |v|
-        v.name = BEVY + '_quai18'  # ! N.O.T.E.: name must be unique
-        v.memory = 1024       # limit memory for the virtual box
-        v.cpus = 1
-        v.linked_clone = true # make a soft copy of the base Vagrant box
-        v.customize ["modifyvm", :id, "--natnet1", NETWORK + ".18.0/27"]  # do not use 10.0 network for NAT
-        v.customize ["modifyvm", :id, "--natdnshostresolver1", "on"]  # use host's DNS resolver
-	  end
-    quail_config.vm.provider "vmware" do |v|
-        v.vmx["memsize"] = "1024"
-        v.vmx["numvcpus"] = "1"
-	  end
-  end
-
-  # . . . . . . . . . . . . Define machine QUAIL16 . . . . . . . . . . . . . .
-  # This Ubuntu 16.04 machine is designed to be run by salt-cloud
-  config.vm.define "quail16", autostart: false do |quail_config|
-    quail_config.vm.box = "boxesio/xenial64-standard"  # a public VMware & Virtualbox box
-    quail_config.vm.hostname = "quail16" # + DOMAIN
-    quail_config.vm.network "private_network", ip: NETWORK + ".56.216"
-    if vagrant_command == "up" and vagrant_object == "quail16"
-      puts "Starting #{vagrant_object} at #{NETWORK}.56.216..."
-    end
-    quail_config.vm.network "public_network", bridge: interface_guesses
-    quail_config.vm.provider "virtualbox" do |v|
-        v.name = BEVY + '_quail16'  # ! N.O.T.E.: name must be unique
-        v.memory = 3072       # limit memory for the virtual box
-        v.cpus = 2
-        v.linked_clone = true # make a soft copy of the base Vagrant box
-        v.customize ["modifyvm", :id, "--natnet1", NETWORK + ".62.64/27"]  # do not use 10.0 network for NAT
-        v.customize ["modifyvm", :id, "--natdnshostresolver1", "on"]  # use host's DNS resolver
-	  end
-    quail_config.vm.provider vmware do |v|
-        v.vmx["memsize"] = "3072"
-        v.vmx["numvcpus"] = "2"
-	  end
-  end
-
 # . . . . . . . . . . . . Define machine QUAIL20 . . . . . . . . . . . . . .
 # This Ubuntu 14.04 machine is designed to be run by salt-cloud
   config.vm.define "quail20", autostart: false do |quail_config|
@@ -642,6 +626,45 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
         v.vmx["memsize"] = "1024"
         v.vmx["numvcpus"] = "1"
 	  end
+  end
+
+# . . . . . . . . . . . . Define machine QUAIL24 . . . . . . . . . . . . . .
+# Ubuntu 24.04, self-built (see packer/README.md) -- no Salt provisioning; salt-cloud can
+# provision it, same as quail1.
+  config.vm.define "quail24", autostart: false do |quail_config|
+    quail_config.vm.hostname = "quail24" # + DOMAIN
+    quail_config.vm.box = "salt-bevy/ubuntu-24.04"
+    if ACTIVE_PROVIDER == "hyperv"
+      quail_config.vm.network "public_network", bridge: HYPERV_SWITCH
+      if vagrant_command == "up" and vagrant_object == "quail24"
+        puts "Starting 'quail24' under Hyper-V, bridged to switch '#{HYPERV_SWITCH}'..."
+      end
+    else
+      quail_config.vm.network "private_network", ip: NETWORK + ".56.224"
+      quail_config.vm.network "public_network", bridge: interface_guesses
+      if vagrant_command == "up" and vagrant_object == "quail24"
+        puts "Starting 'quail24' at #{NETWORK}.56.224..."
+      end
+    end
+    quail_config.vm.provider "virtualbox" do |v|
+        v.name = BEVY + '_quail24'  # ! N.O.T.E.: name must be unique
+        v.memory = 1024       # limit memory for the virtual box
+        v.cpus = 1
+        v.linked_clone = true # make a soft copy of the base Vagrant box
+        v.customize ["modifyvm", :id, "--natnet1", NETWORK + ".62.64/27"]  # do not use 10.0 network for NAT
+        v.customize ["modifyvm", :id, "--natdnshostresolver1", "on"]  # use host's DNS resolver
+    end
+    quail_config.vm.provider vmware do |v|
+        v.vmx["memsize"] = "1024"
+        v.vmx["numvcpus"] = "1"
+    end
+    quail_config.vm.provider "hyperv" do |v|
+        v.vmname = BEVY + '_quail24'  # ! N.O.T.E.: name must be unique
+        v.memory = 1024
+        v.maxmemory = 1024
+        v.cpus = 1
+        v.linked_clone = true # use a differencing disk instead of a full copy
+    end
   end
 
  # . . . . . . . . . . . . Define machine win10 . . . . . . . . . . . . . .

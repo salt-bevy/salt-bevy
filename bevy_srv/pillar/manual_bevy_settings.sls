@@ -51,7 +51,9 @@ pxe_clearing_port: 4545  # TCP port to send html control to pxe_clearing_daemon
 # each version of Ubuntu will have its own installer in a different subdirectory of the PXE boot server
 default_ubuntu_version: {{ default_ubuntu_version }} # used for non-scripted PXE installs
 pxe_netboot_subdir: '{{ default_ubuntu_version }}'  # name for PXE tftp server subdirectory
-pxe_netboot_download_url: http://archive.ubuntu.com/ubuntu/dists/{{ default_ubuntu_version }}/main/installer-amd64/current/images
+# NOTE: "legacy-images" (not "images") -- since focal, Ubuntu only ships the classic
+# debian-installer netboot images under this path; "images" 404s from focal onward.
+pxe_netboot_download_url: http://archive.ubuntu.com/ubuntu/dists/{{ default_ubuntu_version }}/main/installer-amd64/current/legacy-images
 
 # This is a list of dicts of machines to be PXE booted.
 #  each should have a "tag" matching the Netboot Tags below.

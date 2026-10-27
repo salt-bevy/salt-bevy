@@ -19,8 +19,6 @@ mono:
     - name: "deb https://download.mono-project.com/repo/ubuntu stable-xenial main"
     {% elif grains['os'] == 'Ubuntu' %}  {# Ubuntu 18.04 and later #}
     - name: "deb https://download.mono-project.com/repo/ubuntu stable-bionic main"
-    {% elif grains['os'] == 'Raspbain' %}  {# presume Raspbain 9 #}
-    - name: "deb https://download.mono-project.com/repo/debian stable-raspbianstretch main"
     {% else %}  {# presume Debian 9 #}
     - name: "deb https://download.mono-project.com/repo/debian stable-stretch main"
     {% endif %}

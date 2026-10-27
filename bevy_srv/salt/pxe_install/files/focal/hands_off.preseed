@@ -123,7 +123,7 @@ d-i mirror/http/proxy string
 # Suite to install.
 #d-i mirror/suite string focal
 # Suite to use for loading installer components (optional).
-#d-i mirror/udeb/suite string xenial
+#d-i mirror/udeb/suite string focal
 # Components to use for loading installer components (optional).
 #d-i mirror/udeb/components multiselect main, restricted
 
@@ -346,7 +346,7 @@ d-i apt-setup/backports boolean true
 
 # Additional repositories, local[0-9] available
 #d-i apt-setup/local0/repository string \
-#       http://local.server/ubuntu xenial main
+#       http://local.server/ubuntu focal main
 #d-i apt-setup/local0/comment string local server
 # Enable deb-src lines
 #d-i apt-setup/local0/source boolean true

@@ -7,6 +7,7 @@ echo on
 @set VAGRANT_SALT=
 @if [%arg1%] EQU [--no-salt] (SHIFT) else (set VAGRANT_SALT=true)
 @set arg2=%2
+py -3 "%VAGRANT_CWD%\configure_machine\helpers\ensure_vagrant_box.py" %*
 @if [%arg2%] NEQ [generic] goto normal
 set GENERIC=true
 @if not %1==up goto not_up

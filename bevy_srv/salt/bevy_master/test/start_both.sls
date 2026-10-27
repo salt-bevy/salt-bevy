@@ -12,7 +12,7 @@ init_x2:
     - name: x_2
     - vm:  # this is an embedded dict. Does it work?
         cwd: {{ pillar['cwd'] }}
-        machine: quail16
+        machine: quail20
         vagrant_runas: {{ pillar['runas'] }}
 
 x_2:

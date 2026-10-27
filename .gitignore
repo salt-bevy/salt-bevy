@@ -108,6 +108,7 @@ vs_*
 
 # project
 .vagrant
+packer/.bento/
 bevy_srv/salt/ssh_keys
 bevy_srv/pillar/01_*
 configure_machine/grains

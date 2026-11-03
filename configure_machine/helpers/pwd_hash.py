@@ -2,12 +2,14 @@
 import getpass, sys
 
 try:
-    import passlib.hash as ph  # must use passlib module on Mac OS or Windows systems.
-    sha = ph.sha512_crypt
-    import random
+    import passlib.hash as ph  # use passlib wherever it is installed
+    sha = ph.sha512_crypt.using(rounds=5000)  # 5000 is magic, do not change
 except ImportError:
     sha = None  # flag that passlib is not present
-    import crypt  # will use built-in crypt (works okay on Linux)
+    try:
+        import crypt  # built in on Linux, but removed in Python 3.13
+    except ImportError:
+        raise ImportError('Password hashing needs the passlib module. Try "pip3 install passlib".')
 
 
 def make_hash():
@@ -26,9 +28,7 @@ def make_hash():
             continue
         else:
             if sha:  # is passlib installed?
-                pwhash = sha.hash(pw1,
-                                  salt=hex(random.getrandbits(64))[2:],
-                                  rounds=5000)  # 5000 is magic, do not change
+                pwhash = sha.hash(pw1)  # passlib generates the salt
             else:  # no passlib module, use crypt
                 pwhash = crypt.crypt(pw1)
             print('the hash is...')

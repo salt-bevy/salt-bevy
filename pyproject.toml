@@ -39,6 +39,9 @@ text = """\
     * - running several versions of Windows and/or Linux. \
     """
 
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
 [build-system]
 requires = ["setuptools>65.0.0", "wheel", "build"]
 build-backend = "setuptools.build_meta"

@@ -42,7 +42,7 @@ and [Ubuntu Server](https://www.ubuntu.com/server) are known to work.
     sudo apt install git  # if needed...
     cd /projects  # go to your project directory
     git clone --depth 1 https://github.com/vernondcole/salt-bevy.git
-    sudo pip install pyyaml ifaddr
+    sudo pip install pyyaml ifaddr passlib windows-sudo
     bash join-bevy.sh
     ```
     (You may need to use "pip3" and --break-system-packages)

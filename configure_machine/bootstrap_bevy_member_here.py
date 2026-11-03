@@ -23,8 +23,7 @@ try:
     import yaml  # actually imports the PyYAML module
     import ifaddr
     from windows_sudo import sudo
-    if platform.system() != 'Linux':
-        import passlib
+    import passlib  # password hashing; Python 3.13 removed Linux's built-in "crypt"
 except ImportError:
     print('\nERROR: Python3 setup incomplete. You are missing required prerequisite modules.')
     if platform.system() == 'Windows':
@@ -33,7 +32,7 @@ except ImportError:
     elif platform.system() == 'Darwin':  # MacOS
         print('Try something like: "sudo -H pip3 install pyyaml ifaddr passlib windows-sudo"')
     else:  # Linux
-        print('Try something like: "sudo -H pip3 install pyyaml ifaddr windows-sudo"')
+        print('Try something like: "sudo -H pip3 install pyyaml ifaddr passlib windows-sudo"')
         print('If you are using Ubuntu (Debian, etc), you may need to "sudo apt install python3-pip" first.')
     print('Then re-run your command.')
     sys.exit(10)  # Windows ERROR_BAD_ENVIRONMENT
@@ -283,7 +282,7 @@ def write_bevy_settings_files(bevy_extension='', try_temp=False):
                 for name, value in store_settings.items():
                     if not name.isupper():  # ignore old Vagrant settings (added below)
                         if isinstance(value, str):  # single-quote strings in YAML values
-                            f.write("{}: '{}'\n".format(name, value))
+                            f.write("{}: '{}'\n".format(name, value.replace("'", "''")))  # YAML's escape for '
                         else:  # Python repr() for everything else should work
                             f.write('{}: {!r}\n'.format(name, value))
                 if store_additional:
@@ -373,8 +372,12 @@ def format_additional_roots(settings, virtual):
         if path_dir == 'none':
             path_dir = ''
 
+    # a VM's paths are POSIX paths inside the guest: don't resolve them on this host,
+    #  which on Windows would add a drive letter
+    path_maker = PurePosixPath if virtual else Path
+
     def make_the_list(sls_dirs, path_dir_string):
-        path_dir = Path(path_dir_string)
+        path_dir = path_maker(path_dir_string)
         some_roots = []
         some_sls_dirs = sls_dirs if isinstance(sls_dirs, (list, tuple)) else sls_dirs.split(',')
         for sls_dir in some_sls_dirs:
@@ -383,10 +386,10 @@ def format_additional_roots(settings, virtual):
             elif sls_dir.startswith('{path}'):
                 sls_path = path_dir / sls_dir[6:]
             else:
-                sls_path = Path(sls_dir)
-                if not (sls_path.is_dir and sls_path.exists()):
+                sls_path = path_maker(sls_dir)
+                if not virtual and not sls_path.is_dir():
                     print('WARNING: cannot find application directory "{}"'.format(sls_path))
-            some_roots.append(str(sls_path.resolve().as_posix()))
+            some_roots.append(sls_path.as_posix() if virtual else str(sls_path.resolve().as_posix()))
         return some_roots
 
     more_roots = make_the_list(settings.get('file_roots', []), path_dir)

@@ -447,4 +447,17 @@ an old MacBook, and my Android phone.
  To submit updates, please follow the flow used for SaltStack, as suggested in
  [Developing Salt](https://docs.saltstack.com/en/latest/topics/development/contributing.html#sending-a-github-pull-request).
 
+### Testing
+
+Most of this project is interactive, or needs Salt, Vagrant, or administrator rights, so the
+automated tests cover only what can run without those: the bootstrap script's helpers and the
+files it writes, the `salt-call` command lines (with Salt faked), `ensure_vagrant_box.py`'s
+decisions (with Vagrant faked) and its match with the Vagrantfile, and a YAML check of every
+`.sls`/`.yaml` file without Jinja in it. From the salt-bevy root:
+
+    pip install pytest pyyaml ifaddr passlib windows-sudo
+    python -m pytest
+
+Tests marked `xfail` are known bugs; each one names the bug.
+
 You can compile markdown (.md) files into .html using [ReText](https://github.com/retext-project/retext)

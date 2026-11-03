@@ -1,6 +1,6 @@
 [project]
 name = 'salt_bevy'
-version = '1.0.0'
+version = '1.0.1'
 description = 'A self-installing Salt system to manage a complete Salt master-minion environment.'
 authors = [{name = 'Vernon Cole'},{email = "vernondcole@gmail.com"}]
 dependencies = ['pyyaml', 'ifaddr', 'passlib', 'windows-sudo']
@@ -16,7 +16,6 @@ classifiers = [
             'Topic :: System :: Installation/Setup',
             'Topic :: System :: Systems Administration'
             ]
-requires-dist = 'salt'
 
 [project.urls]
 repository = "https://github.com/salt-bevy/salt-bevy"

@@ -459,5 +459,7 @@ decisions (with Vagrant faked) and its match with the Vagrantfile, and a YAML ch
     python -m pytest
 
 Tests marked `xfail` are known bugs; each one names the bug.
+GitHub runs the tests on every push and pull request, on Linux and Windows
+(`.github/workflows/ci.yml`).
 
 You can compile markdown (.md) files into .html using [ReText](https://github.com/retext-project/retext)

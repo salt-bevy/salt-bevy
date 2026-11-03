@@ -27,7 +27,7 @@ def state_apply(salt_state, **kwargs):
 
     cmd = "salt-call --local state.apply {salt_state} --retcode-passthrough " \
           "--state-output=mixed " \
-          "{file_root} {pillar_root} {config_dir} --log-level=info " \
+          "{id} {file_root} {pillar_root} {config_dir} --log-level=info " \
           "{pillar_data} ".format(**command_args)
 
     print('(running --> {})'.format(cmd))

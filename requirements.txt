@@ -1,3 +1,4 @@
 pyyaml
 ifaddr
-passlib  # needed on MacOS or Windows
+passlib  # password hashing (Python 3.13 removed Linux's built-in "crypt")
+windows-sudo  # needed on Linux too: re-runs the bootstrap script with sudo (pywin32 only on Windows)

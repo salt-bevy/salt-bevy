@@ -15,6 +15,10 @@ import subprocess, os, getpass, socket, platform, ipaddress, sys, time, shutil, 
 from pathlib import Path, PurePosixPath, PureWindowsPath
 from urllib.request import urlopen
 
+if '--help' in sys.argv:  # before the imports below, so help works without the prerequisites
+    print(__doc__)
+    sys.exit()
+
 try:
     import yaml  # actually imports the PyYAML module
     import ifaddr
@@ -81,9 +85,6 @@ this_file = Path(__file__).resolve()  # the absolute path name of this program's
 user_ssh_key_file_directory = this_file.parent.parent / 'bevy_srv/salt/ssh_keys'  # TODO: move this
 
 argv = [s.strip() for s in sys.argv]
-if '--help' in argv:
-    print(__doc__)
-    exit()
 
 settings = {}  # global variable for entire Bevy settings dictionary
 my_settings = {}  # settings dictionary for this machine only
@@ -348,7 +349,7 @@ def get_additional_roots(tag):
     elif resp == 'a':
         settings[tag] = present_settings + more_parents
     elif resp == 'x':
-        settings['tag'] = []
+        settings[tag] = []
     elif resp == 'i':
         while ...:
             resp = input('enter new value for paths (comma separted) for additional {}:'.format(tag))
@@ -638,10 +639,13 @@ def write_ssh_key_file(my_linux_user):
     pub = None  # object to contain the user's ssh public key
     okay = 'n'
     pub_key = ''
-    try:
-        user_home_pub = Path.home() / '.ssh' / 'id_rsa.pub'  # only works on Python 3.5+
-    except AttributeError:  # older Python3 (not seen on Windows os)
-        user_home_pub = Path('/home/') / getpass.getuser() / '.ssh' / 'id_rsa.pub'
+    # the operator's home, not root's: this runs elevated, under sudo
+    user_home = Path(os.path.expanduser('~' + user_name)) if user_name else Path.home()
+    user_home_pub = user_home / '.ssh' / 'id_rsa.pub'
+    for key_type in ('id_ed25519.pub', 'id_ecdsa.pub', 'id_rsa.pub'):
+        if (user_home / '.ssh' / key_type).is_file():
+            user_home_pub = user_home / '.ssh' / key_type
+            break
 
     user_key_file = user_ssh_key_file_directory / (my_linux_user + '.pub')
     try:  # maybe it is already in our tree?

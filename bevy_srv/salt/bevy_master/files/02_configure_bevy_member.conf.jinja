@@ -8,6 +8,7 @@
 {% set bevy_root = salt['config.get']('bevy_root', '/projects/salt-bevy/bevy_srv') %}
 id: {{ salt['config.get']('node_name', salt['config.get']('id')) }}
 {% set is_master = salt['config.get']('id').startswith('bevymaster') or
+    'master' in salt['grains.get']('roles', []) or
     salt['config.get']('bevy') == 'local' %}
 
 {% if is_master %}master: localhost

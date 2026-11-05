@@ -32,7 +32,7 @@ SELF_BUILT_MACHINE_VERSIONS = {
     "": "26.04",
     "quail1": "26.04",
     "quail2": "26.04",
-    "bevymaster": "26.04",
+    "bevymaster": "24.04",  # BEVYMASTER_BOX: Salt doesn't support 26.04 yet
     "quail24": "24.04",
 }
 

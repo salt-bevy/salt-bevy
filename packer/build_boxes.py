@@ -16,6 +16,7 @@ Usage:
   python build_boxes.py --switch "My Hyper-V Switch"  # only relevant for --providers hyperv
 """
 import argparse
+import json
 import os
 import shutil
 import subprocess
@@ -35,6 +36,19 @@ PROVIDER_SOURCES = {
     "virtualbox": "source.virtualbox-iso.vm",
     "vmware": "source.vmware-iso.vm",
 }
+
+# bento's default VBoxManage customizations for x86_64 Linux, minus its final
+# "storagectl ... --name 'IDE Controller' --remove": with bento's virtio ISO interface
+# VirtualBox 7.0 never creates that controller, so the remove fails the whole build.
+# An unused IDE controller left in place is harmless.
+VBOXMANAGE = [
+    ["modifyvm", "{{.Name}}", "--audio-enabled", "off"],
+    ["modifyvm", "{{.Name}}", "--nat-localhostreachable1", "on"],
+    ["modifyvm", "{{.Name}}", "--cableconnected1", "on"],
+    ["modifyvm", "{{.Name}}", "--usb-xhci", "on"],
+    ["modifyvm", "{{.Name}}", "--mouse", "usb"],
+    ["modifyvm", "{{.Name}}", "--keyboard", "usb"],
+]
 
 
 def packer_exe():
@@ -102,6 +116,8 @@ def build_one(version, provider, switch_name):
     ]
     if provider == "hyperv":
         args.append("-var=hyperv_switch_name={}".format(switch_name))
+    if provider == "virtualbox":
+        args.append("-var=vboxmanage={}".format(json.dumps(VBOXMANAGE)))
     args.append(PACKER_TEMPLATES)
 
     print('\n=== Building Ubuntu {} for {} '

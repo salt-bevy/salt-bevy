@@ -76,14 +76,16 @@ def detect_providers():
 
 
 def ensure_bento():
-    if BENTO_DIR.exists():
-        return
-    print('Cloning chef/bento (pinned commit {})...'.format(BENTO_COMMIT))
-    subprocess.run(["git", "init", "-q", str(BENTO_DIR)], check=True)
-    subprocess.run(["git", "-C", str(BENTO_DIR), "remote", "add", "origin", BENTO_REPO], check=True)
-    subprocess.run(["git", "-C", str(BENTO_DIR), "fetch", "-q", "--depth", "1", "origin", BENTO_COMMIT], check=True)
-    subprocess.run(["git", "-C", str(BENTO_DIR), "checkout", "-q", "FETCH_HEAD"], check=True)
-    subprocess.run([packer_exe(), "init", PACKER_TEMPLATES], cwd=str(UBUNTU_PKRVARS_DIR), check=True)
+    packer = packer_exe()  # fail before cloning, not between the clone and "packer init"
+    if not BENTO_DIR.exists():
+        print('Cloning chef/bento (pinned commit {})...'.format(BENTO_COMMIT))
+        subprocess.run(["git", "init", "-q", str(BENTO_DIR)], check=True)
+        subprocess.run(["git", "-C", str(BENTO_DIR), "remote", "add", "origin", BENTO_REPO], check=True)
+        subprocess.run(["git", "-C", str(BENTO_DIR), "fetch", "-q", "--depth", "1", "origin", BENTO_COMMIT], check=True)
+        subprocess.run(["git", "-C", str(BENTO_DIR), "checkout", "-q", "FETCH_HEAD"], check=True)
+    # run every time: an earlier run may have cloned bento but never got its plugins installed
+    # (e.g. interrupted, or packer missing then), and init is a quick no-op once they are
+    subprocess.run([packer, "init", PACKER_TEMPLATES], cwd=str(UBUNTU_PKRVARS_DIR), check=True)
 
 
 def build_one(version, provider, switch_name):

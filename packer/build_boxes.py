@@ -113,6 +113,9 @@ def build_one(version, provider, switch_name):
         packer_exe(), "build",
         "-var-file={}".format(var_file.name),
         '-var=sources_enabled=["{}"]'.format(PROVIDER_SOURCES[provider]),
+        # bento's 15m default covers the whole unattended install, which updates every
+        # package from the network first -- too short on a slow link or a busy host
+        "-var=ssh_timeout=60m",
     ]
     if provider == "hyperv":
         args.append("-var=hyperv_switch_name={}".format(switch_name))

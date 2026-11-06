@@ -193,7 +193,7 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
     quail_config.vm.provider "virtualbox" do |v|  # only for VirtualBox boxes
         v.name = BEVY + '_quail1'  # ! N.O.T.E.: name must be unique
         v.memory = 1024       # limit memory for the virtual box
-        v.cpus = 1
+        v.cpus = 2  # Ubuntu 24.04+ kernels hang early in boot on VirtualBox 7.0 with only 1 vCPU
         v.linked_clone = true # make a soft copy of the base Vagrant box
         v.customize ["modifyvm", :id, "--natnet1", NETWORK + ".62.0/27"]  # do not use 10.0 network for NAT
 	    #                                                     ^  ^/27 is the smallest network allowed.
@@ -534,7 +534,7 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
     master_config.vm.provider "virtualbox" do |v|
         v.name = BEVY + '_bevymaster'  # ! N.O.T.E.: name must be unique
         v.memory = 1024       # limit memory for the virtual box
-        v.cpus = 1
+        v.cpus = 2  # Ubuntu 24.04+ kernels hang early in boot on VirtualBox 7.0 with only 1 vCPU
         v.linked_clone = true # make a soft copy of the base Vagrant box
         v.customize ["modifyvm", :id, "--natnet1", NETWORK + ".62.32/27"]  # do not use 10.0 network for NAT
         v.customize ["modifyvm", :id, "--natdnshostresolver1", "on"]  # use host's DNS resolver
@@ -655,7 +655,7 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
     quail_config.vm.provider "virtualbox" do |v|
         v.name = BEVY + '_quail24'  # ! N.O.T.E.: name must be unique
         v.memory = 1024       # limit memory for the virtual box
-        v.cpus = 1
+        v.cpus = 2  # Ubuntu 24.04+ kernels hang early in boot on VirtualBox 7.0 with only 1 vCPU
         v.linked_clone = true # make a soft copy of the base Vagrant box
         v.customize ["modifyvm", :id, "--natnet1", NETWORK + ".62.64/27"]  # do not use 10.0 network for NAT
         v.customize ["modifyvm", :id, "--natdnshostresolver1", "on"]  # use host's DNS resolver

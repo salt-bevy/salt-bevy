@@ -121,6 +121,11 @@ def build_one(version, provider, switch_name):
         args.append("-var=hyperv_switch_name={}".format(switch_name))
     if provider == "virtualbox":
         args.append("-var=vboxmanage={}".format(json.dumps(VBOXMANAGE)))
+        # bento attaches the disk and ISO through VirtioSCSI, which on VirtualBox 7.0 throws
+        # write I/O errors under load (a bevymaster's disk went read-only mid-apt-install);
+        # SATA (AHCI) is VirtualBox's well-tested controller, and bento's choice for Windows
+        args.append("-var=vbox_hard_drive_interface=sata")
+        args.append("-var=vbox_iso_interface=sata")
     args.append(PACKER_TEMPLATES)
 
     print('\n=== Building Ubuntu {} for {} '

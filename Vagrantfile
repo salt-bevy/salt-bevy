@@ -84,6 +84,7 @@ NETWORK = "#{settings['vagrant_prefix']}"
 # ^ ^ each VM below will have a NAT network in NETWORK.17.x/27 or NETWORK.18.x/27
 #
 # . v . v . Hyper-V settings . v . v .
+BEVYMASTER_BOX = "salt-bevy/ubuntu-24.04"  # self-built like DEFAULT_BOX; 24.04 until Salt supports 26.04
 QUAIL22_BOX = "generic/ubuntu2204"  # Ubuntu 22.04, actively maintained; publishes virtualbox, vmware, hyperv, libvirt & qemu providers
 # Hyper-V cannot create switches from Vagrant and ignores static private_network IPs, so we
 # bridge to an existing External Virtual Switch instead (create it first in Hyper-V Manager
@@ -133,6 +134,11 @@ max_cpus = 1 if max_cpus < 1
 Vagrant.configure(2) do |config|  # the literal "2" is required.
 
    config.ssh.forward_agent = true
+  if Vagrant.has_plugin?("vagrant-vbguest")
+    # the self-built boxes already carry Guest Additions, and vagrant-vbguest 0.32.0 (its last
+    # release) crashes on Vagrant 2.4's Ruby 3.3, which dropped the File.exists? it calls
+    config.vbguest.auto_update = false
+  end
 
   unless vagrant_object.start_with? 'win'
     config.vm.provision "shell", inline: "ifconfig || ip addr", run: "always"  # what did we get?
@@ -187,7 +193,7 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
     quail_config.vm.provider "virtualbox" do |v|  # only for VirtualBox boxes
         v.name = BEVY + '_quail1'  # ! N.O.T.E.: name must be unique
         v.memory = 1024       # limit memory for the virtual box
-        v.cpus = 1
+        v.cpus = 2  # Ubuntu 24.04+ kernels hang early in boot on VirtualBox 7.0 with only 1 vCPU
         v.linked_clone = true # make a soft copy of the base Vagrant box
         v.customize ["modifyvm", :id, "--natnet1", NETWORK + ".62.0/27"]  # do not use 10.0 network for NAT
 	    #                                                     ^  ^/27 is the smallest network allowed.
@@ -471,7 +477,7 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
 # This is the Vagrant version of a Bevy Salt-master.
 # You cannot run it if you are using an external bevymaster.
   config.vm.define "bevymaster", autostart: false do |master_config|
-    master_config.vm.box = DEFAULT_BOX  # self-built for hyperv/virtualbox/vmware -- see DEFAULT_BOX above
+    master_config.vm.box = BEVYMASTER_BOX  # self-built for hyperv/virtualbox/vmware -- see DEFAULT_BOX above
     master_config.vm.hostname = "bevymaster"
     if vagrant_command == "up" and vagrant_object == "bevymaster" and ACTIVE_PROVIDER != 'hyperv'
       if settings['master_vagrant_ip'] != NETWORK + ".56.2"
@@ -528,7 +534,7 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
     master_config.vm.provider "virtualbox" do |v|
         v.name = BEVY + '_bevymaster'  # ! N.O.T.E.: name must be unique
         v.memory = 1024       # limit memory for the virtual box
-        v.cpus = 1
+        v.cpus = 2  # Ubuntu 24.04+ kernels hang early in boot on VirtualBox 7.0 with only 1 vCPU
         v.linked_clone = true # make a soft copy of the base Vagrant box
         v.customize ["modifyvm", :id, "--natnet1", NETWORK + ".62.32/27"]  # do not use 10.0 network for NAT
         v.customize ["modifyvm", :id, "--natdnshostresolver1", "on"]  # use host's DNS resolver
@@ -649,7 +655,7 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
     quail_config.vm.provider "virtualbox" do |v|
         v.name = BEVY + '_quail24'  # ! N.O.T.E.: name must be unique
         v.memory = 1024       # limit memory for the virtual box
-        v.cpus = 1
+        v.cpus = 2  # Ubuntu 24.04+ kernels hang early in boot on VirtualBox 7.0 with only 1 vCPU
         v.linked_clone = true # make a soft copy of the base Vagrant box
         v.customize ["modifyvm", :id, "--natnet1", NETWORK + ".62.64/27"]  # do not use 10.0 network for NAT
         v.customize ["modifyvm", :id, "--natdnshostresolver1", "on"]  # use host's DNS resolver

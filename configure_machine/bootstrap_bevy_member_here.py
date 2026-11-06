@@ -737,7 +737,7 @@ def choose_master_address(host_name):
             if not ip['addr'].is_loopback and not ip['addr'].is_link_local:
                 print('{addr}/{prefix} - {name}'.format(**ip))
     if my_settings['master_host'] and default == "salt":
-        default = settings['vagrant_prefix'] + '.2.2'  # TODO: this will not work for IPv6
+        default = settings['vagrant_prefix'] + '.56.2'  # must match bevymaster's address in the Vagrantfile. TODO: this will not work for IPv6
     else:
         try:
             # noinspection PyArgumentList
@@ -872,7 +872,7 @@ def clear_master_pub_key(force=False):
 
 def write_config_files():
     if my_settings['master_host']:
-        settings['master_vagrant_ip'] = settings['vagrant_prefix'] + '.2.2'
+        settings['master_vagrant_ip'] = settings['vagrant_prefix'] + '.56.2'
         write_config_file(Path(GUEST_MASTER_CONFIG_FILE),
                           is_master=True, virtual=True, master_host=my_settings['master_host'])
     else:

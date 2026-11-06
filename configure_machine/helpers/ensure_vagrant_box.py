@@ -32,13 +32,28 @@ SELF_BUILT_MACHINE_VERSIONS = {
     "": "26.04",
     "quail1": "26.04",
     "quail2": "26.04",
-    "bevymaster": "26.04",
+    "bevymaster": "24.04",  # BEVYMASTER_BOX: Salt doesn't support 26.04 yet
     "quail24": "24.04",
 }
 
 COMMANDS_THAT_NEED_THE_BOX = {"up", "reload", "provision"}
 
 BOX_LIST_LINE_RE = re.compile(r'^(\S+)\s+\((\w+),')
+
+
+def requested_provider(argv):
+    for i, arg in enumerate(argv):
+        if arg.startswith("--provider="):
+            return arg.split("=", 1)[1]
+        if arg == "--provider" and len(argv) > i + 1:
+            return argv[i + 1]
+    if os.environ.get("VAGRANT_DEFAULT_PROVIDER"):
+        return os.environ["VAGRANT_DEFAULT_PROVIDER"]
+    if sys.platform == "win32":
+        # vgr.bat runs this helper *before* it sets VAGRANT_DEFAULT_PROVIDER=hyperv for "up",
+        # so mirror that rule here; for other commands we can't tell -- skip the check.
+        return "hyperv" if argv[0] == "up" else None
+    return "virtualbox"  # Vagrant's own default, as used by vgr on Linux/macOS
 
 
 def registered_boxes_for(provider):
@@ -72,9 +87,8 @@ def main(argv):
             return
         version = SELF_BUILT_MACHINE_VERSIONS[machine]
 
-    # Mirrors vgr.bat's own rule ("up" defaults to hyperv unless overridden) so this
-    # check targets the same provider Vagrant is about to use.
-    provider = os.environ.get("VAGRANT_DEFAULT_PROVIDER") or ("hyperv" if command == "up" else None)
+    # target the same provider Vagrant is about to use
+    provider = requested_provider(argv)
     if not provider:
         return  # can't tell which provider will actually be used -- skip the check
 

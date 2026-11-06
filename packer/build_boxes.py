@@ -16,6 +16,7 @@ Usage:
   python build_boxes.py --switch "My Hyper-V Switch"  # only relevant for --providers hyperv
 """
 import argparse
+import json
 import os
 import shutil
 import subprocess
@@ -35,6 +36,19 @@ PROVIDER_SOURCES = {
     "virtualbox": "source.virtualbox-iso.vm",
     "vmware": "source.vmware-iso.vm",
 }
+
+# bento's default VBoxManage customizations for x86_64 Linux, minus its final
+# "storagectl ... --name 'IDE Controller' --remove": with bento's virtio ISO interface
+# VirtualBox 7.0 never creates that controller, so the remove fails the whole build.
+# An unused IDE controller left in place is harmless.
+VBOXMANAGE = [
+    ["modifyvm", "{{.Name}}", "--audio-enabled", "off"],
+    ["modifyvm", "{{.Name}}", "--nat-localhostreachable1", "on"],
+    ["modifyvm", "{{.Name}}", "--cableconnected1", "on"],
+    ["modifyvm", "{{.Name}}", "--usb-xhci", "on"],
+    ["modifyvm", "{{.Name}}", "--mouse", "usb"],
+    ["modifyvm", "{{.Name}}", "--keyboard", "usb"],
+]
 
 
 def packer_exe():
@@ -76,14 +90,16 @@ def detect_providers():
 
 
 def ensure_bento():
-    if BENTO_DIR.exists():
-        return
-    print('Cloning chef/bento (pinned commit {})...'.format(BENTO_COMMIT))
-    subprocess.run(["git", "init", "-q", str(BENTO_DIR)], check=True)
-    subprocess.run(["git", "-C", str(BENTO_DIR), "remote", "add", "origin", BENTO_REPO], check=True)
-    subprocess.run(["git", "-C", str(BENTO_DIR), "fetch", "-q", "--depth", "1", "origin", BENTO_COMMIT], check=True)
-    subprocess.run(["git", "-C", str(BENTO_DIR), "checkout", "-q", "FETCH_HEAD"], check=True)
-    subprocess.run([packer_exe(), "init", PACKER_TEMPLATES], cwd=str(UBUNTU_PKRVARS_DIR), check=True)
+    packer = packer_exe()  # fail before cloning, not between the clone and "packer init"
+    if not BENTO_DIR.exists():
+        print('Cloning chef/bento (pinned commit {})...'.format(BENTO_COMMIT))
+        subprocess.run(["git", "init", "-q", str(BENTO_DIR)], check=True)
+        subprocess.run(["git", "-C", str(BENTO_DIR), "remote", "add", "origin", BENTO_REPO], check=True)
+        subprocess.run(["git", "-C", str(BENTO_DIR), "fetch", "-q", "--depth", "1", "origin", BENTO_COMMIT], check=True)
+        subprocess.run(["git", "-C", str(BENTO_DIR), "checkout", "-q", "FETCH_HEAD"], check=True)
+    # run every time: an earlier run may have cloned bento but never got its plugins installed
+    # (e.g. interrupted, or packer missing then), and init is a quick no-op once they are
+    subprocess.run([packer, "init", PACKER_TEMPLATES], cwd=str(UBUNTU_PKRVARS_DIR), check=True)
 
 
 def build_one(version, provider, switch_name):
@@ -97,9 +113,19 @@ def build_one(version, provider, switch_name):
         packer_exe(), "build",
         "-var-file={}".format(var_file.name),
         '-var=sources_enabled=["{}"]'.format(PROVIDER_SOURCES[provider]),
+        # bento's 15m default covers the whole unattended install, which updates every
+        # package from the network first -- too short on a slow link or a busy host
+        "-var=ssh_timeout=60m",
     ]
     if provider == "hyperv":
         args.append("-var=hyperv_switch_name={}".format(switch_name))
+    if provider == "virtualbox":
+        args.append("-var=vboxmanage={}".format(json.dumps(VBOXMANAGE)))
+        # bento attaches the disk and ISO through VirtioSCSI, which on VirtualBox 7.0 throws
+        # write I/O errors under load (a bevymaster's disk went read-only mid-apt-install);
+        # SATA (AHCI) is VirtualBox's well-tested controller, and bento's choice for Windows
+        args.append("-var=vbox_hard_drive_interface=sata")
+        args.append("-var=vbox_iso_interface=sata")
     args.append(PACKER_TEMPLATES)
 
     print('\n=== Building Ubuntu {} for {} '

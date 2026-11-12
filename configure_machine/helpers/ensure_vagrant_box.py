@@ -32,7 +32,8 @@ SELF_BUILT_MACHINE_VERSIONS = {
     "": "26.04",
     "quail1": "26.04",
     "quail2": "26.04",
-    "bevymaster": "26.04",
+    "master24": "24.04",
+    "salt24": "24.04",
     "quail24": "24.04",
 }
 

@@ -117,3 +117,6 @@ configure_machine/windows_minion
 bevy_srv/salt/pki_cache
 examples/dotnet/web_hello_world/bin/
 examples/dotnet/web_hello_world/obj/Debug/
+
+# TSIG secrets for PowerDNS dynamic DNS (configure_machine/install_dyndns.sh)
+configure_machine/dyndns_tsig_secrets.sh

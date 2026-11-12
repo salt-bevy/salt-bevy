@@ -1275,7 +1275,7 @@ if __name__ == '__main__':
         print()
         if my_settings['master_host'] and bevy != 'local':
             print('Ready for you to run "{}"'.format(
-                'vgr up bevymaster' if platform.system() == 'Windows' else './vgr up bevymaster'
+                'vgr up master24' if platform.system() == 'Windows' else './vgr up master24'
             ))
     except Exception:
         traceback.print_exc()

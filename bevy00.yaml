@@ -26,7 +26,7 @@
 
 saltmaster:
   profile: none  # cannot be a cloud machine, since it defines all cloud machines
-  start_command: "vgr up bevymaster"
+  start_command: "vgr up master24"
   order: 1
   grains:
     - roles:

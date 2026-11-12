@@ -8,7 +8,10 @@ base:
     - cleanup_vagrant
     - ensure_user_privs
 
-  bevymaster:
+  # The Vagrant bevy master is master24 (bevymaster until 2026-11-12); external
+  # masters may still use the id bevymaster.
+  'bevymaster,master24':
+    - match: list
     - bevy_master.define_interactive_user
     - bevy_master
     - bevy_master.local_windows_repository

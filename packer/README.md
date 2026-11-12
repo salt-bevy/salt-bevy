@@ -5,8 +5,8 @@ creation stops 2026-10-01, and existing box downloads are decommissioned
 sometime between 2026-12-31 and 2027-03-15 (see
 [the deprecation notice](https://developer.hashicorp.com/hcp/docs/vagrant/hcp-vagrant-eol)).
 Rather than depend on a third-party catalog for the plain-Ubuntu-Server
-machines in this repo's `Vagrantfile` (`bevymaster`, `quail1`, `quail2`,
-`quail22`/`salt22`, `quail24`, and `generic`), this directory builds them
+machines in this repo's `Vagrantfile` (`master24`, `quail1`, `quail2`,
+`quail22`/`salt24`, `quail24`, and `generic`), this directory builds them
 locally, for whichever hypervisor(s) you actually have installed.
 
 ## How it works

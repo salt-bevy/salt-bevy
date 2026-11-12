@@ -120,3 +120,6 @@ examples/dotnet/web_hello_world/obj/Debug/
 
 # TSIG secrets for PowerDNS dynamic DNS (configure_machine/install_dyndns.sh)
 configure_machine/dyndns_tsig_secrets.sh
+
+# Self-built Vagrant boxes (packer/build_boxes.py); several GB each
+/boxes/

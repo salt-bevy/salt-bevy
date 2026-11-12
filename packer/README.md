@@ -58,6 +58,12 @@ combination. Re-run whenever you want a refreshed box -- it always
 overwrites the previous `salt-bevy/ubuntu-<version>` registration for that
 provider.
 
+Finished `.box` files are kept in the repo's top-level `boxes/` directory
+(git-ignored), e.g. `boxes/ubuntu-24.04-x86_64.hyperv.box`, not inside
+`.bento/`. Copy one to another machine and `vagrant box add` it there to skip
+the build, or delete it to reclaim the space once Vagrant has registered it.
+The downloaded install ISOs stay in `.bento/` (Packer's cache).
+
 ## Why not the other boxes too?
 
 The Windows and macOS machines in the Vagrantfile (`win7`, `win10`, `win12`,

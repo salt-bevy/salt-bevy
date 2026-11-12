@@ -26,6 +26,10 @@ BENTO_COMMIT = "c884c077e041f54f56e4e07baddd916c49d31a0e"
 BENTO_REPO = "https://github.com/chef/bento.git"
 PACKER_DIR = Path(__file__).resolve().parent
 BENTO_DIR = PACKER_DIR / ".bento"
+# Finished .box files are moved here (git-ignored) out of bento's own build tree,
+# so they are easy to find, copy or delete, and survive deleting .bento/ to move
+# to a newer bento commit.
+BOXES_DIR = PACKER_DIR.parent / "boxes"
 UBUNTU_PKRVARS_DIR = BENTO_DIR / "os_pkrvars" / "ubuntu"
 PACKER_TEMPLATES = "../../packer_templates"  # relative to UBUNTU_PKRVARS_DIR, matches bento's own Rakefile
 
@@ -115,6 +119,10 @@ def build_one(version, provider, switch_name):
         print('ERROR: build reported success but the expected box file is missing: {}'.format(box_file))
         return False
 
+    BOXES_DIR.mkdir(exist_ok=True)
+    kept = BOXES_DIR / box_file.name
+    shutil.move(str(box_file), str(kept))
+    box_file = kept
     box_name = "salt-bevy/ubuntu-{}".format(version)
     print('Registering "{}" as {} ({})...'.format(box_file, box_name, provider))
     subprocess.run(["vagrant", "box", "add", str(box_file), "--name", box_name,

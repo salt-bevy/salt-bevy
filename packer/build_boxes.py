@@ -104,12 +104,22 @@ def build_one(version, provider, switch_name):
     ]
     if provider == "hyperv":
         args.append("-var=hyperv_switch_name={}".format(switch_name))
+        # Our own autoinstall files (packer/http/), which install hv-kvp-daemon into the
+        # installed system. Without it Packer never learns the VM's IP on Hyper-V and
+        # times out waiting for SSH. See packer/http/ubuntu/user-data.
+        args.append("-var=http_directory={}".format((PACKER_DIR / "http").as_posix()))
     args.append(PACKER_TEMPLATES)
 
     print('\n=== Building Ubuntu {} for {} '
           '(downloads the install ISO and runs an unattended install -- expect 20-40 minutes) ==='.format(
               version, provider))
-    result = subprocess.run(args, cwd=str(UBUNTU_PKRVARS_DIR))
+    # Full Packer debug log per build, kept next to the boxes: it shows whether the
+    # installer fetched its autoinstall file, and what Packer waited on.
+    BOXES_DIR.mkdir(exist_ok=True)
+    log_path = BOXES_DIR / "packer-ubuntu-{}-{}.log".format(version, provider)
+    env = dict(os.environ, PACKER_LOG="1", PACKER_LOG_PATH=str(log_path))
+    print("(Packer debug log: {})".format(log_path))
+    result = subprocess.run(args, cwd=str(UBUNTU_PKRVARS_DIR), env=env)
     if result.returncode != 0:
         print('Build FAILED for Ubuntu {} / {}.'.format(version, provider))
         return False

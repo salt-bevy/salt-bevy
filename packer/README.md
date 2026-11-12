@@ -71,3 +71,11 @@ The Windows and macOS machines in the Vagrantfile (`win7`, `win10`, `win12`,
 (too large to casually rebuild on every clone), and macOS boxes can't be
 legally redistributed off Apple hardware regardless of where they're hosted.
 Those are being tracked separately.
+
+### Hyper-V
+
+bento's Ubuntu autoinstall file never installs the Hyper-V KVP daemon into the
+installed system, so Packer can't learn the VM's IP and fails with "Timeout
+waiting for SSH". Hyper-V builds use `packer/http/ubuntu/user-data` instead, a
+copy of bento's with that one late-command fixed. Each build writes a full
+Packer debug log to `boxes/packer-ubuntu-<version>-<provider>.log`.

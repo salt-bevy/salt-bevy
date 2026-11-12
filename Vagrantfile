@@ -266,6 +266,8 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
   # A copy of quail22 (same QUAIL22_BOX, same disabled-synced-folder / one-time
   # pillar-copy setup) plus a masterless Salt minion — since it's masterless,
   # the pillar copy above is what makes its pillar_roots data available at all.
+  # salt22: test Salt master/minion only (gitfs, linux_users, etc.), sized 2 vCPU /
+  # 4 GB for that. The production Salt master is a separate, always-on VM, not this one.
   config.vm.define "salt22", autostart: false do |quail_config|
     quail_config.vm.hostname = "salt22" # + DOMAIN
     quail_config.vm.box = QUAIL22_BOX
@@ -290,20 +292,21 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
     end
     quail_config.vm.provider "virtualbox" do |v|  # only for VirtualBox boxes
         v.name = BEVY + '_salt22'  # ! N.O.T.E.: name must be unique
-        v.memory = 1024       # limit memory for the virtual box
-        v.cpus = 1
+        v.memory = 4096       # limit memory for the virtual box
+        v.cpus = 2
         v.linked_clone = true # make a soft copy of the base Vagrant box
         v.customize ["modifyvm", :id, "--natnet1", NETWORK + ".63.96/27"]  # do not use 10.0 network for NAT
         v.customize ["modifyvm", :id, "--natdnshostresolver1", "on"]  # use host's DNS resolver
     end
     quail_config.vm.provider vmware do |v|  # only for VMware boxes
-        v.vmx["memsize"] = "1024"
-        v.vmx["numvcpus"] = "1"
+        v.vmx["memsize"] = "4096"
+        v.vmx["numvcpus"] = "2"
 	  end
     quail_config.vm.provider "hyperv" do |v|  # only for Hyper-V boxes
         v.vmname = BEVY + '_salt22'  # ! N.O.T.E.: name must be unique
-        v.memory = 1024       # limit memory for the VM
-        v.cpus = 1
+        v.memory = 4096       # limit memory for the VM
+        v.maxmemory = 4096    # see quail22's maxmemory comment
+        v.cpus = 2
         v.linked_clone = true # use a differencing disk instead of a full copy
     end
     # /srv/pillar isn't synced-folder-mounted here (see the disabled synced folders above), so

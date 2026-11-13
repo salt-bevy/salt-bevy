@@ -20,16 +20,10 @@ autoinstall:
     install-server: yes
     allow-pw: yes
   late-commands:
-    # salt-bevy change: bento only edits 00-installer-config.yaml, but 24.04+
-    # writes 50-cloud-init.yaml, so the MAC client-id was never set there and the
-    # VM could come back from the post-update reboot on a different DHCP address
-    # (Packer then times out dialing the old one). Edit every netplan file and
-    # keep the matched indentation.
     - |
-      for f in /target/etc/netplan/*.yaml; do
-        [ -f "$f" ] || continue
-        grep -q "dhcp-identifier" "$f" || sed -i -E "s/^( *)dhcp4: true/&\n\1dhcp-identifier: mac/" "$f"
-      done
+      if [ -f /target/etc/netplan/00-installer-config.yaml ]; then
+        sed -i "s/dhcp4: true/&\n      dhcp-identifier: mac/" /target/etc/netplan/00-installer-config.yaml
+      fi
     - echo 'vagrant ALL=(ALL) NOPASSWD:ALL' > /target/etc/sudoers.d/vagrant
     # salt-bevy change (bento's version installs these into the installer's live
     # environment, not /target, and uses Debian's "hyperv-daemons" name). Packer
@@ -41,4 +35,17 @@ autoinstall:
       if grep -qi "microsoft" /sys/class/dmi/id/sys_vendor 2>/dev/null; then
         curtin in-target --target=/target -- apt-get update
         curtin in-target --target=/target -- apt-get install -y linux-cloud-tools-generic linux-tools-generic cifs-utils
+      fi
+    # salt-bevy change: keep the same DHCP address across reboots on Hyper-V's
+    # Default Switch. Packer fixes the SSH address at its first connect, and
+    # bento's post-update reboot came back on a new one (build timed out).
+    # networkd released its lease on shutdown and, with /run wiped, asked for no
+    # address on boot, so the switch handed out a random one. The netplan file is
+    # written by cloud-init on first boot (after these late-commands), and bento's
+    # sed above targets 22.04's file name, so use a networkd drop-in in /etc.
+    # Tested 2026-11-13: the address survived two reboots.
+    - |
+      if grep -qi "microsoft" /sys/class/dmi/id/sys_vendor 2>/dev/null; then
+        mkdir -p /target/etc/systemd/network/10-netplan-eth0.network.d
+        printf '[DHCPv4]\nClientIdentifier=mac\nSendRelease=no\n' > /target/etc/systemd/network/10-netplan-eth0.network.d/50-stable-lease.conf
       fi

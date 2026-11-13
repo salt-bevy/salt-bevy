@@ -90,7 +90,7 @@ def ensure_bento():
     subprocess.run([packer_exe(), "init", PACKER_TEMPLATES], cwd=str(UBUNTU_PKRVARS_DIR), check=True)
 
 
-def build_one(version, provider, switch_name):
+def build_one(version, provider, switch_name, keep_on_error=False):
     var_file = UBUNTU_PKRVARS_DIR / "ubuntu-{}-x86_64.pkrvars.hcl".format(version)
     if not var_file.exists():
         print('  (skipping Ubuntu {}: bento has no "{}" -- check the version number)'.format(
@@ -102,6 +102,10 @@ def build_one(version, provider, switch_name):
         "-var-file={}".format(var_file.name),
         '-var=sources_enabled=["{}"]'.format(PROVIDER_SOURCES[provider]),
     ]
+    if keep_on_error:
+        # Leave the failed VM in place (Packer stops without cleaning up), so its
+        # console and network adapter can be inspected. Remove it by hand afterwards.
+        args.append("-on-error=abort")
     if provider == "hyperv":
         args.append("-var=hyperv_switch_name={}".format(switch_name))
         # Our own autoinstall files (packer/http/), which install hv-kvp-daemon into the
@@ -149,6 +153,9 @@ def main():
     parser.add_argument("--switch", default=os.environ.get("HYPERV_SWITCH", "Default Switch"),
                          help='Hyper-V virtual switch to bridge to (default: "Default Switch"); '
                               'ignored unless building for --providers hyperv')
+    parser.add_argument("--keep-on-error", action="store_true",
+                         help="on a failed build, leave the VM in place for inspection "
+                              "(packer -on-error=abort); delete it by hand afterwards")
     args = parser.parse_args()
 
     providers = args.providers or detect_providers()
@@ -169,7 +176,7 @@ def main():
     failures = []
     for version in args.versions:
         for provider in providers:
-            if not build_one(version, provider, args.switch):
+            if not build_one(version, provider, args.switch, args.keep_on_error):
                 failures.append((version, provider))
 
     if failures:

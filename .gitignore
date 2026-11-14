@@ -123,3 +123,5 @@ configure_machine/dyndns_tsig_secrets.sh
 
 # Self-built Vagrant boxes (packer/build_boxes.py); several GB each
 /boxes/
+# Hurricane Electric dyndns2 update keys (quail1); keep out of git
+configure_machine/ddns_secrets.sh

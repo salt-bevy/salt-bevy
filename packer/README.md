@@ -5,8 +5,8 @@ creation stops 2026-10-01, and existing box downloads are decommissioned
 sometime between 2026-12-31 and 2027-03-15 (see
 [the deprecation notice](https://developer.hashicorp.com/hcp/docs/vagrant/hcp-vagrant-eol)).
 Rather than depend on a third-party catalog for the plain-Ubuntu-Server
-machines in this repo's `Vagrantfile` (`bevymaster`, `quail1`, `quail2`,
-`quail22`/`salt22`, `quail24`, and `generic`), this directory builds them
+machines in this repo's `Vagrantfile` (`master24`, `quail1`, `quail2`,
+`quail22`/`salt24`, `quail24`, and `generic`), this directory builds them
 locally, for whichever hypervisor(s) you actually have installed.
 
 ## How it works
@@ -58,6 +58,12 @@ combination. Re-run whenever you want a refreshed box -- it always
 overwrites the previous `salt-bevy/ubuntu-<version>` registration for that
 provider.
 
+Finished `.box` files are kept in the repo's top-level `boxes/` directory
+(git-ignored), e.g. `boxes/ubuntu-24.04-x86_64.hyperv.box`, not inside
+`.bento/`. Copy one to another machine and `vagrant box add` it there to skip
+the build, or delete it to reclaim the space once Vagrant has registered it.
+The downloaded install ISOs stay in `.bento/` (Packer's cache).
+
 ## Why not the other boxes too?
 
 The Windows and macOS machines in the Vagrantfile (`win7`, `win10`, `win12`,
@@ -65,3 +71,11 @@ The Windows and macOS machines in the Vagrantfile (`win7`, `win10`, `win12`,
 (too large to casually rebuild on every clone), and macOS boxes can't be
 legally redistributed off Apple hardware regardless of where they're hosted.
 Those are being tracked separately.
+
+### Hyper-V
+
+bento's Ubuntu autoinstall file never installs the Hyper-V KVP daemon into the
+installed system, so Packer can't learn the VM's IP and fails with "Timeout
+waiting for SSH". Hyper-V builds use `packer/http/ubuntu/user-data` instead, a
+copy of bento's with that one late-command fixed. Each build writes a full
+Packer debug log to `boxes/packer-ubuntu-<version>-<provider>.log`.

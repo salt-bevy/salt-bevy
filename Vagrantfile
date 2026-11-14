@@ -85,12 +85,13 @@ NETWORK = "#{settings['vagrant_prefix']}"
 #
 # . v . v . Hyper-V settings . v . v .
 QUAIL22_BOX = "generic/ubuntu2204"  # Ubuntu 22.04, actively maintained; publishes virtualbox, vmware, hyperv, libvirt & qemu providers
+UBUNTU2404_BOX = "salt-bevy/ubuntu-24.04"  # self-built like DEFAULT_BOX (packer/build_boxes.py); salt24, master24, quail24
 # Hyper-V cannot create switches from Vagrant and ignores static private_network IPs, so we
 # bridge to an existing External Virtual Switch instead (create it first in Hyper-V Manager
 # > Virtual Switch Manager) and let DHCP assign the guest's address.
 HYPERV_SWITCH = ENV['HYPERV_SWITCH'] || settings['hyperv_switch'] || "Default Switch"
-# salt22's masterless minion reads /srv/salt + /srv/pillar/django.sls from
-# the palmtree/django app repo -- see the sync provisioner in salt22's
+# salt24's masterless minion reads /srv/salt + /srv/pillar/django.sls from
+# the palmtree/django app repo -- see the sync provisioner in salt24's
 # block for why this can't rely on that repo's own git.latest state
 # anymore. Sibling checkout by default (this repo and django live next to
 # each other under PycharmProjects on vcole-admin's workstation);
@@ -266,9 +267,13 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
   # A copy of quail22 (same QUAIL22_BOX, same disabled-synced-folder / one-time
   # pillar-copy setup) plus a masterless Salt minion — since it's masterless,
   # the pillar copy above is what makes its pillar_roots data available at all.
-  config.vm.define "salt22", autostart: false do |quail_config|
-    quail_config.vm.hostname = "salt22" # + DOMAIN
-    quail_config.vm.box = QUAIL22_BOX
+  # salt24 (was salt24 until 2026-11-12): test Salt master/minion only (gitfs,
+  # linux_users, etc.), Ubuntu 24.04, 2 vCPU / 4 GB. The production Salt master is a
+  # separate, always-on VM, not this one. salt24.2tst.xyz is a CNAME to
+  # salt24.7c.2tst.xyz, which the VM keeps current itself (install_dyndns.sh below).
+  config.vm.define "salt24", autostart: false do |quail_config|
+    quail_config.vm.hostname = "salt24" # + DOMAIN
+    quail_config.vm.box = UBUNTU2404_BOX
     # Disable the synced folders set up above (config.vm.synced_folder on the top-level `config`).
     # Under Hyper-V, Vagrant falls back to an SMB-backed synced folder, which requires interactively
     # creating a host SMB share and entering credentials — skip that entirely for this machine.
@@ -278,32 +283,33 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
     quail_config.vm.synced_folder ".", "/srv/pillar", disabled: true
     if ACTIVE_PROVIDER == "hyperv"
       quail_config.vm.network "public_network", bridge: HYPERV_SWITCH
-      if vagrant_command == "up" and vagrant_object == "salt22"
-        puts "Starting 'salt22' under Hyper-V, bridged to switch '#{HYPERV_SWITCH}'..."
+      if vagrant_command == "up" and vagrant_object == "salt24"
+        puts "Starting 'salt24' under Hyper-V, bridged to switch '#{HYPERV_SWITCH}'..."
       end
     else
       quail_config.vm.network "private_network", ip: NETWORK + ".56.223"
       quail_config.vm.network "public_network", bridge: interface_guesses
-      if vagrant_command == "up" and vagrant_object == "salt22"
-        puts "Starting 'salt22' at #{NETWORK}.56.223..."
+      if vagrant_command == "up" and vagrant_object == "salt24"
+        puts "Starting 'salt24' at #{NETWORK}.56.223..."
       end
     end
     quail_config.vm.provider "virtualbox" do |v|  # only for VirtualBox boxes
-        v.name = BEVY + '_salt22'  # ! N.O.T.E.: name must be unique
-        v.memory = 1024       # limit memory for the virtual box
-        v.cpus = 1
+        v.name = BEVY + '_salt24'  # ! N.O.T.E.: name must be unique
+        v.memory = 4096       # limit memory for the virtual box
+        v.cpus = 2
         v.linked_clone = true # make a soft copy of the base Vagrant box
         v.customize ["modifyvm", :id, "--natnet1", NETWORK + ".63.96/27"]  # do not use 10.0 network for NAT
         v.customize ["modifyvm", :id, "--natdnshostresolver1", "on"]  # use host's DNS resolver
     end
     quail_config.vm.provider vmware do |v|  # only for VMware boxes
-        v.vmx["memsize"] = "1024"
-        v.vmx["numvcpus"] = "1"
+        v.vmx["memsize"] = "4096"
+        v.vmx["numvcpus"] = "2"
 	  end
     quail_config.vm.provider "hyperv" do |v|  # only for Hyper-V boxes
-        v.vmname = BEVY + '_salt22'  # ! N.O.T.E.: name must be unique
-        v.memory = 1024       # limit memory for the VM
-        v.cpus = 1
+        v.vmname = BEVY + '_salt24'  # ! N.O.T.E.: name must be unique
+        v.memory = 4096       # limit memory for the VM
+        v.maxmemory = 4096    # see quail22's maxmemory comment
+        v.cpus = 2
         v.linked_clone = true # use a differencing disk instead of a full copy
     end
     # /srv/pillar isn't synced-folder-mounted here (see the disabled synced folders above), so
@@ -313,9 +319,16 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
       quail_config.vm.provision "file", source: File.join(SRV_ROOT, 'pillar'), destination: "/tmp/host_pillar", run: "always"
       quail_config.vm.provision "shell", path: "configure_machine/copy_host_pillar_to_guest.sh", run: "always"
     end
-    # ddclient/DDNS provisioning for salt22.2tst.xyz was removed 2026-10-04: the 2tst.xyz
-    # zone moved to PowerDNS-primary-on-fremont on 2026-09-16, which silently broke HE.net
-    # dyndns2 updates, and salt22 itself is inactive. See the "Dynamic DNS setup" memory.
+    # Dynamic DNS: publish this VM's DHCP address as salt24.7c.2tst.xyz through
+    # signed RFC 2136 updates to fremont's PowerDNS (key salt24.7c, which fremont's
+    # update policy limits to that one name). The secret lives in the gitignored
+    # configure_machine/dyndns_tsig_secrets.sh; without it this step is skipped.
+    dyndns_secrets = File.join(__dir__, "configure_machine", "dyndns_tsig_secrets.sh")
+    dyndns_secret = File.exist?(dyndns_secrets) ? File.read(dyndns_secrets)[/^SALT24_7C_TSIG_SECRET='([^']+)'/, 1] : nil
+    if dyndns_secret
+      quail_config.vm.provision "shell", path: "configure_machine/install_dyndns.sh", run: "always",
+        args: ["salt24.7c.2tst.xyz", "7c.2tst.xyz", "salt24.7c", dyndns_secret, "eth0"]
+    end
     script = "mkdir -p /etc/salt/minion.d\n"
     script += "chown -R vagrant:staff /etc/salt/minion.d\n"
     script += "chmod -R 775 /etc/salt/minion.d\n"
@@ -349,7 +362,7 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
     if ENV.key?("VAGRANT_SALT")
       quail_config.vm.provision :salt do |salt|
        salt.verbose = false
-       salt.bootstrap_options = "-A #{settings['master_vagrant_ip']} -i salt22 -F -P #{SALT_BOOTSTRAP_ARGUMENTS}"
+       salt.bootstrap_options = "-A #{settings['master_vagrant_ip']} -i salt24 -F -P #{SALT_BOOTSTRAP_ARGUMENTS}"
        salt.run_highstate = default_run_highstate
        salt.masterless = true
        if settings.has_key?('GUEST_MINION_CONFIG_FILE') and File.exist?(settings['GUEST_MINION_CONFIG_FILE'])
@@ -361,7 +374,7 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
 
 # . . . . . . .  Define quail2 with Salt minion installed . . . . . . . . . . . . . .
 # . this machine bootstraps Salt but no states are run or defined.
-# . Its master is "bevymaster".
+# . Its master is the bevy master (master24 when run under Vagrant).
   config.vm.define "quail2", autostart: false do |quail_config|
     quail_config.vm.box = DEFAULT_BOX
     quail_config.vm.hostname = "quail2" # + DOMAIN
@@ -467,35 +480,37 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
     end
   end
 
-# . . . . . . .  Define the BEVYMASTER . . . . . . . . . . . . . . . .
-# This is the Vagrant version of a Bevy Salt-master.
+# . . . . . . .  Define the BEVY MASTER (master24) . . . . . . . . . .
+# This is the Vagrant version of a Bevy Salt-master. It was "bevymaster" until
+# 2026-11-12; it is now master24 (Ubuntu 24.04, 2 vCPU / 4 GB). States still accept
+# the id "bevymaster" for external (non-Vagrant) masters.
 # You cannot run it if you are using an external bevymaster.
-  config.vm.define "bevymaster", autostart: false do |master_config|
-    master_config.vm.box = DEFAULT_BOX  # self-built for hyperv/virtualbox/vmware -- see DEFAULT_BOX above
-    master_config.vm.hostname = "bevymaster"
-    if vagrant_command == "up" and vagrant_object == "bevymaster" and ACTIVE_PROVIDER != 'hyperv'
+  config.vm.define "master24", autostart: false do |master_config|
+    master_config.vm.box = UBUNTU2404_BOX  # self-built for hyperv/virtualbox/vmware -- see DEFAULT_BOX above
+    master_config.vm.hostname = "master24"
+    if vagrant_command == "up" and vagrant_object == "master24" and ACTIVE_PROVIDER != 'hyperv'
       if settings['master_vagrant_ip'] != NETWORK + ".56.2"
         # prevent running a Vagrant bevy master if another is in use.
         abort "Sorry. Your master_vagrant_ip setting of '#{settings['master_vagrant_ip']}' suggests that your Bevy Master is not expected to be Virtual here."
       end
     end
     if ACTIVE_PROVIDER == "hyperv"
-      # Same reasoning as quail22/salt22: Hyper-V cannot create switches from
+      # Same reasoning as quail22/salt24: Hyper-V cannot create switches from
       # Vagrant and ignores static private_network IPs, so bridge to an
       # existing External Virtual Switch instead of the private_network call
       # below.
       master_config.vm.network "public_network", bridge: HYPERV_SWITCH
-      if vagrant_command == "up" and vagrant_object == "bevymaster"
-        puts "Starting 'bevymaster' under Hyper-V, bridged to switch '#{HYPERV_SWITCH}'..."
+      if vagrant_command == "up" and vagrant_object == "master24"
+        puts "Starting 'master24' under Hyper-V, bridged to switch '#{HYPERV_SWITCH}'..."
       end
-      # Also as with quail22/salt22: under Hyper-V, Vagrant falls back to an
+      # Also as with quail22/salt24: under Hyper-V, Vagrant falls back to an
       # SMB-backed synced folder, which requires interactively creating a
       # host SMB share and entering credentials -- skip that for ALL FOUR
       # top-level synced folders defined above (/vagrant, /salt_bevy,
       # /projects, /srv/pillar), not just /vagrant. /salt_bevy and
       # /projects are pure developer-convenience mounts nothing here reads,
       # safe to just drop. /srv/pillar gets the same one-time host-pillar
-      # copy quail22/salt22 already use. /vagrant itself is NOT needed
+      # copy quail22/salt24 already use. /vagrant itself is NOT needed
       # wholesale -- only bevy_root (/vagrant/bevy_srv, see the pillar
       # below) is ever actually read -- so copy just that subdirectory
       # rather than the whole repo (SCPing the full checkout, including
@@ -526,23 +541,23 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
     #  master_config.ssh.private_key_path = Dir.home() + "/.ssh/id_rsa"
     #end
     master_config.vm.provider "virtualbox" do |v|
-        v.name = BEVY + '_bevymaster'  # ! N.O.T.E.: name must be unique
-        v.memory = 1024       # limit memory for the virtual box
-        v.cpus = 1
+        v.name = BEVY + '_master24'  # ! N.O.T.E.: name must be unique
+        v.memory = 4096       # limit memory for the virtual box
+        v.cpus = 2
         v.linked_clone = true # make a soft copy of the base Vagrant box
         v.customize ["modifyvm", :id, "--natnet1", NETWORK + ".62.32/27"]  # do not use 10.0 network for NAT
         v.customize ["modifyvm", :id, "--natdnshostresolver1", "on"]  # use host's DNS resolver
     end
     master_config.vm.provider vmware do |v|
-        v.vmx["memsize"] = "1024"
-        v.vmx["numvcpus"] = "1"
+        v.vmx["memsize"] = "4096"
+        v.vmx["numvcpus"] = "2"
 	  end
     master_config.vm.provider "hyperv" do |v|  # only for Hyper-V boxes
-        v.vmname = BEVY + '_bevymaster'  # ! N.O.T.E.: name must be unique
-        v.memory = 1024       # limit memory for the VM
-        v.maxmemory = 1024    # see quail22's maxmemory comment: avoids a
+        v.vmname = BEVY + '_master24'  # ! N.O.T.E.: name must be unique
+        v.memory = 4096       # limit memory for the VM
+        v.maxmemory = 4096    # see quail22's maxmemory comment: avoids a
                                # Vagrant 2.4.9 hyperv provider scoping bug
-        v.cpus = 1
+        v.cpus = 2
         v.mac = "ae1100" + bevy_mac
         v.linked_clone = true # use a differencing disk instead of a full copy
     end
@@ -559,7 +574,7 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
        salt.verbose = true
        salt.log_level = "info"
        salt.colorize = true
-       # -i bevymaster: every other :salt provisioner block in this file pins
+       # -i master24: every other :salt provisioner block in this file pins
        # its minion id explicitly -- this one didn't, and Salt caches
        # whatever id it derives (from the hostname at first bootstrap) into
        # /etc/salt/minion_id permanently, never re-deriving it later even if
@@ -570,7 +585,7 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
        # cached it before hostname-setting ever got there -- so top.sls's
        # 'bevymaster'/'local' entries never matched, and the actual
        # salt-master/cloud-controller setup never ran.
-       salt.bootstrap_options = "-i bevymaster -P -M -L #{SALT_BOOTSTRAP_ARGUMENTS}"  # install salt-cloud and salt-master
+       salt.bootstrap_options = "-i master24 -P -M -L #{SALT_BOOTSTRAP_ARGUMENTS}"  # install salt-cloud and salt-master
        salt.masterless = true  # the provisioning script for the master is masterless
        salt.run_highstate = true
        password_hash = settings['linux_password_hash']
@@ -633,7 +648,14 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
 # provision it, same as quail1.
   config.vm.define "quail24", autostart: false do |quail_config|
     quail_config.vm.hostname = "quail24" # + DOMAIN
-    quail_config.vm.box = "salt-bevy/ubuntu-24.04"
+    quail_config.vm.box = UBUNTU2404_BOX
+    # Same as quail22/salt24: turn off the top-level synced folders. Under Hyper-V
+    # Vagrant falls back to SMB shares, which stop "vagrant up" to ask for host
+    # credentials. Nothing on this bare test box reads them.
+    quail_config.vm.synced_folder ".", "/vagrant", disabled: true
+    quail_config.vm.synced_folder ".", "/salt_bevy", disabled: true
+    quail_config.vm.synced_folder ".", "/projects", disabled: true
+    quail_config.vm.synced_folder ".", "/srv/pillar", disabled: true
     if ACTIVE_PROVIDER == "hyperv"
       quail_config.vm.network "public_network", bridge: HYPERV_SWITCH
       if vagrant_command == "up" and vagrant_object == "quail24"
@@ -916,12 +938,12 @@ pillar_roots:
  # . it copies windows-sudo/srv/salt + srv/pillar straight from
  # . WINDOWS_SUDO_REPO_ROOT into fixed guest paths (C:\srv\salt,
  # . C:\srv\pillar) and points file_roots/pillar_roots at those via its own
- # . minion.d drop-in, the same pattern salt22 uses for DJANGO_REPO_ROOT
+ # . minion.d drop-in, the same pattern salt24 uses for DJANGO_REPO_ROOT
  # . (see that block's comments) -- self-contained, no dependency on
  # . whatever the host's real WINDOWS_GUEST_CONFIG_FILE sets.
  #
- # . Runs under Hyper-V on this machine -- same reasoning as quail22/salt22/
- # . bevymaster above: Hyper-V can't create switches from Vagrant and
+ # . Runs under Hyper-V on this machine -- same reasoning as quail22/salt24/
+ # . master24 above: Hyper-V can't create switches from Vagrant and
  # . ignores static private_network IPs (bridge to an existing External
  # . Virtual Switch instead), and its synced-folder fallback needs an
  # . interactive SMB share/credential prompt, so the four top-level synced
@@ -976,7 +998,7 @@ pillar_roots:
     end
     # Copy this repo's own srv/salt + srv/pillar in directly (see the block
     # comment above) -- copy to a temp spot first, then move into place with
-    # a shell step, same two-step dance salt22 uses for DJANGO_REPO_ROOT
+    # a shell step, same two-step dance salt24 uses for DJANGO_REPO_ROOT
     # (a single big "file" upload of a whole tree needs somewhere to land
     # before it can overwrite a possibly-already-populated destination).
     if Dir.exist?(File.join(WINDOWS_SUDO_REPO_ROOT, 'srv', 'salt'))

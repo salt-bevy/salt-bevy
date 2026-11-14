@@ -1,0 +1,51 @@
+#cloud-config
+# salt-bevy copy of bento's packer_templates/http/ubuntu/user-data, used only for
+# Hyper-V builds (packer/build_boxes.py passes -var http_directory=...). Kept
+# identical apart from the late-commands marked "salt-bevy change" below.
+autoinstall:
+  version: 1
+  identity:
+    hostname: vagrant
+    username: vagrant
+    password: '$6$rounds=4096$5CU3LEj/MQvbkfPb$LmKEF9pCfU8R.dA.GemgE/8GT6r9blge3grJvdsVTMFKyLEQwzEF3SGWqAzjawY/XHRpWj4fOiLBrRyxJhIRJ1'
+  storage:
+    layout:
+      name: lvm
+      sizing-policy: all
+  early-commands:
+    # otherwise packer tries to connect and exceed max attempts:
+    - systemctl stop ssh.service
+    - systemctl stop ssh.socket
+  ssh:
+    install-server: yes
+    allow-pw: yes
+  late-commands:
+    - |
+      if [ -f /target/etc/netplan/00-installer-config.yaml ]; then
+        sed -i "s/dhcp4: true/&\n      dhcp-identifier: mac/" /target/etc/netplan/00-installer-config.yaml
+      fi
+    - echo 'vagrant ALL=(ALL) NOPASSWD:ALL' > /target/etc/sudoers.d/vagrant
+    # salt-bevy change (bento's version installs these into the installer's live
+    # environment, not /target, and uses Debian's "hyperv-daemons" name). Packer
+    # finds a Hyper-V VM's IP through the KVP integration service, so the
+    # installed system must run hv-kvp-daemon (linux-cloud-tools) or Packer
+    # waits for SSH until it times out. Installed only when the box is built
+    # on Hyper-V. The services start themselves (ConditionVirtualization=microsoft).
+    - |
+      if grep -qi "microsoft" /sys/class/dmi/id/sys_vendor 2>/dev/null; then
+        curtin in-target --target=/target -- apt-get update
+        curtin in-target --target=/target -- apt-get install -y linux-cloud-tools-generic linux-tools-generic cifs-utils
+      fi
+    # salt-bevy change: keep the same DHCP address across reboots on Hyper-V's
+    # Default Switch. Packer fixes the SSH address at its first connect, and
+    # bento's post-update reboot came back on a new one (build timed out).
+    # networkd released its lease on shutdown and, with /run wiped, asked for no
+    # address on boot, so the switch handed out a random one. The netplan file is
+    # written by cloud-init on first boot (after these late-commands), and bento's
+    # sed above targets 22.04's file name, so use a networkd drop-in in /etc.
+    # Tested 2026-11-13: the address survived two reboots.
+    - |
+      if grep -qi "microsoft" /sys/class/dmi/id/sys_vendor 2>/dev/null; then
+        mkdir -p /target/etc/systemd/network/10-netplan-eth0.network.d
+        printf '[DHCPv4]\nClientIdentifier=mac\nSendRelease=no\n' > /target/etc/systemd/network/10-netplan-eth0.network.d/50-stable-lease.conf
+      fi

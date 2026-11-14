@@ -7,8 +7,8 @@
 
 start_bevy_master:
   vagrant.running:
-    - name: bevymaster
-    - machine: bevymaster
+    - name: master24
+    - machine: master24
     - cwd: {{ pillar['cwd'] }}
     - runas: {{ pillar['runas'] }}
 

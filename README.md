@@ -233,7 +233,7 @@ Then type `sudo --help` and hold your head up high.
 A Vagrantfile is supplied here to create several virtual machines on your workstation.
 (Some lessons may also have a Vagrantfile for that lesson.)
 
-You can create a Salt cloud master ("bevymaster") as a virtual machine on your workstation.
+You can create a Salt cloud master ("master24", formerly "bevymaster") as a virtual machine on your workstation.
 This can be very convenient, except for **one restriction** which occurs if you have any
 application servers (salt minions) running separately from your workstation.
 Minions will be trying to connect to their master at a fixed address.
@@ -241,14 +241,14 @@ If your master should re-connect using a different IP address, they will be lost
 so in that case, will need to consistently use the same network connection for your host workstion,
 or use some sort of dynamic DNS arrangement.
 
-For example, you can start the bevymaster VM like this:
+For example, you can start the master24 VM like this:
 ```cmd
 # on Windows:
-vgr up bevymaster
+vgr up master24
 ```
 ```bash
 # on any other OS:
-./vgr up bevymaster
+./vgr up master24
 ```
 Each other machine from the table below is controlled by using its name in the `vgr` command:
 ```cmd
@@ -261,11 +261,11 @@ The Vagrantfile defines:
 
 | Name                     | ip       | minion? | OS version                                           |
 |--------------------------|----------|---------|-------------------------------------------------------|
-| bevymaster               | 56.2     | master  | Ubuntu Server, latest LTS ‡                            |
+| master24                 | 56.2     | master  | Ubuntu 24.04, self-built ‡ (2 vCPU / 4 GB)             |
 | quail1 †                 | 56.201   | no      | Ubuntu Server, latest LTS ‡                            |
 | quail2 †                 | 56.202   | yes     | Ubuntu Server, latest LTS ‡                            |
 | quail22 ‖ †              | 56.222   | no      | Ubuntu 22.04 (`generic/ubuntu2204`, has a real Hyper-V provider) |
-| salt22 ‖ †               | 56.223   | yes     | Ubuntu 22.04, masterless minion (copy of quail22)      |
+| salt24 ‖ †               | 56.223   | yes     | Ubuntu 24.04, self-built ‡; test master + masterless minion, dynamic DNS salt24.2tst.xyz |
 | quail20                  | 56.220   | no      | Ubuntu 20.04                                           |
 | quail24 †                | 56.224   | no      | Ubuntu 24.04, self-built ‡                             |
 | win7                     | —        | yes     | Windows 7 (32-bit)                                     |
@@ -293,11 +293,11 @@ The Vagrantfile defines:
 
  § On non-macOS hosts this box is unavailable; `mac13` falls back to `mcandre/palindrome-buildbot-macos`.
 
- ‖ `quail22`/`salt22` have their `/srv/pillar` synced folder disabled (Hyper-V would otherwise fall
+ ‖ `quail22`/`salt24`/`quail24` have their `/srv/pillar` synced folder disabled (Hyper-V would otherwise fall
  back to an SMB-backed sync, which requires interactively creating a host SMB share). Instead, the
  host's pillar directory is uploaded into `/srv/pillar` **once**, during provisioning. This is a
  one-time copy, not a live sync — if you edit files under your host's pillar directory afterward,
- run `vgr provision <name>` (or `vgr up <name> --provision`) to re-copy them into the VM. `salt22`'s
+ run `vgr provision <name>` (or `vgr up <name> --provision`) to re-copy them into the VM. `salt24`'s
  masterless minion reads its pillar from this copy, so it needs a re-provision to see host-side edits.
 
 ---

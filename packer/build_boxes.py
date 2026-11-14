@@ -26,6 +26,10 @@ BENTO_COMMIT = "c884c077e041f54f56e4e07baddd916c49d31a0e"
 BENTO_REPO = "https://github.com/chef/bento.git"
 PACKER_DIR = Path(__file__).resolve().parent
 BENTO_DIR = PACKER_DIR / ".bento"
+# Finished .box files are moved here (git-ignored) out of bento's own build tree,
+# so they are easy to find, copy or delete, and survive deleting .bento/ to move
+# to a newer bento commit.
+BOXES_DIR = PACKER_DIR.parent / "boxes"
 UBUNTU_PKRVARS_DIR = BENTO_DIR / "os_pkrvars" / "ubuntu"
 PACKER_TEMPLATES = "../../packer_templates"  # relative to UBUNTU_PKRVARS_DIR, matches bento's own Rakefile
 
@@ -86,7 +90,7 @@ def ensure_bento():
     subprocess.run([packer_exe(), "init", PACKER_TEMPLATES], cwd=str(UBUNTU_PKRVARS_DIR), check=True)
 
 
-def build_one(version, provider, switch_name):
+def build_one(version, provider, switch_name, keep_on_error=False):
     var_file = UBUNTU_PKRVARS_DIR / "ubuntu-{}-x86_64.pkrvars.hcl".format(version)
     if not var_file.exists():
         print('  (skipping Ubuntu {}: bento has no "{}" -- check the version number)'.format(
@@ -98,14 +102,28 @@ def build_one(version, provider, switch_name):
         "-var-file={}".format(var_file.name),
         '-var=sources_enabled=["{}"]'.format(PROVIDER_SOURCES[provider]),
     ]
+    if keep_on_error:
+        # Leave the failed VM in place (Packer stops without cleaning up), so its
+        # console and network adapter can be inspected. Remove it by hand afterwards.
+        args.append("-on-error=abort")
     if provider == "hyperv":
         args.append("-var=hyperv_switch_name={}".format(switch_name))
+        # Our own autoinstall files (packer/http/), which install hv-kvp-daemon into the
+        # installed system. Without it Packer never learns the VM's IP on Hyper-V and
+        # times out waiting for SSH. See packer/http/ubuntu/user-data.
+        args.append("-var=http_directory={}".format((PACKER_DIR / "http").as_posix()))
     args.append(PACKER_TEMPLATES)
 
     print('\n=== Building Ubuntu {} for {} '
           '(downloads the install ISO and runs an unattended install -- expect 20-40 minutes) ==='.format(
               version, provider))
-    result = subprocess.run(args, cwd=str(UBUNTU_PKRVARS_DIR))
+    # Full Packer debug log per build, kept next to the boxes: it shows whether the
+    # installer fetched its autoinstall file, and what Packer waited on.
+    BOXES_DIR.mkdir(exist_ok=True)
+    log_path = BOXES_DIR / "packer-ubuntu-{}-{}.log".format(version, provider)
+    env = dict(os.environ, PACKER_LOG="1", PACKER_LOG_PATH=str(log_path))
+    print("(Packer debug log: {})".format(log_path))
+    result = subprocess.run(args, cwd=str(UBUNTU_PKRVARS_DIR), env=env)
     if result.returncode != 0:
         print('Build FAILED for Ubuntu {} / {}.'.format(version, provider))
         return False
@@ -115,6 +133,10 @@ def build_one(version, provider, switch_name):
         print('ERROR: build reported success but the expected box file is missing: {}'.format(box_file))
         return False
 
+    BOXES_DIR.mkdir(exist_ok=True)
+    kept = BOXES_DIR / box_file.name
+    shutil.move(str(box_file), str(kept))
+    box_file = kept
     box_name = "salt-bevy/ubuntu-{}".format(version)
     print('Registering "{}" as {} ({})...'.format(box_file, box_name, provider))
     subprocess.run(["vagrant", "box", "add", str(box_file), "--name", box_name,
@@ -131,6 +153,9 @@ def main():
     parser.add_argument("--switch", default=os.environ.get("HYPERV_SWITCH", "Default Switch"),
                          help='Hyper-V virtual switch to bridge to (default: "Default Switch"); '
                               'ignored unless building for --providers hyperv')
+    parser.add_argument("--keep-on-error", action="store_true",
+                         help="on a failed build, leave the VM in place for inspection "
+                              "(packer -on-error=abort); delete it by hand afterwards")
     args = parser.parse_args()
 
     providers = args.providers or detect_providers()
@@ -151,7 +176,7 @@ def main():
     failures = []
     for version in args.versions:
         for provider in providers:
-            if not build_one(version, provider, args.switch):
+            if not build_one(version, provider, args.switch, args.keep_on_error):
                 failures.append((version, provider))
 
     if failures:

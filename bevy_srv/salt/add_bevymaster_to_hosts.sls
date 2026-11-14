@@ -7,4 +7,5 @@ add_bevymaster_to_hosts:
     - ip: {{ pillar['master_external_ip'] }}
     - names:
       - bevymaster
+      - master24
 ...

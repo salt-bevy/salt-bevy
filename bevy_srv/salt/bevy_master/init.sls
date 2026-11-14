@@ -43,7 +43,7 @@ generate-own-key:
 
 accept-own-key:
   file.copy:
-    - name: {{ salt['config.get']('salt_config_directory') }}/pki/master/minions/bevymaster
+    - name: {{ salt['config.get']('salt_config_directory') }}/pki/master/minions/{{ salt['config.get']('id') }}
     - source: "{{ salt['config.get']('salt_config_directory') }}/pki/minion{{ other_minion }}/minion.pub"   # accept yourself as a minion
     - makedirs: true
     - require:
@@ -52,10 +52,10 @@ accept-own-key:
 clean_up_own_pki:
   file.absent:  # clean up
     - names:
-      - {{ salt['config.get']('salt_config_directory') }}/pki/master/minions_pre/bevymaster
-      - {{ salt['config.get']('salt_config_directory') }}/pki/master/minions_autosign/bevymaster
+      - {{ salt['config.get']('salt_config_directory') }}/pki/master/minions_pre/{{ salt['config.get']('id') }}
+      - {{ salt['config.get']('salt_config_directory') }}/pki/master/minions_autosign/{{ salt['config.get']('id') }}
     - onlyif:
-      - test -e {{ salt['config.get']('salt_config_directory') }}/pki/master/minions/bevymaster
+      - test -e {{ salt['config.get']('salt_config_directory') }}/pki/master/minions/{{ salt['config.get']('id') }}
     - require:
       - accept-own-key
 {% endif %} {# pki_cache exists not #}

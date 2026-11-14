@@ -17,6 +17,7 @@ Usage:
 """
 import argparse
 import os
+import platform
 import shutil
 import subprocess
 import sys
@@ -31,6 +32,9 @@ BENTO_DIR = PACKER_DIR / ".bento"
 # to a newer bento commit.
 BOXES_DIR = PACKER_DIR.parent / "boxes"
 UBUNTU_PKRVARS_DIR = BENTO_DIR / "os_pkrvars" / "ubuntu"
+# bento names its var files and boxes by guest architecture; build to match the host
+# (e.g. Apple Silicon Macs can only run arm64 guests under VirtualBox).
+ARCH = "aarch64" if platform.machine().lower() in ("arm64", "aarch64") else "x86_64"
 PACKER_TEMPLATES = "../../packer_templates"  # relative to UBUNTU_PKRVARS_DIR, matches bento's own Rakefile
 
 # Packer source name -> Vagrant provider tag used in the output filename ("{{.Provider}}")
@@ -80,18 +84,20 @@ def detect_providers():
 
 
 def ensure_bento():
-    if BENTO_DIR.exists():
-        return
-    print('Cloning chef/bento (pinned commit {})...'.format(BENTO_COMMIT))
-    subprocess.run(["git", "init", "-q", str(BENTO_DIR)], check=True)
-    subprocess.run(["git", "-C", str(BENTO_DIR), "remote", "add", "origin", BENTO_REPO], check=True)
-    subprocess.run(["git", "-C", str(BENTO_DIR), "fetch", "-q", "--depth", "1", "origin", BENTO_COMMIT], check=True)
-    subprocess.run(["git", "-C", str(BENTO_DIR), "checkout", "-q", "FETCH_HEAD"], check=True)
+    if not BENTO_DIR.exists():
+        print('Cloning chef/bento (pinned commit {})...'.format(BENTO_COMMIT))
+        subprocess.run(["git", "init", "-q", str(BENTO_DIR)], check=True)
+        subprocess.run(["git", "-C", str(BENTO_DIR), "remote", "add", "origin", BENTO_REPO], check=True)
+        subprocess.run(["git", "-C", str(BENTO_DIR), "fetch", "-q", "--depth", "1", "origin", BENTO_COMMIT], check=True)
+        subprocess.run(["git", "-C", str(BENTO_DIR), "checkout", "-q", "FETCH_HEAD"], check=True)
+    # Every time, not just after cloning: plugins install per user (~/.config/packer),
+    # so an existing checkout on a new machine or account still needs them. Quick no-op
+    # once they're present.
     subprocess.run([packer_exe(), "init", PACKER_TEMPLATES], cwd=str(UBUNTU_PKRVARS_DIR), check=True)
 
 
 def build_one(version, provider, switch_name, keep_on_error=False):
-    var_file = UBUNTU_PKRVARS_DIR / "ubuntu-{}-x86_64.pkrvars.hcl".format(version)
+    var_file = UBUNTU_PKRVARS_DIR / "ubuntu-{}-{}.pkrvars.hcl".format(version, ARCH)
     if not var_file.exists():
         print('  (skipping Ubuntu {}: bento has no "{}" -- check the version number)'.format(
             version, var_file.name))
@@ -106,6 +112,9 @@ def build_one(version, provider, switch_name, keep_on_error=False):
         # Leave the failed VM in place (Packer stops without cleaning up), so its
         # console and network adapter can be inspected. Remove it by hand afterwards.
         args.append("-on-error=abort")
+    if provider == "virtualbox" and ARCH == "aarch64":
+        # See the comment in that file: removes the x86 IDE controller under its real name.
+        args.append("-var-file={}".format((PACKER_DIR / "virtualbox-aarch64.pkrvars.hcl").as_posix()))
     if provider == "hyperv":
         args.append("-var=hyperv_switch_name={}".format(switch_name))
         # Our own autoinstall files (packer/http/), which install hv-kvp-daemon into the
@@ -128,7 +137,7 @@ def build_one(version, provider, switch_name, keep_on_error=False):
         print('Build FAILED for Ubuntu {} / {}.'.format(version, provider))
         return False
 
-    box_file = BENTO_DIR / "builds" / "build_complete" / "ubuntu-{}-x86_64.{}.box".format(version, provider)
+    box_file = BENTO_DIR / "builds" / "build_complete" / "ubuntu-{}-{}.{}.box".format(version, ARCH, provider)
     if not box_file.exists():
         print('ERROR: build reported success but the expected box file is missing: {}'.format(box_file))
         return False

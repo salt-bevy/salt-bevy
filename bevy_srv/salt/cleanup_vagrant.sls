@@ -14,7 +14,7 @@ kill_default_route_{{ net.interface }}:
       {% else %}
     - names:
         - ip route del default via {{ net.gateway }}
-        - ip route add default via {{ net.gateway }} dev {{ net.interface }} metric 9999  {# so that the other route is preferred #}
+        - ip route add default via {{ net.gateway }} dev {{ net.interface }} metric {{ 9999 - loop.index0 }}  {# so that the other route is preferred; Linux allows only one default route per metric #}
       {% endif %}
     {% endif %}
   {% endfor %}

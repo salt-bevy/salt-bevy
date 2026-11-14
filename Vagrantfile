@@ -79,6 +79,10 @@ else
 end
 # .
 BEVY = settings["bevy"]  # the name of your bevy
+if BEVY.to_s.empty?  # e.g. bootstrap_bevy_member_here.py wrote its files but was stopped before the questions
+  abort "\n*  ERROR: no 'bevy' name in #{BEVY_SETTINGS_FILE_NAME} or #{MY_SETTINGS_FILE_NAME}.\n" \
+        "*  Run 'configure_machine/bootstrap_bevy_member_here.py' to finish setting up this host.\n\n"
+end
 # the first two bytes of your Vagrant host-only network IP ("192.168.x.x")
 NETWORK = "#{settings['vagrant_prefix']}"
 # ^ ^ each VM below will have a NAT network in NETWORK.17.x/27 or NETWORK.18.x/27

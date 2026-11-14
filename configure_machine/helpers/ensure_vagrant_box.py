@@ -73,9 +73,19 @@ def main(argv):
             return
         version = SELF_BUILT_MACHINE_VERSIONS[machine]
 
-    # Mirrors vgr.bat's own rule ("up" defaults to hyperv unless overridden) so this
-    # check targets the same provider Vagrant is about to use.
-    provider = os.environ.get("VAGRANT_DEFAULT_PROVIDER") or ("hyperv" if command == "up" else None)
+    # Mirrors the Vagrantfile's requested_provider() and vgr.bat's rule ("up" defaults to
+    # hyperv on Windows unless overridden) so this check targets the same provider Vagrant
+    # is about to use. vgr (bash, Linux/macOS) sets no default, so Vagrant uses virtualbox.
+    provider = None
+    for i, arg in enumerate(argv):
+        if arg.startswith("--provider="):
+            provider = arg.split("=", 1)[1]
+        elif arg == "--provider" and i + 1 < len(argv):
+            provider = argv[i + 1]
+    if not provider:
+        provider = os.environ.get("VAGRANT_DEFAULT_PROVIDER")
+    if not provider and command == "up":
+        provider = "hyperv" if os.name == "nt" else "virtualbox"
     if not provider:
         return  # can't tell which provider will actually be used -- skip the check
 

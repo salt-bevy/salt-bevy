@@ -94,16 +94,9 @@ UBUNTU2404_BOX = "salt-bevy/ubuntu-24.04"  # self-built like DEFAULT_BOX (packer
 # bridge to an existing External Virtual Switch instead (create it first in Hyper-V Manager
 # > Virtual Switch Manager) and let DHCP assign the guest's address.
 HYPERV_SWITCH = ENV['HYPERV_SWITCH'] || settings['hyperv_switch'] || "Default Switch"
-# salt24's masterless minion reads /srv/salt + /srv/pillar/django.sls from
-# the palmtree/django app repo -- see the sync provisioner in salt24's
-# block for why this can't rely on that repo's own git.latest state
-# anymore. Sibling checkout by default (this repo and django live next to
-# each other under PycharmProjects on vcole-admin's workstation);
-# overridable since that layout isn't guaranteed elsewhere.
-DJANGO_REPO_ROOT = ENV['DJANGO_REPO_ROOT'] || settings['django_repo_root'] || File.expand_path('../django', __dir__)
-# Same idea as DJANGO_REPO_ROOT, for win11's masterless minion -- see win11's
-# block for why it copies this repo's srv/salt + srv/pillar in directly
-# rather than relying on the shared bevy_srv tree.
+# win11's masterless minion copies the windows-sudo repo's srv/salt + srv/pillar in
+# directly rather than relying on the shared bevy_srv tree -- see win11's block.
+# Sibling checkout by default; overridable since that layout isn't guaranteed elsewhere.
 WINDOWS_SUDO_REPO_ROOT = ENV['WINDOWS_SUDO_REPO_ROOT'] || settings['windows_sudo_repo_root'] || File.expand_path('../windows-sudo', __dir__)
 puts "Your bevy name:#{BEVY} with host-only network #{NETWORK}.x.x"
 puts "This (the VM host) computer will be at #{NETWORK}.56.1" if ARGV[1] == "up"
@@ -337,32 +330,18 @@ Vagrant.configure(2) do |config|  # the literal "2" is required.
     script += "chown -R vagrant:staff /etc/salt/minion.d\n"
     script += "chmod -R 775 /etc/salt/minion.d\n"
     quail_config.vm.provision "shell", inline: script
-    # Refresh /srv/salt + /srv/pillar (what the masterless minion actually
-    # reads) directly from DJANGO_REPO_ROOT on the host. Used to go through
-    # configure_machine/sync_app_salt_states.sh, copying from
-    # /opt/palmtree/srv on the guest -- but that only ever gets created by
-    # the django app's own git.latest state, which is scoped to
-    # ndf.2tst.xyz only (see django/srv/salt/top.sls), so it never ran here
-    # and /srv/salt silently never got refreshed at all. Copying straight
-    # from the host sidesteps needing the app deployed here in the first
-    # place. Must run before the salt provisioner, and every time (not
-    # just on first boot).
-    if Dir.exist?(File.join(DJANGO_REPO_ROOT, 'srv', 'salt'))
-      quail_config.vm.provision "file", source: File.join(DJANGO_REPO_ROOT, 'srv', 'salt'),
-                                destination: "/tmp/django_srv_salt", run: "always"
-      quail_config.vm.provision "file", source: File.join(DJANGO_REPO_ROOT, 'srv', 'pillar', 'django.sls'),
-                                destination: "/tmp/django_pillar_django.sls", run: "always"
-      quail_config.vm.provision "file", source: File.join(DJANGO_REPO_ROOT, 'srv', 'pillar', 'top.sls'),
-                                destination: "/tmp/django_pillar_top.sls", run: "always"
-      quail_config.vm.provision "shell", run: "always", inline: <<-SHELL
-        set -e
-        sudo mkdir -p /srv/salt /srv/pillar
-        sudo cp -a /tmp/django_srv_salt/. /srv/salt/
-        sudo cp /tmp/django_pillar_django.sls /srv/pillar/django.sls
-        sudo cp /tmp/django_pillar_top.sls /srv/pillar/top.sls
-        rm -rf /tmp/django_srv_salt /tmp/django_pillar_django.sls /tmp/django_pillar_top.sls
-      SHELL
-    end
+    # /vagrant isn't synced here either, but the masterless minion's file_roots and
+    # pillar_roots (GUEST_MINION_CONFIG_FILE) look in /vagrant/bevy_srv -- upload this
+    # repo's bevy_srv tree to that path instead. Must run before the salt provisioner,
+    # and every time, so the guest picks up state changes made on the host.
+    quail_config.vm.provision "file", source: File.join(__dir__, 'bevy_srv'),
+                              destination: "/tmp/bevy_srv", run: "always"
+    quail_config.vm.provision "shell", run: "always", inline: <<-SHELL
+      set -e
+      sudo rm -rf /vagrant/bevy_srv
+      sudo mkdir -p /vagrant
+      sudo mv /tmp/bevy_srv /vagrant/bevy_srv
+    SHELL
     if ENV.key?("VAGRANT_SALT")
       quail_config.vm.provision :salt do |salt|
        salt.verbose = false
@@ -942,8 +921,7 @@ pillar_roots:
  # . it copies windows-sudo/srv/salt + srv/pillar straight from
  # . WINDOWS_SUDO_REPO_ROOT into fixed guest paths (C:\srv\salt,
  # . C:\srv\pillar) and points file_roots/pillar_roots at those via its own
- # . minion.d drop-in, the same pattern salt24 uses for DJANGO_REPO_ROOT
- # . (see that block's comments) -- self-contained, no dependency on
+ # . minion.d drop-in -- self-contained, no dependency on
  # . whatever the host's real WINDOWS_GUEST_CONFIG_FILE sets.
  #
  # . Runs under Hyper-V on this machine -- same reasoning as quail22/salt24/
@@ -1002,7 +980,7 @@ pillar_roots:
     end
     # Copy this repo's own srv/salt + srv/pillar in directly (see the block
     # comment above) -- copy to a temp spot first, then move into place with
-    # a shell step, same two-step dance salt24 uses for DJANGO_REPO_ROOT
+    # a shell step, same two-step dance salt24 uses for bevy_srv
     # (a single big "file" upload of a whole tree needs somewhere to land
     # before it can overwrite a possibly-already-populated destination).
     if Dir.exist?(File.join(WINDOWS_SUDO_REPO_ROOT, 'srv', 'salt'))
